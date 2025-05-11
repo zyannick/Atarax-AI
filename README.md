@@ -1,4 +1,4 @@
-![AtaraxAI](https://github.com/user-attachments/assets/fdd8be29-ac97-4efc-8e5b-b559096e5234 | width=100)
+<img src="https://github.com/user-attachments/assets/fdd8be29-ac97-4efc-8e5b-b559096e5234" alt="AtaraxAI" width="100">
 
 
 # Atarax-AI
