@@ -16,12 +16,12 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 - Smart Caching and Context Window Management: Implement sliding-window techniques, smart summarization, and embeddings to keep long-term context in RAM-limited environments.
 
 # Planning
- [] Research & Planning
- [] Core Setup with llama.cpp
- [] Frompt engineering framework
- [] Embedding Store + Context Management
- [] System Integration
- [] Whisper.cpp Integration
- [] Vision model integration
- [] UI Layer
- [] Testing, Benchmarking, Optimization 
+  [] Research & Planning
+  [] Core Setup with llama.cpp
+  [] Frompt engineering framework
+  [] Embedding Store + Context Management
+  [] System Integration
+  [] Whisper.cpp Integration
+  [] Vision model integration
+  [] UI Layer
+  [] Testing, Benchmarking, Optimization 
