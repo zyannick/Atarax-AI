@@ -1,3 +1,6 @@
+![AtaraxAI](https://github.com/user-attachments/assets/fdd8be29-ac97-4efc-8e5b-b559096e5234)
+
+
 # Atarax-AI
 Develop a full-featured AI assistant that runs entirely offline using llama.cpp, optimized for low-latency, high-accuracy inference on consumer-grade hardware (laptop, smartphone)
 
