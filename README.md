@@ -21,8 +21,9 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 - Smart Caching and Context Window Management: Implement sliding-window techniques, smart summarization, and embeddings to keep long-term context in RAM-limited environments.
 
 # Planning
-  - [ ] Research & Planning
-  - [ ] Core Setup with llama.cpp
+  - [x] Core Setup with llama.cpp
+  - [ ] Automatic local benchmarking
+      - In progress
   - [ ] Frompt engineering framework
   - [ ] Embedding Store + Context Management
   - [ ] System Integration
@@ -30,3 +31,15 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
   - [ ] Vision model integration
   - [ ] UI Layer
   - [ ] Testing, Benchmarking, Optimization 
+
+
+# Modules
+
+## Benchmarker
+
+We try to setup a module to automatically benchmark the models on the user laptop and them select the best model and the best quantization. 
+
+- First, we will automatically parse and download a list of models from internet. For each model we will try to benchmark for the parameters  (standard prompt, perplexity dataset path, number of tokens to generate, threads, context size)
+
+- For each model we will first make a warm-up run to ensure that the measurements are stable as caches are warmed up
+

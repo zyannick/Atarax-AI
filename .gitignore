@@ -1,2 +1,4 @@
 third_party/llama.cpp
 third_party/whisper.cpp
+build/
+.vscode/
