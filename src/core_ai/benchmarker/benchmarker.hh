@@ -1,25 +1,6 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <filesystem>
-#include <chrono>
+#pragma once
 
-#include "json.hpp"
-
-using namespace std::chrono;
-
-struct QuantizedModelInfo {
-    std::string modelId;
-    std::string fileName;
-    std::string downloadUrl; 
-    std::string lastModified; 
-};
-
-struct benchmarker{
-    std::vector<std::string> model_paths;
-    std::string json_file_model_paths;
-    std::vector<std::string> input_texts;
-
-}
+#include "core_ai/benchmarker/system_infos/cpu_info.hh"
+#include "core_ai/benchmarker/system_infos/gpu_info.hh"
+#include "core_ai/benchmarker/utils/utils.hh"
+#include "core_ai/benchmarker/system_infos/memory_usage.hh"

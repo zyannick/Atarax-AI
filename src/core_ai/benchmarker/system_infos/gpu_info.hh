@@ -120,7 +120,6 @@ struct gpu_info_collection
         pclose(pipe);
         #endif
     }
-    void set_macos_gpu_info();
 
     gpu_info_collection()
     {

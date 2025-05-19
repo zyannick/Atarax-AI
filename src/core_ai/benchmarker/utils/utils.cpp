@@ -1,9 +1,10 @@
-#include "utils.hpp"
 #include <cstdlib>
 #include <cstdio>
 #include <sstream>
 #include <regex>
 #include <fstream>
+
+#include "core_ai/benchmarker/utils/utils.hh"
 
 std::string run_benchmark(const std::string& model_path, int threads, int n_tokens) {
     std::ostringstream cmd;

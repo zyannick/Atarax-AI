@@ -1,3 +1,17 @@
 {
-    
+    "Qwen3-30B-A3B-Q2_K": {
+        "modelID": "Qwen3-30B-A3B-Q2_K",
+        "fileName": "data/last_models/models/llama/Qwen3-30B-A3B-Q2_K.gguf",
+        "lastModified": "25-03-2025"
+    },
+    "Qwen3-30B-A3B-UD-IQ1_M": {
+        "modelID": "Qwen3-30B-A3B-UD-IQ1_M",
+        "fileName": "data/last_models/models/llama/Qwen3-30B-A3B-UD-IQ1_M.gguf",
+        "lastModified": "25-03-2025"
+    },
+    "Qwen3-30B-A3B-UD-IQ1_S": {
+        "modelID": "Qwen3-30B-A3B-UD-IQ1_S",
+        "fileName": "data/last_models/models/llama/Qwen3-30B-A3B-UD-IQ1_S.gguf",
+        "lastModified": "25-03-2025"
+    }
 }
