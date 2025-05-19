@@ -35,11 +35,36 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 
 # Modules
 
-## Benchmarker
+## Core Infra
 
 We try to setup a module to automatically benchmark the models on the user laptop and them select the best model and the best quantization. 
 
-- First, we will automatically parse and download a list of models from internet. For each model we will try to benchmark for the parameters  (standard prompt, perplexity dataset path, number of tokens to generate, threads, context size)
+- Set up llama.cpp locally (CPU + GPU support)
+- Test quantized model (e.g. 7B Q4_K_M)
+- Script inference loop with logging
+- Benchmark token throughput
 
-- For each model we will first make a warm-up run to ensure that the measurements are stable as caches are warmed up
+## Prompt & Task Engine
 
+This module is to setup the Prompt Engineering Framework:
+
+- Create modular prompt system
+- Design reusable templates and task runners
+
+## Embedding Store + Context Management 
+
+We will also try to setup a module for embedding storage and context management:
+
+- Integrate FAISS
+- Add semantic search, chunking strategies
+- Implement context window manager
+
+
+## System integration
+
+In this module we will try to integrate information from the system:
+
+- File system, calendar, notes, task access via APIs
+- OS-level hooks or CLI integrations
+
+## 

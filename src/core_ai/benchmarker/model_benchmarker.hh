@@ -101,6 +101,6 @@ struct ModelBenchmarker
             std::cout << result << std::endl;
         }
         pclose(pipe);
-        return "Benchmarking result for model: " + quantized_model_info.modelId + " with input: " + input_text;
+        return result;
     }
 };

@@ -2,3 +2,4 @@ third_party/
 build/
 models/
 .vscode/
+src/ataraxia
