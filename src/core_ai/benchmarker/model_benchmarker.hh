@@ -98,7 +98,6 @@ struct ModelBenchmarker
         while (fgets(buffer.data(), buffer.size(), pipe) != nullptr)
         {
             result += buffer.data();
-            std::cout << result << std::endl;
         }
         pclose(pipe);
         return result;

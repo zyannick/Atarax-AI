@@ -43,7 +43,7 @@ int main(int argc, char **argv)
     std::cout << "Full path: " << model_jsons_path << std::endl;
 
     ModelBenchmarker model_benchmarker = ModelBenchmarker(model_jsons_path);
-    model_benchmarker.benchmark_models(8, 20);
+    model_benchmarker.benchmark_models(8, 100);
 
     return 0;
 }
