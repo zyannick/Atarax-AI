@@ -3,5 +3,10 @@
         "modelID": "Qwen3-30B-A3B-UD-IQ1_S",
         "fileName": "data/last_models/models/llama/Qwen3-30B-A3B-UD-IQ1_S.gguf",
         "lastModified": "25-03-2025"
+    },
+    "Qwen3-30B-A3B-IQ4_XS": {
+        "modelID": "Qwen3-30B-A3B-IQ4_XS",
+        "fileName": "data/last_models/models/llama/Qwen3-30B-A3B-IQ4_XS.gguf",
+        "lastModified": "25-03-2025"
     }
 }
