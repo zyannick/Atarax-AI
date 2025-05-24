@@ -20,6 +20,10 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 - Privacy-First Design: No cloud calls; all processing and data storage is local. Emphasize encryption, transparency, and control.
 - Smart Caching and Context Window Management: Implement sliding-window techniques, smart summarization, and embeddings to keep long-term context in RAM-limited environments.
 
+# Architecture design
+
+![alt text](misc/architecture.png)
+
 # Planning
   - [x] Core Setup with llama.cpp
   - [ ] Automatic local benchmarking
@@ -32,6 +36,12 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
   - [ ] UI Layer
   - [ ] Testing, Benchmarking, Optimization 
 
+# Privacy Policy
+
+- No cloud dependency
+- No external API calls
+- All data stored locally in encrypted formats
+- Source code and logs are fully inspectable by user
 
 # Modules
 
