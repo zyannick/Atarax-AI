@@ -1,4 +1,5 @@
-third_party/
+src/third_party/llama.cpp/
+src/third_party/opencv/
 build/
 models/
 .vscode/
