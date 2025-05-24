@@ -1,4 +1,6 @@
 git clone https://github.com/ggml-org/llama.cpp.git
+git clone https://github.com/ggml-org/whisper.cpp.git
+git clone https://github.com/opencv/opencv.git
 cd llama.cpp
 rm -rf build CMakeCache.txt CMakeFiles
 conda install conda-forge::curl

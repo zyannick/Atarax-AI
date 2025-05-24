@@ -1,5 +1,6 @@
 src/third_party/llama.cpp/
 src/third_party/opencv/
+src/third_party/whisper.cpp/
 build/
 models/
 .vscode/
