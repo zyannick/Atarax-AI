@@ -1,6 +1,4 @@
-ataraxia/third_party/llama.cpp/
-ataraxia/third_party/opencv/
-ataraxia/third_party/whisper.cpp/
+ataraxai/third_party
 build/
 models/
 .vscode/
