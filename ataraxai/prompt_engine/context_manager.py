@@ -1,6 +1,20 @@
 
 import datetime
 
+
+class TaskContext:
+
+    def __init__(self, user_query: str, user_history: list[str] = None, task_info: dict = None):
+        self.user_query = user_query
+        self.user_history = user_history if user_history is not None else []
+        self.task_info = task_info if task_info is not None else {}
+
+    def add_to_history(self, entry: str):
+        self.user_history.append(entry)
+
+    def get_context_summary(self) -> str:
+        return f"Query: {self.user_query}, History: {self.user_history}, Task Info: {self.task_info}"
+
 class ContextManager:
     def __init__(self, db_path, faiss_index_path, config):
 
