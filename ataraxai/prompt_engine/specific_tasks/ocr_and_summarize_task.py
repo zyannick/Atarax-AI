@@ -9,3 +9,7 @@ class OCRandSummarizeTask(BaseTask):
         self.required_inputs = ["image"]
         self.prompt_template_name = "ocr_and_summarize"
         super().__init__()
+    
+    def execute(self, image_data: dict):
+
+        pass

@@ -8,3 +8,6 @@ class AnswerFromLocalDocsTask(BaseTask):
         self.required_inputs = ["question", "local_documents"]
         self.prompt_template_name = "answer_from_local_docs"
         super().__init__()
+
+    def execute(self, question: str, local_documents: list):
+        pass
