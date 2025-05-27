@@ -1,8 +1,14 @@
 from ataraxai.prompt_engine.base_task import BaseTask
 
 class SummarizeTextTask(BaseTask):
-    id = "summarize_text"
-    description = "Summarizes a given piece of text."
-    required_inputs = ["text_to_summarize"]
-    prompt_template_name = "summarize_general" # Example template name
+    
+    def __init__(self):
+        self.id = "summarize_text"
+        self.description = "Summarizes a given text."
+        self.required_inputs = ["text"]
+        self.prompt_template_name = "summarize_text"
+        super().__init__()
+
+    def execute(self, text: str):
+        pass
 
