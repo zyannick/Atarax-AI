@@ -11,6 +11,22 @@ Develop a full-featured AI assistant that runs entirely offline using llama.cpp,
 
 The assistant supports multi-modal inputs (text + voice + images/videos), performs real-time reasoning, and integrates with local system APIs (calendar, file system, etc.)  all with zero cloud dependency.
 
+
+
+# Architecture design
+
+![alt text](docs/architecture/HighLevelArchitecture.svg)
+
+## Prompt engine architecture
+
+![alt text](docs/architecture/architecture_pormpt_template.svg)
+
+
+## llama.cpp interface architecture
+
+## whisper.cpp interface architecture
+
+
 # Key Features
 
 - Quantized Model Deployment: Use 4-bit or 5-bit quantization with llama.cpp to make large models run smoothly on CPU or edge devices.
@@ -20,9 +36,6 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 - Privacy-First Design: No cloud calls; all processing and data storage is local. Emphasize encryption, transparency, and control.
 - Smart Caching and Context Window Management: Implement sliding-window techniques, smart summarization, and embeddings to keep long-term context in RAM-limited environments.
 
-# Architecture design
-
-![alt text](misc/architecture.png)
 
 # Planning
   - [x] Core Setup with llama.cpp
