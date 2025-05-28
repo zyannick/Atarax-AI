@@ -89,8 +89,10 @@ struct ModelBenchmarker
             return "";
         }
 
+
+
         std::string model_file = std::string(env_path) + "/" + quantized_model_info.fileName;
-        std::string cmd = std::string(env_path) + "/" + "build/third_party/llama.cpp/build/bin/llama-bench -m \"" + model_file + "\" -t " + std::to_string(n_threads) + " -n " + std::to_string(n_predict);
+        std::string cmd = std::string(env_path) + "/" + "build/third_party/llama.cpp/bin/llama-bench -m \"" + model_file + "\" -t " + std::to_string(n_threads) + " -n " + std::to_string(n_predict);
         std::string command = cmd;
         std::array<char, 128> buffer;
         std::string result;
