@@ -29,9 +29,9 @@ long get_memory_usage_linux()
     while (std::getline(status_file, line))
     {
         if (line.rfind("VmRSS:", 0) == 0)
-        {                                           // Starts with VmRSS:
-            std::istringstream iss(line.substr(6)); // Skip "VmRSS:"
-            iss >> rss;                             // Value is in kB
+        {                                           
+            std::istringstream iss(line.substr(6)); 
+            iss >> rss;                           
             break;
         }
     }
@@ -40,7 +40,7 @@ long get_memory_usage_linux()
 #elif defined(__APPLE__)
 #include <mach/mach.h>
 #include <filesystem>
-// Function to get memory usage on macOS
+
 long get_memory_usage_macos()
 {
     mach_task_basic_info_data_t task_info_data;
