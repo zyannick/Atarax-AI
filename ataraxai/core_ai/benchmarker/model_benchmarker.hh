@@ -54,7 +54,8 @@ struct ModelBenchmarker
         std::ifstream f(json_file);
         json data = json::parse(f);
 
-        for (auto& [model_key, model_val] : data.items()) {
+        for (auto &[model_key, model_val] : data.items())
+        {
             QuantizedModelInfo model_info;
             model_info.modelId = model_val["modelID"];
             model_info.fileName = model_val["fileName"];
@@ -65,7 +66,7 @@ struct ModelBenchmarker
 
     void benchmark_models(int n_threads, int n_predict)
     {
-        std::cout << "Benchmarking models... " <<  quantized_models.size() << std::endl;
+        std::cout << "Benchmarking models... " << quantized_models.size() << std::endl;
         std::cout << "Number of threads: " << n_threads << std::endl;
         std::cout << "Number of predictions: " << n_predict << std::endl;
         for (const QuantizedModelInfo &quantized_model_info : quantized_models)
@@ -80,15 +81,16 @@ struct ModelBenchmarker
 
     std::string llama_bench_model(QuantizedModelInfo quantized_model_info, const std::string &input_text, int n_threads, int n_predict)
     {
-        const char* env_path = std::getenv("ATARAXIA_PATH");
+        const char *env_path = std::getenv("ATARAXIA_PATH");
 
-        if (!env_path) {
+        if (!env_path)
+        {
             std::cerr << "Environment variable ATARAXIA_PATH not set!" << std::endl;
             return "";
         }
 
         std::string model_file = std::string(env_path) + "/" + quantized_model_info.fileName;
-        std::string cmd = "third_party/llama.cpp/build/bin/llama-bench -m \"" + model_file + "\" -t " + std::to_string(n_threads) + " -n " + std::to_string(n_predict);
+        std::string cmd = std::string(env_path) + "/" + "build/third_party/llama.cpp/build/bin/llama-bench -m \"" + model_file + "\" -t " + std::to_string(n_threads) + " -n " + std::to_string(n_predict);
         std::string command = cmd;
         std::array<char, 128> buffer;
         std::string result;
