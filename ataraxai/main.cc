@@ -18,14 +18,14 @@ g++ main.cc -o ataraxia \
     -Ithird_party/llama.cpp/ggml/include \
     -I. \
     -Icore_ai \
-    -Lthird_party/llama.cpp/build/bin \
+    -L../build/third_party/llama.cpp/build/bin \
     -lllava_shared \
-    -Wl,-rpath=third_party/llama.cpp/build/bin \
+    -Wl,-rpath=../build/third_party/llama.cpp/build/bin \
     -std=c++17
      */
 int main(int argc, char **argv)
 {
-    const char* env_path = std::getenv("ATARAXIA_PATH");
+    const char* env_path = std::getenv("ATARAXIA_PATH") ? std::getenv("ATARAXIA_PATH") : "..";
 
     if (!env_path) {
         std::cerr << "Environment variable ATARAXIA_PATH not set!" << std::endl;
