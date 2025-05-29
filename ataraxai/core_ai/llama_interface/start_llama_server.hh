@@ -17,10 +17,16 @@
 #endif
 
 #include <boost/process.hpp>
-// #include <boost/process/v2/io.hpp>
-#include <boost/filesystem.hpp>
+#include <boost/process/v1/io.hpp>
+#include <boost/process/v1/child.hpp>
+#include <boost/process/v1/args.hpp>
+#include <boost/process/v1/search_path.hpp>
+#include <boost/process/v1/start_dir.hpp>
+#include <iostream>
 
-namespace bp = boost::process;
+#include "core_ai/io_utils/directory_utils.hh"
+
+namespace bp = boost::process::v1;
 
 struct LlamaServerManager
 {
@@ -31,11 +37,12 @@ struct LlamaServerManager
     int max_context_per_user = 4096;
     int nb_users = 1;
     std::string draft_model_path;
-
     std::vector<std::string> command_args;
     std::string log_stdout;
     std::string log_stderr;
     std::string pid_file = "llama-server.pid";
+    std::string output_dir = std::string(std::getenv("ATARAXIA_OUTPUT_DIR")) + "/llama-server";
+    std::string pid_file_path = output_dir + "/" + pid_file;
 
     LlamaServerManager() = default;
 
@@ -116,8 +123,6 @@ struct LlamaServerManager
                 args_for_process.assign(command_args.begin() + 1, command_args.end());
             }
 
-
-            
             bp::child server_process(
                 executable,
                 bp::args(args_for_process),
@@ -127,16 +132,16 @@ struct LlamaServerManager
 
             server_process.detach();
 
-            std::ofstream pidfile(pid_file);
+            std::ofstream pidfile(pid_file_path);
             if (pidfile)
             {
                 pidfile << server_process.id() << "\n";
                 pidfile.close();
-                std::cout << "PID " << server_process.id() << " saved to: " << pid_file << "\n";
+                std::cout << "PID " << server_process.id() << " saved to: " << pid_file_path << "\n";
             }
             else
             {
-                std::cerr << "Warning: Could not open PID file for writing: " << pid_file << "\n";
+                std::cerr << "Warning: Could not open PID file for writing: " << pid_file_path << "\n";
             }
 
             std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -156,7 +161,7 @@ struct LlamaServerManager
                           << " (curl command exit status: " << health_status << ")\n";
             }
         }
-        catch (const boost::process::process_error &e)
+        catch (const bp::process_error &e)
         {
             std::cerr << "Boost.Process Error launching llama-server: " << e.what() << std::endl;
             throw;
@@ -172,10 +177,10 @@ struct LlamaServerManager
     {
         try
         {
-            std::ifstream pidfile(pid_file);
+            std::ifstream pidfile(pid_file_path);
             if (!pidfile)
             {
-                std::cerr << "PID file not found: " << pid_file << ". Cannot determine process to stop.\n";
+                std::cerr << "PID file not found: " << pid_file_path << ". Cannot determine process to stop.\n";
                 return;
             }
 
@@ -185,7 +190,7 @@ struct LlamaServerManager
 
             if (pid_to_kill <= 0)
             {
-                std::cerr << "Invalid PID (0 or negative) in file: " << pid_file << "\n";
+                std::cerr << "Invalid PID (0 or negative) in file: " << pid_file_path << "\n";
                 return;
             }
 
@@ -276,7 +281,6 @@ struct LlamaServerManager
             throw;
         }
     }
-
 
     ~LlamaServerManager()
     {

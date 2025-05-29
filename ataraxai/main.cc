@@ -1,19 +1,29 @@
-#include "core_ai/core_ai.hh"
-#include "core_ai/json.hpp"
+
 #include <fstream>
 #include <iostream>
 #include <string>
-
+#include <cstring>
+#include <filesystem> 
+#include <system_error> 
 #include "llama.h"
 
 #include <iostream>
 #include <cstdlib>
 
+#include "core_ai/core_ai.hh"
+#include "core_ai/json.hpp"
+#include "core_ai/io_utils/directory_utils.hh"
+
 using json = nlohmann::json;
+namespace fs = std::filesystem;
+
 
 int main(int argc, char **argv)
 {
     const char *env_path = std::getenv("ATARAXIA_PATH") ? std::getenv("ATARAXIA_PATH") : "..";
+    std::string output_path = std::string(env_path) + "/" + "output";
+    create_directory(output_path);
+    setenv("ATARAXIA_OUTPUT_DIR", output_path.c_str(), 1);
 
     if (!env_path)
     {
