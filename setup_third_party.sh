@@ -9,16 +9,21 @@ export CXX=$CONDA_PREFIX/bin/x86_64-conda-linux-gnu-c++
 ROOT_DIR=$(pwd) 
 THIRD_PARTY_SRC_DIR=$ROOT_DIR/ataraxai/third_party
 THIRD_PARTY_BUILD_DIR=$ROOT_DIR/build/third_party
+ATARAXAI_TEMP_DIR=$ROOT_DIR/temp
 
+
+BOOST_VERSION="1.88.0" 
+BOOST_VERSION_UNDERSCORE="1_88_0"
 
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
 mkdir -p $THIRD_PARTY_SRC_DIR
 mkdir -p $THIRD_PARTY_BUILD_DIR
+mkdir -p $ATARAXAI_TEMP_DIR
 
 
 echo "Cleaning old sources..."
-rm -rf $THIRD_PARTY_SRC_DIR/llama.cpp $THIRD_PARTY_SRC_DIR/whisper.cpp 
+rm -rf $THIRD_PARTY_SRC_DIR/llama.cpp $THIRD_PARTY_SRC_DIR/whisper.cpp $THIRD_PARTY_SRC_DIR/boost
 
 echo "Cloning llama.cpp..."
 git clone https://github.com/ggml-org/llama.cpp.git $THIRD_PARTY_SRC_DIR/llama.cpp
@@ -46,8 +51,3 @@ if [ ! -f $THIRD_PARTY_BUILD_DIR/whisper.cpp/bin/whisper-cli ]; then
     exit 1
 fi
 
-
-
-
-
-echo "Third-party dependencies built successfully."
