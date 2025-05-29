@@ -20,7 +20,7 @@
 #include <winreg.h>
 #endif
 
-struct cpu_info
+struct CPUInfo
 {
     std::string cpu_model;
     int num_cores = 0;
@@ -30,14 +30,26 @@ struct cpu_info
     std::string cache_size;
     std::string flags;
 
-    cpu_info()
+    CPUInfo()
         : cpu_model("Unknown"), num_cores(0), num_threads(0), cpu_frequency(0.0f),
           architecture("Unknown"), cache_size("Unknown"), flags("Unknown") {}
 };
 
-struct cpu_info_collection
+std::ostream &operator<<(std::ostream &os, const CPUInfo &info)
 {
-    std::vector<cpu_info> cpus;
+    os << "CPU Model: " << info.cpu_model << "\n"
+       << "  Cores: " << info.num_cores << "\n"
+       << "  Threads: " << info.num_threads << "\n"
+       << "  Frequency: " << info.cpu_frequency << " GHz\n"
+       << "  Architecture: " << info.architecture << "\n"
+       << "  Cache Size: " << info.cache_size << "\n"
+       << "  Flags: " << info.flags;
+    return os;
+}
+
+struct CPUInfoCollection
+{
+    std::vector<CPUInfo> cpus;
 
     static std::string trim(const std::string &s)
     {
@@ -48,56 +60,56 @@ struct cpu_info_collection
 
     void set_linux_cpu_infos()
     {
-        #ifdef __linux__
-            FILE *pipe = popen("lscpu", "r");
-            if (!pipe)
-                return;
+#ifdef __linux__
+        FILE *pipe = popen("lscpu", "r");
+        if (!pipe)
+            return;
 
-            char buffer[256];
-            cpu_info info;
-            while (fgets(buffer, sizeof(buffer), pipe))
+        char buffer[256];
+        CPUInfo info;
+        while (fgets(buffer, sizeof(buffer), pipe))
+        {
+            std::string line(buffer);
+            if (line.find("Model name:") != std::string::npos)
             {
-                std::string line(buffer);
-                if (line.find("Model name:") != std::string::npos)
-                {
-                    info.cpu_model = trim(line.substr(line.find(":") + 1));
-                }
-                else if (line.find("Thread(s) per core:") != std::string::npos)
-                {
-                    info.num_threads = std::stoi(trim(line.substr(line.find(":") + 1)));
-                }
-                else if (line.find("Core(s) per socket:") != std::string::npos)
-                {
-                    int cores_per_socket = std::stoi(trim(line.substr(line.find(":") + 1)));
-                    info.num_cores = cores_per_socket; // will adjust later if multiple sockets
-                }
-                else if (line.find("Socket(s):") != std::string::npos)
-                {
-                    int sockets = std::stoi(trim(line.substr(line.find(":") + 1)));
-                    info.num_cores *= sockets;
-                }
-                else if (line.find("CPU MHz:") != std::string::npos)
-                {
-                    info.cpu_frequency = std::stof(trim(line.substr(line.find(":") + 1)));
-                }
-                else if (line.find("Architecture:") != std::string::npos)
-                {
-                    info.architecture = trim(line.substr(line.find(":") + 1));
-                }
-                else if (line.find("L1d cache:") != std::string::npos)
-                {
-                    info.cache_size = trim(line.substr(line.find(":") + 1));
-                }
-                else if (line.find("Flags:") != std::string::npos)
-                {
-                    info.flags = trim(line.substr(line.find(":") + 1));
-                    cpus.push_back(info);
-                    info = cpu_info();
-                }
+                info.cpu_model = trim(line.substr(line.find(":") + 1));
             }
+            else if (line.find("Thread(s) per core:") != std::string::npos)
+            {
+                info.num_threads = std::stoi(trim(line.substr(line.find(":") + 1)));
+            }
+            else if (line.find("Core(s) per socket:") != std::string::npos)
+            {
+                int cores_per_socket = std::stoi(trim(line.substr(line.find(":") + 1)));
+                info.num_cores = cores_per_socket; // will adjust later if multiple sockets
+            }
+            else if (line.find("Socket(s):") != std::string::npos)
+            {
+                int sockets = std::stoi(trim(line.substr(line.find(":") + 1)));
+                info.num_cores *= sockets;
+            }
+            else if (line.find("CPU MHz:") != std::string::npos)
+            {
+                info.cpu_frequency = std::stof(trim(line.substr(line.find(":") + 1)));
+            }
+            else if (line.find("Architecture:") != std::string::npos)
+            {
+                info.architecture = trim(line.substr(line.find(":") + 1));
+            }
+            else if (line.find("L1d cache:") != std::string::npos)
+            {
+                info.cache_size = trim(line.substr(line.find(":") + 1));
+            }
+            else if (line.find("Flags:") != std::string::npos)
+            {
+                info.flags = trim(line.substr(line.find(":") + 1));
+                cpus.push_back(info);
+                info = CPUInfo();
+            }
+        }
 
-            pclose(pipe);
-        #endif
+        pclose(pipe);
+#endif
     }
 
     void set_windows_cpu_info()
@@ -179,7 +191,7 @@ struct cpu_info_collection
 #endif
     }
 
-    cpu_info_collection()
+    CPUInfoCollection()
     {
 #ifdef __linux__
         set_linux_cpu_infos();

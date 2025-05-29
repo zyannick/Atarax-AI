@@ -6,6 +6,8 @@ file(GLOB_RECURSE ATARAXIA_SOURCES
     common/*.cc
 )
 
+list(FILTER ATARAXIA_SOURCES EXCLUDE REGEX ".*/third_party/.*")
+
 add_executable(ataraxia ${ATARAXIA_SOURCES})
 
 
@@ -30,6 +32,32 @@ target_link_directories(ataraxia PRIVATE
     ${CMAKE_BINARY_DIR}/third_party/whisper.cpp
 )
 
+find_package(Boost  REQUIRED
+    COMPONENTS
+        process
+        filesystem
+        system
+)
+
+if(Boost_FOUND)
+    message(STATUS "Boost version: ${Boost_VERSION_STRING}")
+    message(STATUS "Boost include directories: ${Boost_INCLUDE_DIRS}")
+    message(STATUS "Boost libraries: ${Boost_LIBRARIES}") 
+
+    target_include_directories(ataraxia PRIVATE ${Boost_INCLUDE_DIRS})
+
+
+    target_include_directories(ataraxia  PRIVATE ${Boost_INCLUDE_DIRS})
+
+    target_link_libraries(ataraxia PRIVATE
+        Boost::process
+        Boost::filesystem
+        Boost::system
+    )
+
+else()
+    message(FATAL_ERROR "Boost not found. Please install Boost or set BOOST_ROOT.")
+endif()
 
 
 

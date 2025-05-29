@@ -71,15 +71,12 @@ struct ModelBenchmarker
         std::cout << "Number of predictions: " << n_predict << std::endl;
         for (const QuantizedModelInfo &quantized_model_info : quantized_models)
         {
-            for (const auto &input_text : input_texts)
-            {
-                std::string result = llama_bench_model(quantized_model_info, input_text, n_threads, n_predict);
-                std::cout << result << std::endl;
-            }
+            std::string result = llama_bench_model(quantized_model_info, n_threads, n_predict);
+            std::cout << result << std::endl;
         }
     }
 
-    std::string llama_bench_model(QuantizedModelInfo quantized_model_info, const std::string &input_text, int n_threads, int n_predict)
+    std::string llama_bench_model(QuantizedModelInfo quantized_model_info, int n_threads, int n_predict)
     {
         const char *env_path = std::getenv("ATARAXIA_PATH");
 
@@ -88,8 +85,6 @@ struct ModelBenchmarker
             std::cerr << "Environment variable ATARAXIA_PATH not set!" << std::endl;
             return "";
         }
-
-
 
         std::string model_file = std::string(env_path) + "/" + quantized_model_info.fileName;
         std::string cmd = std::string(env_path) + "/" + "build/third_party/llama.cpp/bin/llama-bench -m \"" + model_file + "\" -t " + std::to_string(n_threads) + " -n " + std::to_string(n_predict);

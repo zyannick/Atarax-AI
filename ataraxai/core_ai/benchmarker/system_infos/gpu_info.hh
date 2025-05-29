@@ -5,7 +5,7 @@
 #include <cstdio>
 #include <iostream>
 
-#ifdef _WIN32 // Or _WIN64 for 64-bit Windows
+#ifdef _WIN32
 #define POPEN _popen
 #define PCLOSE _pclose
 #else
@@ -13,7 +13,7 @@
 #define PCLOSE pclose
 #endif
 
-struct gpu_info
+struct GPUInfo
 {
     std::string name;
     std::string vendor;
@@ -21,15 +21,25 @@ struct gpu_info
     size_t memory_total_MB;
     std::string compute_capability;
 
-    gpu_info()
+    GPUInfo()
         : name("Unknown"), vendor("Unknown"), driver_version("Unknown"), memory_total_MB(0), compute_capability("Unknown")
     {
     }
 };
 
-struct gpu_info_collection
+std::ostream &operator<<(std::ostream &os, const GPUInfo &info)
 {
-    std::vector<gpu_info> gpus;
+    os << "GPU Name: " << info.name << "\n"
+       << "  Vendor: " << info.vendor << "\n"
+       << "  Driver Version: " << info.driver_version << "\n"
+       << "  Memory Total: " << info.memory_total_MB << " MB\n"
+       << "  Compute Capability: " << info.compute_capability;
+    return os;
+}
+
+struct GPUInfoCollection
+{
+    std::vector<GPUInfo> gpus;
 
     void set_linux_gpu_info()
     {
@@ -40,7 +50,7 @@ struct gpu_info_collection
         char buffer[256];
         while (fgets(buffer, sizeof(buffer), pipe))
         {
-            gpu_info info;
+            GPUInfo info;
             std::string line(buffer);
             size_t pos1 = line.find(",");
             size_t pos2 = line.find(",", pos1 + 1);
@@ -56,42 +66,42 @@ struct gpu_info_collection
         }
         pclose(pipe);
     }
-    
+
     void set_windows_gpu_info()
-    {   
-        #ifdef _WIN32 
-            // Use DXGI or WMI to query GPU info, e.g., via `wmic` command for simplicity
-            FILE *pipe = _popen("wmic path win32_VideoController get Name,AdapterRAM,DriverVersion /format:csv", "r");
-            if (!pipe)
-                return;
+    {
+#ifdef _WIN32
+        // Use DXGI or WMI to query GPU info, e.g., via `wmic` command for simplicity
+        FILE *pipe = _popen("wmic path win32_VideoController get Name,AdapterRAM,DriverVersion /format:csv", "r");
+        if (!pipe)
+            return;
 
-            char buffer[512];
-            while (fgets(buffer, sizeof(buffer), pipe))
-            {
-                std::string line(buffer);
-                if (line.find("Name") != std::string::npos)
-                    continue;
-                std::istringstream iss(line);
-                std::string node, name, ram_str, driver;
-                std::getline(iss, node, ','); // node name
-                std::getline(iss, name, ',');
-                std::getline(iss, ram_str, ',');
-                std::getline(iss, driver, ',');
+        char buffer[512];
+        while (fgets(buffer, sizeof(buffer), pipe))
+        {
+            std::string line(buffer);
+            if (line.find("Name") != std::string::npos)
+                continue;
+            std::istringstream iss(line);
+            std::string node, name, ram_str, driver;
+            std::getline(iss, node, ','); // node name
+            std::getline(iss, name, ',');
+            std::getline(iss, ram_str, ',');
+            std::getline(iss, driver, ',');
 
-                gpu_info info;
-                info.name = name;
-                info.memory_total_MB = std::stoul(ram_str) / (1024 * 1024);
-                info.driver_version = driver;
-                info.vendor = "Unknown";
-                gpus.push_back(info);
-            }
-            _pclose(pipe);
-        #endif
+            gpu_info info;
+            info.name = name;
+            info.memory_total_MB = std::stoul(ram_str) / (1024 * 1024);
+            info.driver_version = driver;
+            info.vendor = "Unknown";
+            gpus.push_back(info);
+        }
+        _pclose(pipe);
+#endif
     }
 
     void set_macos_gpu_info()
     {
-        #ifdef __APPLE__
+#ifdef __APPLE__
         // Use system_profiler to get GPU info
         FILE *pipe = popen("system_profiler SPDisplaysDataType | grep 'Chipset Model\\|VRAM\\|Driver Version'", "r");
         if (!pipe)
@@ -118,10 +128,10 @@ struct gpu_info_collection
             }
         }
         pclose(pipe);
-        #endif
+#endif
     }
 
-    gpu_info_collection()
+    GPUInfoCollection()
     {
 #ifdef __linux__
         set_linux_gpu_info();

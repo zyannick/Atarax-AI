@@ -2,6 +2,11 @@
 
 set -e
 
+rm -rf build
+
+export CC=$CONDA_PREFIX/bin/x86_64-conda-linux-gnu-cc
+export CXX=$CONDA_PREFIX/bin/x86_64-conda-linux-gnu-c++
+
 # Define and export the AtaraxIA project root
 export ATARAXIA_PATH="$(pwd)"
 echo "Building AtaraxIA from $ATARAXIA_PATH"
@@ -19,4 +24,5 @@ cmake --build build --config Release
 
 # Done!
 echo "AtaraxIA built successfully."
-echo "Run it with: ./build/bin/ataraxia"
+echo "Run it with: export ATARAXIA_PATH=$('pwd')"
+echo "Then ./build/bin/ataraxia"
