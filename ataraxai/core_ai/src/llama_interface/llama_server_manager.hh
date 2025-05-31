@@ -28,7 +28,7 @@
 
 namespace bp = boost::process::v1;
 
-struct LlamaServerManager
+class LlamaServerManager
 {
     std::string llama_server_path = "llama-server";
     std::string model_path;

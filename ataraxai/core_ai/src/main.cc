@@ -10,9 +10,9 @@
 #include <iostream>
 #include <cstdlib>
 
-#include "core_ai/core_ai.hh"
-#include "core_ai/json.hpp"
-#include "core_ai/io_utils/directory_utils.hh"
+#include "core_ai.hh"
+#include "json.hpp"
+#include "io_utils/directory_utils.hh"
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;

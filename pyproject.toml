@@ -1,0 +1,36 @@
+[build-system]
+requires = [
+    "scikit-build-core>=0.8",
+    "pybind11>=2.12"    
+]
+build-backend = "scikit_build_core.build"
+
+
+[project]
+name = "ataraxai_assistant"
+version = "0.1.0"
+description = "A Local, Privacy-Preserving AI Assistant Powered by llama.cpp"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" } 
+authors = [
+    { name = "Yannick Wend Kuni Zoetgnande", email = "yannickzoet@gmail.com" },
+]
+dependencies = [
+    "numpy",
+    "requests",
+]
+
+[project.urls]
+Homepage = "https://github.com/zyannick/Atarax-AI"
+
+[tool.scikit-build]
+cmake.source-dir = "."  
+cmake.build-type = "Release"
+cmake.args = ["-DCMAKE_BUILD_TYPE=Release"]
+wheel.packages = ["ataraxai"]
+
+[tool.setuptools.packages.find]
+where = ["."]  
+include = ["ataraxai*"] 
+                   

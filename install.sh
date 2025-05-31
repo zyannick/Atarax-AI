@@ -1,28 +1,30 @@
 #!/bin/bash
-
 set -e
 
-rm -rf build
+rm -rf build ataraxai_assistant.egg-info dist *.so _skbuild
 
 export CC=$CONDA_PREFIX/bin/x86_64-conda-linux-gnu-cc
 export CXX=$CONDA_PREFIX/bin/x86_64-conda-linux-gnu-c++
+export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 
-# Define and export the AtaraxIA project root
+./clean.sh
+
+pip uninstall ataraxai_assistant -y || true
+
 export ATARAXIA_PATH="$(pwd)"
-echo "Building AtaraxIA from $ATARAXIA_PATH"
+echo "Setting up AtaraxIA from $ATARAXIA_PATH"
 
-# Optional: setup third-party dependencies
 if [ -f "setup_third_party.sh" ]; then
     echo "Setting up third-party libraries..."
     ./setup_third_party.sh
 fi
 
-# Configure and build the project
 echo " Running CMake..."
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 
-# Done!
-echo "AtaraxIA built successfully."
-echo "Run it with: export ATARAXIA_PATH=$('pwd')"
-echo "Then ./build/bin/ataraxia"
+
+pip install -e .  -v     
+
+echo "Check if ataraxai_assistant is installed"
+python -c "import ataraxai_assistant"
