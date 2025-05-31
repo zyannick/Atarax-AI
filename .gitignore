@@ -3,3 +3,5 @@ build/
 models/
 .vscode/
 ataraxia/ataraxia
+*.egg-info/
+**.pyc
