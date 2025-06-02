@@ -26,5 +26,5 @@ cmake --build build --config Release
 
 pip install -e .  -v     
 
-echo "Check if ataraxai_assistant is installed"
-python -c "import ataraxai_assistant"
+echo "Check if ataraxai is installed"
+python -c "import ataraxai"

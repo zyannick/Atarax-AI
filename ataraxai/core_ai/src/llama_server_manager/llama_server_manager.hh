@@ -24,7 +24,7 @@
 #include <boost/process/v1/start_dir.hpp>
 #include <iostream>
 
-#include "core_ai/io_utils/directory_utils.hh"
+#include "io_utils/directory_utils.hh"
 
 namespace bp = boost::process::v1;
 

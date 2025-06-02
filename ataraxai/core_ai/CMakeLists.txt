@@ -29,7 +29,7 @@ find_library(LLAMA_LIBRARY_FILE
 if(NOT LLAMA_LIBRARY_FILE)
     message(FATAL_ERROR "libllama.a not found under ${LLAMA_INSTALL_PREFIX} in either lib/ or lib64/. Did setup_third_party.sh run correctly and install it?")
 else()
-    message(STATUS "Found libllama at: ${LLAMA_LIBRARY_FILE}")
+    message(STATUS "Found libllama at: ${LLAMA_LIBRARY_FILE} and the include directory at: ${LLAMA_INSTALL_PREFIX}/include")
 endif()
 
 set(WHISPER_INSTALL_PREFIX "${THIRD_PARTY_INSTALL_DIR}/whisper")
@@ -58,15 +58,19 @@ target_link_libraries(core_ai_logic PRIVATE
     "${WHISPER_LIBRARY_FILE}" 
     Boost::process Boost::filesystem Boost::system
 )
-target_include_directories(core_ai_logic PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+
+
+target_include_directories(core_ai_logic PUBLIC 
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"      
+    ${LLAMA_INCLUDE_DIR}            
+    "${LLAMA_INCLUDE_DIR}/ggml/include"
     ${Boost_INCLUDE_DIRS}
-    ${LLAMA_INCLUDE_DIR}
-    "${LLAMA_INCLUDE_DIR}/ggml/include" 
     ${WHISPER_INCLUDE_DIR}
+    PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"        
 )
+
+
 
 
 pybind11_add_module(core_ai_py SHARED
