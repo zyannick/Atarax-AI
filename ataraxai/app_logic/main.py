@@ -31,11 +31,11 @@ def starter():
     # core_ai_py.initialize()
 
     # Start file monitoring for RAG updates
-    if watched_directories:
-        observer = start_rag_file_monitoring(watched_directories, core_ai_py.manifest, core_ai_py.chroma_collection)
-        print("File monitoring started.")
-    else:
-        print("No directories to watch. Please set your preferences.")
+    # if watched_directories:
+    #     observer = start_rag_file_monitoring(watched_directories, core_ai_py.manifest, core_ai_py.chroma_collection)
+    #     print("File monitoring started.")
+    # else:
+    #     print("No directories to watch. Please set your preferences.")
         
         
 if __name__ == "__main__":

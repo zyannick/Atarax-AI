@@ -28,10 +28,20 @@ bool CoreAIService::initialize_llama_model(const LlamaModelParams &llama_model_p
 {
     if (llama_interface_)
     {
-        unload_llama_model(); // Unload any existing model
+        unload_llama_model(); 
     }
     llama_interface_ = std::make_unique<LlamaInterface>();
     return llama_interface_->load_model(llama_model_params);
+}
+
+bool CoreAIService::initialize_whisper_model(const WhisperModelParams &whisper_model_params_)
+{
+    if (whisper_interface_)
+    {
+        unload_whisper_model();
+    }
+    whisper_interface_ = std::make_unique<WhisperInterface>();
+    return whisper_interface_->load_model(whisper_model_params_);
 }
 
 void CoreAIService::unload_llama_model()

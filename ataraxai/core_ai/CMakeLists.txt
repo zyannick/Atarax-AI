@@ -19,6 +19,34 @@ get_filename_component(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../" ABSOLUT
 set(THIRD_PARTY_INSTALL_DIR "${PROJECT_ROOT}/build/third_party_install")
 
 set(LLAMA_INSTALL_PREFIX "${THIRD_PARTY_INSTALL_DIR}/llama")
+# find_library(LLAMA_LIBRARY_FILE 
+#              NAMES llama       
+#              HINTS "${LLAMA_INSTALL_PREFIX}" 
+#              PATH_SUFFIXES lib lib64       
+#              NO_DEFAULT_PATH                
+# )
+
+find_library(GGML_BASE_LIBRARY_FILE 
+             NAMES ggml-base       
+             HINTS "${LLAMA_INSTALL_PREFIX}" 
+             PATH_SUFFIXES lib lib64       
+             NO_DEFAULT_PATH                
+)
+
+find_library(GGML_CPU_LIBRARY_FILE 
+             NAMES ggml-cpu       
+             HINTS "${LLAMA_INSTALL_PREFIX}" 
+             PATH_SUFFIXES lib lib64       
+             NO_DEFAULT_PATH                
+)
+
+find_library(GGML_LIBRARY_FILE 
+             NAMES ggml       
+             HINTS "${LLAMA_INSTALL_PREFIX}" 
+             PATH_SUFFIXES lib lib64       
+             NO_DEFAULT_PATH                
+)
+
 find_library(LLAMA_LIBRARY_FILE 
              NAMES llama       
              HINTS "${LLAMA_INSTALL_PREFIX}" 
@@ -26,11 +54,27 @@ find_library(LLAMA_LIBRARY_FILE
              NO_DEFAULT_PATH                
 )
 
-if(NOT LLAMA_LIBRARY_FILE)
-    message(FATAL_ERROR "libllama.a not found under ${LLAMA_INSTALL_PREFIX} in either lib/ or lib64/. Did setup_third_party.sh run correctly and install it?")
+
+
+if(NOT GGML_BASE_LIBRARY_FILE OR NOT GGML_CPU_LIBRARY_FILE OR NOT GGML_LIBRARY_FILE OR NOT LLAMA_LIBRARY_FILE)
+    message(FATAL_ERROR "One or more required libraries not found under ${LLAMA_INSTALL_PREFIX}/lib64/")
 else()
-    message(STATUS "Found libllama at: ${LLAMA_LIBRARY_FILE} and the include directory at: ${LLAMA_INSTALL_PREFIX}/include")
+    message(STATUS "Found libraries:")
+    message(STATUS "  libggml-base: ${GGML_BASE_LIBRARY_FILE}")
+    message(STATUS "  libggml-cpu: ${GGML_CPU_LIBRARY_FILE}")
+    message(STATUS "  libggml: ${GGML_LIBRARY_FILE}")
+    message(STATUS "  libllama: ${LLAMA_LIBRARY_FILE}")
+    if(MTML_LIBRARY_FILE)
+        message(STATUS "  libmtml: ${MTML_LIBRARY_FILE}")
+    endif()
 endif()
+
+
+# if(NOT LLAMA_LIBRARY_FILE)
+#     message(FATAL_ERROR "libllama.a not found under ${LLAMA_INSTALL_PREFIX} in either lib/ or lib64/. Did setup_third_party.sh run correctly and install it?")
+# else()
+#     message(STATUS "Found libllama at: ${LLAMA_LIBRARY_FILE} and the include directory at: ${LLAMA_INSTALL_PREFIX}/include")
+# endif()
 
 set(WHISPER_INSTALL_PREFIX "${THIRD_PARTY_INSTALL_DIR}/whisper")
 find_library(WHISPER_LIBRARY_FILE
@@ -39,6 +83,13 @@ find_library(WHISPER_LIBRARY_FILE
              PATH_SUFFIXES lib lib64
              NO_DEFAULT_PATH
 )
+
+find_package(OpenMP REQUIRED)
+if(OpenMP_CXX_FOUND)
+    message(STATUS "Found OpenMP: ${OpenMP_CXX_VERSION}")
+else()
+    message(FATAL_ERROR "OpenMP not found")
+endif()
 
 if(NOT WHISPER_LIBRARY_FILE)
     message(FATAL_ERROR "libwhisper.a not found under ${WHISPER_INSTALL_PREFIX} in either lib/ or lib64/. Did setup_third_party.sh run correctly and install it?")
@@ -52,11 +103,23 @@ set(WHISPER_INCLUDE_DIR "${WHISPER_INSTALL_PREFIX}/include")
 add_library(core_ai_logic STATIC
     src/core_ai_service.cc
     src/llama_interface.cc
+    src/whisper_interface.cc
 )
+# target_link_libraries(core_ai_logic PRIVATE
+#     "${LLAMA_LIBRARY_FILE}"   
+#     "${WHISPER_LIBRARY_FILE}" 
+#     Boost::process Boost::filesystem Boost::system
+# )
+
 target_link_libraries(core_ai_logic PRIVATE
-    "${LLAMA_LIBRARY_FILE}"   
+    "${LLAMA_LIBRARY_FILE}"
+    "${GGML_LIBRARY_FILE}"
+    "${GGML_BASE_LIBRARY_FILE}"
+    "${GGML_CPU_LIBRARY_FILE}"
+    # $<$<BOOL:${MTML_LIBRARY_FILE}>:${MTML_LIBRARY_FILE}>
     "${WHISPER_LIBRARY_FILE}" 
     Boost::process Boost::filesystem Boost::system
+    OpenMP::OpenMP_CXX 
 )
 
 
