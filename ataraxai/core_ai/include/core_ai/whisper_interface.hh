@@ -1,6 +1,4 @@
-#ifndef WHISPER_INTERFACE_HH
-#define WHISPER_INTERFACE_HH
-
+#pragma once
 #include <string>
 #include <vector>
 #include <functional>
@@ -200,4 +198,3 @@ private:
     whisper_progress_callback_t current_progress_callback_;
 };
 
-#endif
