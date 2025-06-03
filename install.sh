@@ -1,11 +1,31 @@
 #!/bin/bash
 set -e
 
-rm -rf build ataraxai_assistant.egg-info dist *.so _skbuild
+clear 
+
+CLEAN=0
+CUDA_ARCH="native"
+
+# Parse CLI args
+for arg in "$@"; do
+    case $arg in
+        --clean) CLEAN=1 ;;
+        --cuda-arch=*) CUDA_ARCH="${arg#*=}" ;;
+        *) echo "Unknown option: $arg"; exit 1 ;;
+    esac
+done
+
+if [[ $CLEAN -eq 1 ]]; then
+    echo "[+] Cleaning build artifacts"
+    rm -rf build ataraxai_assistant.egg-info dist *.so _skbuild
+    ./clean.sh || true
+fi
 
 export CC=$CONDA_PREFIX/bin/x86_64-conda-linux-gnu-cc
 export CXX=$CONDA_PREFIX/bin/x86_64-conda-linux-gnu-c++
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
+# export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/usr/lib/:$LD_LIBRARY_PATH
 
 ./clean.sh
 
@@ -26,5 +46,4 @@ cmake --build build --config Release
 
 pip install -e .  -v     
 
-echo "Check if ataraxai is installed"
-python -c "import ataraxai"
+python -c "from ataraxai import core_ai_py; print('AtaraxAI installed successfully!')"

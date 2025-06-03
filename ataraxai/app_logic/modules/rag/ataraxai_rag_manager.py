@@ -1,13 +1,13 @@
-
 from pathlib import Path
 import chromadb
 from .rag_store import AtaraxAIEmbedder
-from platformdirs import user_data_dir
+from platformdirs import user_data_dir, user_config_dir
 import json
 
-from .file_observer import start_rag_file_monitoring
+from .resilient_indexer import start_rag_file_monitoring
 from .rag_store import RAGStore
 from .rag_manifest import RAGManifest
+from ataraxai import __version__
 
 APP_NAME = "AtaraxAI"
 APP_AUTHOR = "AtaraxAI"
@@ -15,9 +15,20 @@ APP_AUTHOR = "AtaraxAI"
 
 class AtaraxAIRAGManager:
     def __init__(self, core_ai_service_instance=None):
+        self.app_config_dir = Path(
+            user_config_dir(appname=APP_NAME, appauthor=APP_AUTHOR)
+        )
         self.app_data_dir = Path(user_data_dir(appname=APP_NAME, appauthor=APP_AUTHOR))
 
+        self.app_config_dir.mkdir(parents=True, exist_ok=True)
+        self.app_data_dir.mkdir(parents=True, exist_ok=True)
+
+        self.first_launch_marker_file = (
+            self.app_config_dir / ".ataraxai_setup_" + __version__ + "_complete"
+        )
+
         rag_store_db_path = self.app_data_dir / "rag_chroma_store"
+        rag_store_db_path.mkdir(parents=True, exist_ok=True)
 
         self.manifest_file_path = self.app_data_dir / "rag_manifest.json"
 
@@ -55,6 +66,3 @@ class AtaraxAIRAGManager:
         return self.rag_store.query(
             query_text=query_text, n_results=n_results, filter_metadata=filter_metadata
         )
-
-    # You would also have methods here to trigger manual re-indexing of all sources, etc.
-    # which would use self.manifest and self.rag_store.

@@ -12,6 +12,24 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
+# find_package(CUDA REQUIRED)
+# if(NOT CUDA_FOUND)
+#     # This message won't be reached if REQUIRED is used, as CMake will error out first.
+#     # But it's good for illustrating the check.
+#     message(FATAL_ERROR "CUDA Toolkit not found, but it's required for CUDA-enabled features.")
+# else()
+#     message(STATUS "Found CUDA Toolkit Version: ${CUDA_VERSION}")
+#     message(STATUS "CUDA Libraries: ${CUDA_LIBRARIES}") # General var
+#     message(STATUS "CUDA Include Dirs: ${CUDA_INCLUDE_DIRS}") # General var
+# endif()
+
+find_package(CUDAToolkit REQUIRED)
+if(NOT CUDAToolkit_FOUND)
+    message(FATAL_ERROR "CUDA Toolkit not found, but it's required for CUDA-enabled features.")
+else()
+    message(STATUS "Found CUDA Toolkit Version: ${CUDAToolkit_VERSION}")
+endif()
+
 find_package(Boost REQUIRED COMPONENTS process filesystem system)
 message(STATUS "Boost version: ${Boost_VERSION_STRING}")
 
@@ -40,6 +58,13 @@ find_library(GGML_CPU_LIBRARY_FILE
              NO_DEFAULT_PATH                
 )
 
+find_library(GGML_GPU_LIBRARY_FILE 
+             NAMES ggml-cuda       
+             HINTS "${LLAMA_INSTALL_PREFIX}" 
+             PATH_SUFFIXES lib lib64       
+             NO_DEFAULT_PATH                
+)
+
 find_library(GGML_LIBRARY_FILE 
              NAMES ggml       
              HINTS "${LLAMA_INSTALL_PREFIX}" 
@@ -56,7 +81,7 @@ find_library(LLAMA_LIBRARY_FILE
 
 
 
-if(NOT GGML_BASE_LIBRARY_FILE OR NOT GGML_CPU_LIBRARY_FILE OR NOT GGML_LIBRARY_FILE OR NOT LLAMA_LIBRARY_FILE)
+if(NOT GGML_BASE_LIBRARY_FILE OR NOT GGML_CPU_LIBRARY_FILE OR NOT GGML_LIBRARY_FILE OR NOT LLAMA_LIBRARY_FILE OR NOT GGML_GPU_LIBRARY_FILE)
     message(FATAL_ERROR "One or more required libraries not found under ${LLAMA_INSTALL_PREFIX}/lib64/")
 else()
     message(STATUS "Found libraries:")
@@ -64,17 +89,9 @@ else()
     message(STATUS "  libggml-cpu: ${GGML_CPU_LIBRARY_FILE}")
     message(STATUS "  libggml: ${GGML_LIBRARY_FILE}")
     message(STATUS "  libllama: ${LLAMA_LIBRARY_FILE}")
-    if(MTML_LIBRARY_FILE)
-        message(STATUS "  libmtml: ${MTML_LIBRARY_FILE}")
-    endif()
+    message(STATUS "  libggml-gpu: ${GGML_GPU_LIBRARY_FILE}")
 endif()
 
-
-# if(NOT LLAMA_LIBRARY_FILE)
-#     message(FATAL_ERROR "libllama.a not found under ${LLAMA_INSTALL_PREFIX} in either lib/ or lib64/. Did setup_third_party.sh run correctly and install it?")
-# else()
-#     message(STATUS "Found libllama at: ${LLAMA_LIBRARY_FILE} and the include directory at: ${LLAMA_INSTALL_PREFIX}/include")
-# endif()
 
 set(WHISPER_INSTALL_PREFIX "${THIRD_PARTY_INSTALL_DIR}/whisper")
 find_library(WHISPER_LIBRARY_FILE
@@ -105,23 +122,26 @@ add_library(core_ai_logic STATIC
     src/llama_interface.cc
     src/whisper_interface.cc
 )
-# target_link_libraries(core_ai_logic PRIVATE
-#     "${LLAMA_LIBRARY_FILE}"   
-#     "${WHISPER_LIBRARY_FILE}" 
-#     Boost::process Boost::filesystem Boost::system
-# )
+
 
 target_link_libraries(core_ai_logic PRIVATE
     "${LLAMA_LIBRARY_FILE}"
     "${GGML_LIBRARY_FILE}"
     "${GGML_BASE_LIBRARY_FILE}"
     "${GGML_CPU_LIBRARY_FILE}"
-    # $<$<BOOL:${MTML_LIBRARY_FILE}>:${MTML_LIBRARY_FILE}>
+    "${GGML_GPU_LIBRARY_FILE}"
     "${WHISPER_LIBRARY_FILE}" 
     Boost::process Boost::filesystem Boost::system
     OpenMP::OpenMP_CXX 
+    # ${CUDA_LIBRARIES}
+    # CUDA::cudart 
+    # CUDA::nvcc
+    CUDA::cudart
+    CUDA::cuda_driver
+    CUDA::cublas
+    CUDA::cublasLt
 )
-
+    #  ${CUDA_LIBRARIES} # TODO : to change later for portable CUDA support
 
 target_include_directories(core_ai_logic PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"      
@@ -142,6 +162,10 @@ pybind11_add_module(core_ai_py SHARED
 target_link_libraries(core_ai_py PRIVATE
     core_ai_logic     
     pybind11::module   
+    CUDA::cudart
+    CUDA::cuda_driver
+    CUDA::cublas
+    CUDA::cublasLt
 )
 
 target_include_directories(core_ai_py PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")

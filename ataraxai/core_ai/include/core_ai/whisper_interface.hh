@@ -3,45 +3,172 @@
 
 #include <string>
 #include <vector>
-#include <functional> // For std::function (callbacks)
+#include <functional>
 
-// Forward declare whisper.cpp types to keep whisper.h out of this public header if possible.
 struct whisper_context;
-struct whisper_context_params; // You might wrap this if needed
+struct whisper_context_params;
 
-// Define callback types for transcription results
-// Callback for each new segment transcribed
-// Parameters: segment_text, start_timestamp_ms, end_timestamp_ms
 using whisper_new_segment_callback_t = std::function<void(const std::string &, int64_t, int64_t)>;
-// Callback for overall progress
-// Parameter: progress percentage (0-100)
+
 using whisper_progress_callback_t = std::function<void(int)>;
 
-// Parameters for loading a Whisper model
 struct WhisperModelParams
 {
     std::string model_path;
-    bool use_gpu = true; // Attempt to use GPU if available and whisper.cpp is compiled with GPU support
-    // int gpu_device = 0; // Optional: specify GPU device index
+    bool use_gpu = true;
+
+    WhisperModelParams() = default;
+    WhisperModelParams(const std::string &path, bool gpu = true)
+        : model_path(path), use_gpu(gpu) {}
+
+    WhisperModelParams &set_model_path(const std::string &path)
+    {
+        model_path = path;
+        return *this;
+    }
+
+    WhisperModelParams &set_use_gpu(bool gpu)
+    {
+        use_gpu = gpu;
+        return *this;
+    }
+
+    bool operator==(const WhisperModelParams &other) const
+    {
+        return model_path == other.model_path && use_gpu == other.use_gpu;
+    }
+    bool operator!=(const WhisperModelParams &other) const
+    {
+        return !(*this == other);
+    }
+    std::size_t hash() const
+    {
+        return std::hash<std::string>()(model_path) ^ std::hash<bool>()(use_gpu);
+    }
+    std::string to_string() const
+    {
+        return "WhisperModelParams(model_path='" + model_path + "', use_gpu=" + (use_gpu ? "true" : "false") + ")";
+    }
 };
 
-// Parameters for performing a transcription
 struct WhisperTranscriptionParams
 {
-    int n_threads = 4;           // Number of CPU threads to use for computation
-    std::string language = "en"; // Target language (e.g., "en", "es", "auto" for detection)
-    bool translate = false;      // Translate from source language to English
-    bool print_special = false;  // Print special tokens (e.g., <SOT>, <EOT>)
-    bool print_progress = false; // Print progress to stderr (whisper.cpp internal)
-    bool no_context = true;      // Disable context from previous audio (for isolated transcriptions)
-    int max_len = 0;             // Max segment length in characters (0 for default)
-    bool single_segment = false; // Force single segment output
-    float temperature = 0.0f;    // Temperature for sampling (0.0 for greedy)
-    // Add other whisper_full_params as needed (e.g., beam_size, word_timestamps, suppress_tokens)
+    int n_threads = 4;
+    std::string language = "en";
+    bool translate = false;
+    bool print_special = false;
+    bool print_progress = false;
+    bool no_context = true;
+    int max_len = 0;
+    bool single_segment = false;
+    float temperature = 0.0f;
 
-    // Callbacks
     whisper_new_segment_callback_t new_segment_callback;
     whisper_progress_callback_t progress_callback;
+
+    WhisperTranscriptionParams() = default;
+
+    WhisperTranscriptionParams(int threads, const std::string &lang)
+        : n_threads(threads), language(lang), translate(false), print_special(false),
+          print_progress(false), no_context(true), max_len(0), single_segment(false),
+          temperature(0.0f) {}
+
+    bool operator==(const WhisperTranscriptionParams &other) const
+    {
+        return n_threads == other.n_threads &&
+               language == other.language &&
+               translate == other.translate &&
+               print_special == other.print_special &&
+               print_progress == other.print_progress &&
+               no_context == other.no_context &&
+               max_len == other.max_len &&
+               single_segment == other.single_segment &&
+               temperature == other.temperature;
+    }
+
+    bool operator!=(const WhisperTranscriptionParams &other) const
+    {
+        return !(*this == other);
+    }
+
+    std::size_t hash() const
+    {
+        return std::hash<int>()(n_threads) ^
+               std::hash<std::string>()(language) ^
+               std::hash<bool>()(translate) ^
+               std::hash<bool>()(print_special) ^
+               std::hash<bool>()(print_progress) ^
+               std::hash<bool>()(no_context) ^
+               std::hash<int>()(max_len) ^
+               std::hash<bool>()(single_segment) ^
+               std::hash<float>()(temperature);
+    }
+    std::string to_string() const
+    {
+        return "WhisperTranscriptionParams(n_threads=" + std::to_string(n_threads) +
+               ", language='" + language + "'" +
+               ", translate=" + (translate ? "true" : "false") +
+               ", print_special=" + (print_special ? "true" : "false") +
+               ", print_progress=" + (print_progress ? "true" : "false") +
+               ", no_context=" + (no_context ? "true" : "false") +
+               ", max_len=" + std::to_string(max_len) +
+               ", single_segment=" + (single_segment ? "true" : "false") +
+               ", temperature=" + std::to_string(temperature) + ")";
+    }
+
+    WhisperTranscriptionParams &set_n_threads(int threads)
+    {
+        n_threads = threads;
+        return *this;
+    }
+
+    WhisperTranscriptionParams &set_language(const std::string &lang)
+    {
+        language = lang;
+        return *this;
+    }
+
+    WhisperTranscriptionParams &set_translate(bool translate)
+    {
+        this->translate = translate;
+        return *this;
+    }
+
+    WhisperTranscriptionParams &set_print_special(bool print)
+    {
+        print_special = print;
+        return *this;
+    }
+
+    WhisperTranscriptionParams &set_print_progress(bool print)
+    {
+        print_progress = print;
+        return *this;
+    }
+
+    WhisperTranscriptionParams &set_no_context(bool no_ctx)
+    {
+        no_context = no_ctx;
+        return *this;
+    }
+
+    WhisperTranscriptionParams &set_max_len(int len)
+    {
+        max_len = len;
+        return *this;
+    }
+
+    WhisperTranscriptionParams &set_single_segment(bool single)
+    {
+        single_segment = single;
+        return *this;
+    }
+
+    WhisperTranscriptionParams &set_temperature(float temp)
+    {
+        temperature = temp;
+        return *this;
+    }
 };
 
 class WhisperInterface

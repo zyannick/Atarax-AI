@@ -3,6 +3,20 @@ from typing import List, Dict, Any, Callable
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ataraxai.app_logic.modules.rag.parser.document_base_parser import DocumentChunk
 
+from pathlib import Path
+from typing import List
+from .parser.document_base_parser import DocumentChunk
+from .parser.pdf_parser import PDFParser
+from .parser.docx_parser import DOCXParser
+from .parser.pptx_parser import PPTXParser
+from smart_chunker import SmartChunker
+
+EXT_PARSER_MAP = {
+    ".pdf": PDFParser(),
+    ".docx": DOCXParser(),
+    ".pptx": PPTXParser(),
+}
+
 
 class SmartChunker:
     def __init__(self,
@@ -33,6 +47,45 @@ class SmartChunker:
         )
         print(f"SmartChunker initialized with LangChain RecursiveCharacterTextSplitter: "
               f"chunk_size={chunk_size_tokens} tokens, overlap={chunk_overlap_tokens} tokens.")
+        
+    def ingest_file(self, file_path: Path) -> List[DocumentChunk]:
+        """
+        Ingests a single file and returns a list of DocumentChunk objects.
+        """
+        if not file_path.is_file():
+            print(f"[!] {file_path} is not a valid file.")
+            return []
+
+        parser = EXT_PARSER_MAP.get(file_path.suffix.lower())
+        if not parser:
+            print(f"[!] No parser available for {file_path.suffix}. Skipping.")
+            return []
+
+        print(f"[+] Parsing: {file_path}")
+        try:
+            raw_chunks: List[DocumentChunk] = parser.parse(file_path)
+            smart_chunks = self.chunk(raw_chunks)
+            return smart_chunks
+        except Exception as e:
+            print(f"[!] Failed to process {file_path}: {e}")
+            return []
+        
+    def ingest_directory(self, directory: Path) -> List[DocumentChunk]:
+        all_chunks = []
+
+        for path in directory.rglob("*"):
+            if not path.is_file():
+                continue
+            parser = EXT_PARSER_MAP.get(path.suffix.lower())
+            if parser:
+                print(f"[+] Parsing: {path}")
+                try:
+                    raw_chunks: List[DocumentChunk] = parser.parse(path)
+                    smart_chunks = self.chunk(raw_chunks)
+                    all_chunks.extend(smart_chunks)
+                except Exception as e:
+                    print(f"[!] Failed to process {path}: {e}")
+        return all_chunks
 
     def _chunk_single_document_content(self, document_content: str, source_path: str, base_metadata: Dict[str, Any]) -> List[DocumentChunk]:
         """
@@ -41,30 +94,21 @@ class SmartChunker:
         if not document_content or not document_content.strip():
             return []
 
-        # LangChain's create_documents expects a list of texts and a list of metadatas (one per text)
-        # Here, we are chunking one large text, so we pass it as a single item in a list.
-        # The metadata provided will be associated with the LangChain Document object
-        # created from document_content, and then inherited by the chunks.
-        
-        # Prepare metadata for LangChain's Document object.
-        # This metadata will be merged into each chunk's metadata by LangChain.
         langchain_doc_metadata = {"original_source": source_path, **base_metadata}
         
         langchain_documents = self.text_splitter.create_documents(
-            texts=[document_content],       # Must be a list of texts
-            metadatas=[langchain_doc_metadata] # Must be a list of metadatas (one for each text)
+            texts=[document_content],      
+            metadatas=[langchain_doc_metadata] 
         )
 
         final_chunks: List[DocumentChunk] = []
         for i, lc_doc in enumerate(langchain_documents):
-            # lc_doc.metadata already contains 'original_source', 'start_index', and base_metadata.
-            # We'll use source_path for the 'source' field of our DocumentChunk for consistency.
             chunk_specific_metadata = lc_doc.metadata.copy()
-            chunk_specific_metadata["chunk_index_in_doc"] = i # Add our own sequential chunk index
+            chunk_specific_metadata["chunk_index_in_doc"] = i 
 
             final_chunks.append(DocumentChunk(
                 content=lc_doc.page_content,
-                source=source_path, # The original document source path
+                source=source_path, 
                 metadata=chunk_specific_metadata
             ))
         
@@ -82,12 +126,11 @@ class SmartChunker:
                 print(f"Warning: SmartChunker.chunk expected DocumentChunk, got {type(original_doc_chunk)}. Skipping.")
                 continue
             
-            # The 'metadata' of the input DocumentChunk (representing the full document)
-            # will be used as the 'base_metadata' for the smaller chunks created from its content.
+
             newly_chunked_parts = self._chunk_single_document_content(
                 document_content=original_doc_chunk.content,
-                source_path=original_doc_chunk.source, # Pass the original source identifier
-                base_metadata=original_doc_chunk.metadata # Pass the original document's metadata
+                source_path=original_doc_chunk.source, 
+                base_metadata=original_doc_chunk.metadata
             )
             all_resulting_chunks.extend(newly_chunked_parts)
         return all_resulting_chunks
