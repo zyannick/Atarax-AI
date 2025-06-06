@@ -3,10 +3,13 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from pathlib import Path
 import queue
+from .rag_store import RAGStore
+from .ataraxai_rag_manager import RAGManifest
+import chromadb
 
 
-class ResilientIndexer(FileSystemEventHandler):
-    def __init__(self, manifest, chroma_collection):
+class ResilientFileIndexer(FileSystemEventHandler):
+    def __init__(self, manifest: RAGManifest, chroma_collection: chromadb.Collection):
         self.manifest = manifest
         self.chroma_collection = chroma_collection
         self.processing_queue = queue.Queue()
@@ -40,9 +43,29 @@ class ResilientIndexer(FileSystemEventHandler):
             self.processing_queue.put(task)
 
 
-def start_rag_file_monitoring(paths_to_watch, manifest, chroma_collection):
-    event_handler = ResilientIndexer(manifest, chroma_collection)
-    observer = Observer(timeout=5) 
+def start_rag_file_monitoring(
+    paths_to_watch: list[str],
+    manifest: RAGManifest,
+    chroma_collection: chromadb.Collection,
+):
+    """
+    Starts monitoring the specified file system paths for changes to support RAG (Retrieval-Augmented Generation) updates.
+
+    Args:
+        paths_to_watch (list[str]): A list of directory paths to monitor for file changes.
+        manifest (RAGManifest): The manifest object containing RAG configuration and state.
+        chroma_collection (chromadb.Collection): The ChromaDB collection used for indexing and retrieval.
+
+    Returns:
+        Observer: An instance of the Observer that is actively monitoring the specified paths.
+
+    Notes:
+        - Only existing paths will be monitored; non-existent paths will trigger a warning.
+        - Monitoring is recursive for each directory in `paths_to_watch`.
+        - The observer must be stopped manually when monitoring is no longer needed.
+    """
+    event_handler = ResilientFileIndexer(manifest, chroma_collection)
+    observer = Observer(timeout=5)
     for path_str in paths_to_watch:
         path = Path(path_str)
         if path.exists():
@@ -54,3 +77,21 @@ def start_rag_file_monitoring(paths_to_watch, manifest, chroma_collection):
     observer.start()
     print("File system monitoring started for RAG updates...")
     return observer
+
+
+class ResilientMailIndexer:
+    def __init__(self, manifest: RAGManifest, rag_store: RAGStore):
+        self.manifest = manifest
+        self.rag_store = rag_store
+
+    def process_email(self, file_path: str):
+        print(f"Processing email for indexing: {file_path}")
+
+
+class ResilientCalendarIndexer:
+    def __init__(self, manifest: RAGManifest, rag_store: RAGStore):
+        self.manifest = manifest
+        self.rag_store = rag_store
+
+    def process_calendar_event(self, file_path: str):
+        print(f"Processing calendar event for indexing: {file_path}")

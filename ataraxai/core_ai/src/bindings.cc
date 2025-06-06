@@ -13,11 +13,12 @@ PYBIND11_MODULE(core_ai_py, m)
 
      py::class_<LlamaModelParams>(m, "LlamaModelParams", "Parameters for loading a Llama model.")
          .def(py::init<>())
-         .def(py::init<const std::string &, int32_t, int32_t, int32_t, bool, bool, bool, bool>(),
+         .def(py::init<const std::string &, int32_t, int32_t, int32_t, int32_t, bool, bool, bool, bool>(),
               py::arg("model_path") = "",
               py::arg("n_ctx") = 2048,
               py::arg("n_gpu_layers") = 0,
               py::arg("main_gpu") = 0,
+              py::arg("n_batch") = 1,
               py::arg("tensor_split") = false,
               py::arg("vocab_only") = false,
               py::arg("use_map") = false,
@@ -27,6 +28,7 @@ PYBIND11_MODULE(core_ai_py, m)
          .def_readwrite("n_gpu_layers", &LlamaModelParams::n_gpu_layers, "Number of layers to offload to GPU.")
          .def_readwrite("n_ctx", &LlamaModelParams::n_ctx, "Context size for the model.")
          .def_readwrite("main_gpu", &LlamaModelParams::main_gpu, "Main GPU index for model loading.")
+         .def_readwrite("n_batch", &LlamaModelParams::n_batch, "Batch size for model inference.")
          .def_readwrite("tensor_split", &LlamaModelParams::tensor_split, "Whether to use tensor splitting for large models.")
          .def_readwrite("vocab_only", &LlamaModelParams::vocab_only, "Load only the vocabulary without the model.")
          .def_readwrite("use_map", &LlamaModelParams::use_map, "Use memory mapping for the model file.")
@@ -42,13 +44,16 @@ PYBIND11_MODULE(core_ai_py, m)
 
      py::class_<GenerationParams>(m, "GenerationParams", "Parameters for Llama text generation.")
          .def(py::init<>())
-         .def(py::init<int32_t, float, int32_t, float, float,
+         .def(py::init<int32_t, float, int32_t, float, float, int32_t, float, float,
                        std::vector<std::string>, int32_t, int32_t>(),
               py::arg("n_predict") = 128,
               py::arg("temp") = 0.8f,
               py::arg("top_k") = 40,
               py::arg("top_p") = 0.95f,
               py::arg("repeat_penalty") = 1.1f,
+              py::arg("penalty_last_n") = 64,
+              py::arg("penalty_freq") = 0.0f,
+              py::arg("penalty_present") = 0.0f,
               py::arg("stop_sequences") = std::vector<std::string>{},
               py::arg("n_batch") = 512,
               py::arg("n_threads") = 0)
@@ -57,6 +62,9 @@ PYBIND11_MODULE(core_ai_py, m)
          .def_readwrite("top_k", &GenerationParams::top_k)
          .def_readwrite("top_p", &GenerationParams::top_p)
          .def_readwrite("repeat_penalty", &GenerationParams::repeat_penalty)
+         .def_readwrite("penalty_last_n", &GenerationParams::penalty_last_n)
+         .def_readwrite("penalty_freq", &GenerationParams::penalty_freq)
+         .def_readwrite("penalty_present", &GenerationParams::penalty_present)
          .def_readwrite("stop_sequences", &GenerationParams::stop_sequences)
          .def_readwrite("n_batch", &GenerationParams::n_batch)
          .def_readwrite("n_threads", &GenerationParams::n_threads)
@@ -85,27 +93,27 @@ PYBIND11_MODULE(core_ai_py, m)
          .def("__str__", [](const WhisperModelParams &p)
               { return p.to_string(); });
 
-     py::class_<WhisperTranscriptionParams>(m, "WhisperTranscriptionParams", "Parameters for Whisper audio transcription.")
+     py::class_<WhisperGenerationParams>(m, "WhisperGenerationParams", "Parameters for Whisper audio transcription.")
          .def(py::init<>())
          .def(py::init<int, const std::string &>(),
               py::arg("n_threads") = 4,
               py::arg("language") = "en")
-         .def_readwrite("n_threads", &WhisperTranscriptionParams::n_threads)
-         .def_readwrite("language", &WhisperTranscriptionParams::language, "Target language for transcription (e.g., 'en', 'auto').")
-         .def_readwrite("translate", &WhisperTranscriptionParams::translate, "Translate to English if true.")
-         .def_readwrite("print_special", &WhisperTranscriptionParams::print_special)
-         .def_readwrite("print_progress", &WhisperTranscriptionParams::print_progress)
-         .def_readwrite("no_context", &WhisperTranscriptionParams::no_context)
-         .def_readwrite("max_len", &WhisperTranscriptionParams::max_len)
-         .def_readwrite("single_segment", &WhisperTranscriptionParams::single_segment)
-         .def_readwrite("temperature", &WhisperTranscriptionParams::temperature)
-         .def("__eq__", [](const WhisperTranscriptionParams &a, const WhisperTranscriptionParams &b)
+         .def_readwrite("n_threads", &WhisperGenerationParams::n_threads)
+         .def_readwrite("language", &WhisperGenerationParams::language, "Target language for transcription (e.g., 'en', 'auto').")
+         .def_readwrite("translate", &WhisperGenerationParams::translate, "Translate to English if true.")
+         .def_readwrite("print_special", &WhisperGenerationParams::print_special)
+         .def_readwrite("print_progress", &WhisperGenerationParams::print_progress)
+         .def_readwrite("no_context", &WhisperGenerationParams::no_context)
+         .def_readwrite("max_len", &WhisperGenerationParams::max_len)
+         .def_readwrite("single_segment", &WhisperGenerationParams::single_segment)
+         .def_readwrite("temperature", &WhisperGenerationParams::temperature)
+         .def("__eq__", [](const WhisperGenerationParams &a, const WhisperGenerationParams &b)
               { return a == b; })
-         .def("__ne__", [](const WhisperTranscriptionParams &a, const WhisperTranscriptionParams &b)
+         .def("__ne__", [](const WhisperGenerationParams &a, const WhisperGenerationParams &b)
               { return a != b; })
-         .def("__hash__", [](const WhisperTranscriptionParams &p)
+         .def("__hash__", [](const WhisperGenerationParams &p)
               { return p.hash(); })
-         .def("__str__", [](const WhisperTranscriptionParams &p)
+         .def("__str__", [](const WhisperGenerationParams &p)
               { return p.to_string(); });
 
      py::class_<CoreAIService>(m, "CoreAIService", "Manages AI model interactions, including LLM, STT, etc.")
@@ -127,4 +135,6 @@ PYBIND11_MODULE(core_ai_py, m)
               py::arg("pcm_f32_data"), py::arg("whisper_model_params"))
          .def("transcribe_audio_file", &CoreAIService::transcribe_audio_file, "Transcribe an audio file using Whisper",
               py::arg("audio_file_path"), py::arg("whisper_model_params"));
+     //     .def("convert_audio_file_to_pcm_f32", &CoreAIService::convert_audio_file_to_pcm_f32, "Convert an audio file to PCM f32 format",
+     //          py::arg("audio_file_path"));
 };

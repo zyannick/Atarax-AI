@@ -1,19 +1,18 @@
-
 import yaml
 from pathlib import Path
-from platformdirs import user_config_dir
-from ataraxai.app_logic.utils.config_schemas.llama_config_schema import LlamaConfig, LlamaModelParams, GenerationParams
+from ataraxai.app_logic.utils.config_schemas.llama_config_schema import (
+    LlamaConfig,
+    LlamaModelParams,
+    GenerationParams,
+)
 
-APP_NAME = "AtaraxAI"
-APP_AUTHOR = "AtaraxAI"
-LLAMA_CONFIG_FILENAME = "llm_config.yaml"
+
+LLAMA_CONFIG_FILENAME = "llama_config.yaml"
 
 
 class LlamaConfigManager:
-    def __init__(self):
-        self.config_path = (
-            Path(user_config_dir(APP_NAME, APP_AUTHOR)) / LLAMA_CONFIG_FILENAME
-        )
+    def __init__(self, config_path: Path):
+        self.config_path = config_path / LLAMA_CONFIG_FILENAME
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.config: LlamaConfig = self._load_or_initialize()
 

@@ -59,6 +59,14 @@ class AtaraxAIRAGManager:
         else:
             print("No directories specified to watch for RAG updates.")
 
+    def stop_file_monitoring(self):
+        if self.file_observer and self.file_observer.is_alive():
+            self.file_observer.stop()
+            self.file_observer.join()
+            print("File monitoring stopped via AtaraxAIRAGManager.")
+        else:
+            print("No active file monitoring to stop.")
+
     def query_knowledge(
         self, query_text: str, n_results: int = 3, filter_metadata: dict = None
     ):

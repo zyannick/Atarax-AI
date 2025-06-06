@@ -76,7 +76,7 @@ public:
      * @return The transcribed text, or an error string.
      */
     std::string transcribe_audio_pcm(const std::vector<float>& pcm_f32_data,
-                                     const WhisperTranscriptionParams& whisper_transcription_params);
+                                     const WhisperGenerationParams& whisper_transcription_params);
 
     /**
      * @brief Convenience function to transcribe an audio file.
@@ -87,7 +87,7 @@ public:
      * @return The transcribed text, or an error string.
      */
     std::string transcribe_audio_file(const std::string& audio_file_path,
-                                      const WhisperTranscriptionParams& whisper_transcription_params);
+                                      const WhisperGenerationParams& whisper_transcription_params);
 
 
     /**

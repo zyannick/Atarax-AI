@@ -1,23 +1,19 @@
 import yaml
 from pathlib import Path
-from platformdirs import user_config_dir
 from .config_schemas.whisper_config_schema import (
     WhisperConfig,
     WhisperModelParams,
     WhisperTranscriptionParams,
 )
 
-APP_NAME = "AtaraxAI"
-APP_AUTHOR = "AtaraxAI"
+
 WHISPER_CONFIG_FILENAME = "whisper_config.yaml"
 
 
 class WhisperConfigManager:
 
-    def __init__(self):
-        self.config_path = (
-            Path(user_config_dir(APP_NAME, APP_AUTHOR)) / WHISPER_CONFIG_FILENAME
-        )
+    def __init__(self, config_path: Path):
+        self.config_path = config_path / WHISPER_CONFIG_FILENAME
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.config: WhisperConfig = self._load_or_initialize()
 

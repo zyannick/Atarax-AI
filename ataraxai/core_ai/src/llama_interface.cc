@@ -28,17 +28,39 @@ static std::atomic<bool> backend_initialized{false};
 // }
 // #endif
 
+/**
+ * @brief Initializes the backend for the LlamaInterface.
+ *
+ * This function ensures that the backend initialization routines are executed only once,
+ * even if called from multiple threads. It loads all required GGML backends, initializes
+ * the Llama backend, and sets the logging function to null. Once initialization is complete,
+ * it sets the backend_initialized flag to true and logs a message to standard error.
+ *
+ * Thread-safe: Uses std::call_once to guarantee single initialization.
+ */
 void LlamaInterface::init_backend()
 {
     std::call_once(backend_init_flag, []()
                    {
         ggml_backend_load_all();
         llama_backend_init();
-        llama_log_set(nullptr, nullptr);
+        // only print errors
+        llama_log_set([](enum ggml_log_level level, const char * text, void * /* user_data */) {
+            if (level >= GGML_LOG_LEVEL_ERROR) {
+                fprintf(stderr, "%s", text);
+            }
+        }, nullptr);
         backend_initialized.store(true);
         std::cerr << "LlamaInterface: Backend initialized." << std::endl; });
 }
 
+/**
+ * @brief Frees the resources associated with the Llama backend if it has been initialized.
+ *
+ * This function checks whether the backend has been initialized. If so, it releases
+ * the backend resources by calling `llama_backend_free()`, updates the initialization
+ * status, and logs the action to standard error output.
+ */
 void LlamaInterface::free_backend()
 {
     if (backend_initialized.load())
@@ -49,16 +71,39 @@ void LlamaInterface::free_backend()
     }
 }
 
+/**
+ * @brief Constructs a LlamaInterface object and initializes its members.
+ *
+ * This constructor initializes the internal pointers (model_, ctx_, vocab_) to nullptr
+ * and calls the init_backend() function to set up the backend environment required
+ * for the LlamaInterface to operate.
+ */
 LlamaInterface::LlamaInterface() : model_(nullptr), ctx_(nullptr), vocab_(nullptr)
 {
     init_backend();
 }
 
+/**
+ * @brief Destructor for the LlamaInterface class.
+ *
+ * This destructor ensures that any resources or models loaded by the interface
+ * are properly released by calling the unload_model() method.
+ */
 LlamaInterface::~LlamaInterface()
 {
     unload_model();
 }
 
+/**
+ * @brief Move constructor for LlamaInterface.
+ *
+ * Transfers ownership of the internal model, context, and vocabulary pointers,
+ * as well as the current model parameters, from another LlamaInterface instance.
+ * After the move, the source instance's pointers are set to nullptr to prevent
+ * double deletion.
+ *
+ * @param other The LlamaInterface instance to move from.
+ */
 LlamaInterface::LlamaInterface(LlamaInterface &&other) noexcept
     : model_(other.model_), ctx_(other.ctx_), vocab_(other.vocab_),
       current_model_params_(std::move(other.current_model_params_))
@@ -68,6 +113,16 @@ LlamaInterface::LlamaInterface(LlamaInterface &&other) noexcept
     other.vocab_ = nullptr;
 }
 
+/**
+ * @brief Move assignment operator for LlamaInterface.
+ *
+ * Transfers ownership of the internal resources from another LlamaInterface instance
+ * to this instance. If this instance already holds resources, they are released first.
+ * After the move, the source instance is left in a valid but unspecified state.
+ *
+ * @param other The LlamaInterface instance to move from.
+ * @return Reference to this LlamaInterface instance.
+ */
 LlamaInterface &LlamaInterface::operator=(LlamaInterface &&other) noexcept
 {
     if (this != &other)
@@ -177,7 +232,7 @@ bool LlamaInterface::is_model_loaded() const
     return model_ != nullptr && ctx_ != nullptr && vocab_ != nullptr;
 }
 
-std::vector<int32_t> LlamaInterface::tokenize(const std::string &text, bool add_bos, bool special) const
+std::vector<llama_token> LlamaInterface::tokenize(const std::string &text, bool add_bos, bool special) const
 {
     if (!is_model_loaded())
     {
@@ -250,16 +305,29 @@ std::string LlamaInterface::detokenize_sequence(const std::vector<int32_t> &toke
 
 llama_sampler *LlamaInterface::create_sampler(const GenerationParams &params)
 {
-    auto sparams = llama_sampler_chain_default_params();
-    sparams.no_perf = false;
+    llama_sampler *smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
 
-    llama_sampler *smpl = llama_sampler_chain_init(sparams);
-    if (!smpl)
-    {
-        throw std::runtime_error("Failed to initialize sampler chain");
-    }
+    // 1. Apply penalties first to modify logits based on context
+    llama_sampler_chain_add(smpl, llama_sampler_init_penalties(
+                                      params.penalty_last_n,
+                                      params.repeat_penalty,
+                                      params.penalty_freq,
+                                      params.penalty_present));
 
-    // TODO : implement sampler configuration based on params
+    // 2. Optional: Min-P sampling
+    llama_sampler_chain_add(smpl, llama_sampler_init_min_p(0.05f, 1)); // Or make min_p configurable
+
+    // 3. Top-K sampling
+    llama_sampler_chain_add(smpl, llama_sampler_init_top_k(params.top_k));
+
+    // 4. Top-P sampling (min_keep = 1 is a common setting for the last arg)
+    llama_sampler_chain_add(smpl, llama_sampler_init_top_p(params.top_p, 1));
+
+    // 5. Temperature scaling
+    llama_sampler_chain_add(smpl, llama_sampler_init_temp(params.temp));
+
+    // 6. Final distribution sampling
+    llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED)); // Or make seed configurable
 
     return smpl;
 }
@@ -276,11 +344,125 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
         return "[Error: Empty prompt]";
     }
 
-    std::string completion_text;
+    const llama_vocab *vocab = llama_model_get_vocab(model_);
 
-    return completion_text;
+    // initialize the context
+    llama_context_params ctx_params = llama_context_default_params();
+    ctx_params.n_ctx = current_model_params_.n_ctx;
+    ctx_params.n_batch = current_model_params_.n_batch;
+
+    try
+    {
+        LlamaContextWrapper ctx(model_, ctx_params); // Automatic cleanup!
+        llama_sampler *sampler = create_sampler(gen_params);
+        std::vector<llama_token> prompt_tokens = tokenize(prompt_text, true, false);
+
+        // prepare a batch for the prompt
+        llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size());
+        llama_token new_token_id;
+
+        std::string completion_text;
+
+        int current_nb_predict = 0;
+
+        while (true)
+        {
+            // check if we have enough space in the context to evaluate this batch
+            int n_ctx = llama_n_ctx(ctx);
+            int n_ctx_used = llama_kv_self_seq_pos_max(ctx, 0);
+            if (n_ctx_used + batch.n_tokens > n_ctx)
+            {
+                printf("\033[0m\n");
+                fprintf(stderr, "context size exceeded\n");
+                return "[Error: Context size exceeded]";
+            }
+
+            if (llama_decode(ctx, batch))
+            {
+                GGML_ABORT("failed to decode\n");
+            }
+
+            // sample the next token
+            new_token_id = llama_sampler_sample(sampler, ctx, -1);
+
+            // is it an end of generation?
+            if (llama_vocab_is_eog(vocab, new_token_id))
+            {
+                break;
+            }
+
+            // convert the token to a string, print it and add it to the response
+            char buf[256];
+            int n = llama_token_to_piece(vocab, new_token_id, buf, sizeof(buf), 0, true);
+            if (n < 0)
+            {
+                GGML_ABORT("failed to convert token to piece\n");
+            }
+            std::string piece(buf, n);
+            // printf("%s", piece.c_str());
+            // fflush(stdout);
+            completion_text += piece;
+
+            current_nb_predict++;
+            if (current_nb_predict >= gen_params.n_predict)
+            {
+                printf("\033[0m\n");
+                break; // Stop if we reached the number of tokens to predict
+            }
+
+            bool stopped_by_sequence = false;
+            if (gen_params.stop_sequences.size() > 0)
+            { // Check if there are any stop sequences defined
+                for (size_t i = 0; i < gen_params.stop_sequences.size(); ++i)
+                {
+                    const std::string &stop_seq = gen_params.stop_sequences[i]; // Assuming accessor
+                    if (!stop_seq.empty() && completion_text.length() >= stop_seq.length())
+                    {
+                        if (completion_text.rfind(stop_seq) == (completion_text.length() - stop_seq.length()))
+                        {
+                            // printf("\n[INFO: Stopped by sequence: %s]\n", stop_seq.c_str());
+                            // Optional: remove the stop sequence from the output
+                            completion_text.erase(completion_text.length() - stop_seq.length());
+                            stopped_by_sequence = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (stopped_by_sequence)
+            {
+                break;
+            }
+
+            // prepare the next batch with the sampled token
+            batch = llama_batch_get_one(&new_token_id, 1);
+        }
+
+        llama_sampler_free(sampler); // or whatever the correct cleanup function is
+        // llama_free(ctx);
+
+        return completion_text;
+    }
+    catch (const std::exception &e)
+    {
+        return "[Error: " + std::string(e.what()) + "]";
+    }
 }
 
+/**
+ * @brief Generates a completion for the given prompt in a streaming fashion.
+ *
+ * This function takes a prompt string and generation parameters, tokenizes the prompt,
+ * and streams the generated completion tokens to the provided callback function.
+ * It performs several checks, including whether the model is loaded, whether the callback
+ * is valid, and whether tokenization of the prompt succeeds. If any of these checks fail,
+ * an error message is sent to the callback or logged, and the function returns false.
+ *
+ * @param prompt_text The input prompt to generate a completion for.
+ * @param gen_params  The parameters controlling the generation process.
+ * @param callback    A function to be called with each generated token or error message.
+ * @return true if the streaming generation process was successfully started, false otherwise.
+ */
 bool LlamaInterface::generate_completion_streaming(
     const std::string &prompt_text,
     const GenerationParams &gen_params,
@@ -308,6 +490,17 @@ bool LlamaInterface::generate_completion_streaming(
     return true;
 }
 
+/**
+ * @brief Checks if the given text ends with any of the specified stop sequences.
+ *
+ * Iterates through the provided list of stop sequences and determines if the input
+ * text ends with any non-empty stop sequence. Returns true if a match is found,
+ * otherwise returns false.
+ *
+ * @param text The text to check for stop sequences.
+ * @param stop_sequences A vector of stop sequences to check against the end of the text.
+ * @return true if the text ends with any of the stop sequences, false otherwise.
+ */
 bool LlamaInterface::check_stop_sequences(const std::string &text, const std::vector<std::string> &stop_sequences)
 {
     for (const auto &stop_seq : stop_sequences)
@@ -326,6 +519,15 @@ bool LlamaInterface::check_stop_sequences(const std::string &text, const std::ve
     return false;
 }
 
+/**
+ * @brief Retrieves the context size of the currently loaded model.
+ *
+ * This function returns the context size (number of tokens) as specified
+ * in the parameters of the currently loaded model. If no model is loaded,
+ * the function returns 0.
+ *
+ * @return int The context size of the loaded model, or 0 if no model is loaded.
+ */
 int LlamaInterface::get_context_size() const
 {
     if (!is_model_loaded())
@@ -333,6 +535,14 @@ int LlamaInterface::get_context_size() const
     return current_model_params_.n_ctx;
 }
 
+/**
+ * @brief Returns the size of the vocabulary for the loaded model.
+ *
+ * This function checks if a model is currently loaded. If not, it returns 0.
+ * Otherwise, it retrieves and returns the number of tokens in the model's vocabulary.
+ *
+ * @return int The number of tokens in the vocabulary, or 0 if no model is loaded.
+ */
 int LlamaInterface::get_vocab_size() const
 {
     if (!is_model_loaded())
@@ -340,6 +550,15 @@ int LlamaInterface::get_vocab_size() const
     return llama_vocab_n_tokens(vocab_);
 }
 
+/**
+ * @brief Retrieves information about the currently loaded model.
+ *
+ * This function returns a string containing details about the loaded model,
+ * including the model path, context size, number of GPU layers, and vocabulary size.
+ * If no model is loaded, it returns "No model loaded".
+ *
+ * @return std::string A string describing the loaded model or indicating that no model is loaded.
+ */
 std::string LlamaInterface::get_model_info() const
 {
     if (!is_model_loaded())

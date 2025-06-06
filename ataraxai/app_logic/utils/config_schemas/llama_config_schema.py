@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List
+import ml_collections
 
 
 class LlamaModelParams(BaseModel):
@@ -11,6 +12,8 @@ class LlamaModelParams(BaseModel):
     vocab_only: bool = False
     use_map: bool = False
     use_mlock: bool = False
+    
+
 
 
 class GenerationParams(BaseModel):

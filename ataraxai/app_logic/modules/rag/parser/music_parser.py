@@ -9,21 +9,47 @@ import subprocess
 class MusicParser(DocumentParser):
     def __init__(
         self,
-        whisper_transcribe=False,
-        whisper_path="./main",
-        model_path="models/ggml-base.en.bin",
+        whisper_transcribe,
+        core_ai_service,
+        transcription_params,
     ):
-        # TODO : import the c++ module for whisper rather than using subprocess
         self.transcribe_audio = whisper_transcribe
-        self.whisper_path = whisper_path
-        self.model_path = model_path
+        self.core_ai_service = core_ai_service
+        self.transcription_params = transcription_params
 
-    def transcribe(self, path: Path) -> str:
-        cmd = [self.whisper_path, "-m", self.model_path, "-f", str(path), "-otxt"]
-        subprocess.run(cmd, check=True)
-        return path.with_suffix(".txt").read_text(encoding="utf-8")
+    def transcribe(self, audio_path: Path) -> str:
+        """
+        Transcribes the given audio file to text.
+
+        Args:
+            audio_path (Path): The path to the audio file to be transcribed.
+
+        Returns:
+            str: The transcribed text from the audio file.
+
+        Raises:
+            ValueError: If the transcription fails and no text is returned.
+        """
+        audio_text: str = self.core_ai_service.transcribe(
+            audio_path, self.transcription_params
+        )
+        if not audio_text:
+            raise ValueError(
+                f"Transcription failed for {audio_path}. No text returned."
+            )
+        return audio_text
 
     def parse(self, path: Path) -> List[DocumentChunk]:
+        """
+        Parses an MP3 file to extract metadata and optionally transcribe audio to lyrics.
+
+        Args:
+            path (Path): The path to the MP3 file to be parsed.
+
+        Returns:
+            List[DocumentChunk]: A list containing at least one DocumentChunk with extracted metadata.
+                If audio transcription is enabled, a second DocumentChunk containing the transcribed lyrics is included.
+        """
         audio = MP3(str(path), ID3=EasyID3)
         tags = {k: v[0] for k, v in audio.items()}
         base_chunk = DocumentChunk(

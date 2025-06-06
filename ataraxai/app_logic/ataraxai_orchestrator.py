@@ -2,14 +2,30 @@ import hashlib
 from pathlib import Path
 from ataraxai.app_logic.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.app_logic.preferences_manager import PreferencesManager
+from ataraxai.app_logic.utils.config_schemas.user_preferences_schema import (
+    UserPreferences,
+)
+from ataraxai.app_logic.utils.config_schemas.llama_config_schema import (
+    LlamaConfig,
+    LlamaModelParams,
+)
+from ataraxai.app_logic.utils.config_schemas.whisper_config_schema import (
+    WhisperConfig,
+    WhisperModelParams,
+    WhisperTranscriptionParams,
+)
+from ataraxai.app_logic.utils.llama_config_manager import LlamaConfigManager
+from ataraxai.app_logic.utils.whisper_config_manager import WhisperConfigManager
+from ataraxai.app_logic.utils.rag_config_manager import RAGConfigManager
 from ataraxai import core_ai_py
 from ataraxai import __version__
-from platformdirs import user_data_dir, user_config_dir
+from platformdirs import user_data_dir, user_config_dir, user_cache_dir, user_log_dir
 from utils.ataraxai_logger import ArataxAILogger
 
 
 APP_NAME = "AtaraxAI"
 APP_AUTHOR = "AtaraxAI"
+
 
 class AtaraxAIOrchestrator:
     """
@@ -22,56 +38,89 @@ class AtaraxAIOrchestrator:
         Initializes the AtaraxAIOrchestrator instance.
         """
         self.logger = ArataxAILogger()
-        self.app_config_dir = Path(user_config_dir(appname=APP_NAME, appauthor=APP_AUTHOR))
-        self.app_data_dir = Path(user_data_dir(appname=APP_NAME, appauthor=APP_AUTHOR))
-        self.app_config_dir.mkdir(parents=True, exist_ok=True)
-        self.app_data_dir.mkdir(parents=True, exist_ok=True)
-        self.ataraxai_version = __version__
-        self.app_setup_marker_file = self.app_config_dir / ".ataraxai_app_" + self.ataraxai_version + "_setup_complete" 
-        is_app_first_launch = not self.app_setup_marker_file.exists()
 
-        self.prefs_manager = PreferencesManager(config_dir=self.app_config_dir)
+        # self._init_user_dirs()
+
+        # self.ataraxai_version = __version__
+        # self.app_setup_marker_file = (
+        #     self.app_config_dir / ".ataraxai_app_"
+        #     + self.ataraxai_version
+        #     + "_setup_complete"
+        # )
+        # is_app_first_launch = not self.app_setup_marker_file.exists()
+
+        # self._init_configs()
+
         
-        core_ai_py.CoreAIService.initialize_global_backends()
-        self.cpp_service = core_ai_py.CoreAIService()
-
-        if is_app_first_launch:
-            print("MainApplication: First application launch detected.")
-            self._perform_application_first_launch_setup()
-        else:
-            print("MainApplication: Subsequent application launch.")
-
-
-        self.rag_manager = AtaraxAIRAGManager(
-            core_ai_service_instance=self.cpp_service,
-            preferences_manager_instance=self.prefs_manager,
-            app_data_root_path=self.app_data_dir 
-        )
-        
-        self._load_models()
-        self._start_rag_monitoring()
         
 
+        # if is_app_first_launch:
+        #     print("MainApplication: First application launch detected.")
+        #     self._perform_application_first_launch_setup()
+        # else:
+        #     print("MainApplication: Subsequent application launch.")
+
+        # self.rag_manager = AtaraxAIRAGManager(
+        #     core_ai_service_instance=self.cpp_service,
+        #     preferences_manager_instance=self.prefs_manager,
+        #     app_data_root_path=self.app_data_dir,
+        # )
+
+        # self._load_models()
+        # self._start_rag_monitoring()
 
         print(f"{APP_NAME} initialized.")
+
+    def _init_user_dirs(self):
+        """
+        Initializes user-specific directories for configuration, data, cache, and logs.
+        """
+        self.app_config_dir = Path(
+            user_config_dir(appname=APP_NAME, appauthor=APP_AUTHOR)
+        )
+        self.app_data_dir = Path(user_data_dir(appname=APP_NAME, appauthor=APP_AUTHOR))
+        self.app_cache_dir = Path(
+            user_cache_dir(appname=APP_NAME, appauthor=APP_AUTHOR)
+        )
+        self.app_log_dir = Path(user_log_dir(appname=APP_NAME, appauthor=APP_AUTHOR))
+
+        self.app_config_dir.mkdir(parents=True, exist_ok=True)
+        self.app_data_dir.mkdir(parents=True, exist_ok=True)
+        self.app_cache_dir.mkdir(parents=True, exist_ok=True)
+        self.app_log_dir.mkdir(parents=True, exist_ok=True)
+
+        print(
+            f"User directories initialized at: {self.app_config_dir}, {self.app_data_dir}, {self.app_cache_dir}, {self.app_log_dir}"
+        )
+
+    def _init_configs(self):
+        self.prefs_manager = PreferencesManager(config_path=self.app_config_dir)
+        self.llama_config_manager = LlamaConfigManager(config_path=self.app_config_dir)
+        self.whisper_config_manager = WhisperConfigManager(
+            config_path=self.app_config_dir
+        )
+        self.rag_config_manager = RAGConfigManager(config_path=self.app_config_dir)
 
     def _perform_application_first_launch_setup(self):
         print("MainApplication: Performing application-wide first-launch tasks...")
 
-        print("Welcome to AtaraxAI! Please complete the initial setup in the application settings to select models and data sources.")
+        print(
+            "Welcome to AtaraxAI! Please complete the initial setup in the application settings to select models and data sources."
+        )
 
         try:
             self.app_setup_marker_file.touch(exist_ok=False)
-            print(f"Application first-launch setup complete. Marker created: {self.app_setup_marker_file}")
+            print(
+                f"Application first-launch setup complete. Marker created: {self.app_setup_marker_file}"
+            )
         except Exception as e:
             print(f"ERROR: Could not create application first-launch marker: {e}")
 
-
     def _load_models(self):
 
-        llm_path = self.prefs_manager.get("llm_model_path")
-        if llm_path:
-            print(f"Attempting to load LLM from: {llm_path}")
+        llama_path = self.prefs_manager.get("llama_model_path")
+        if llama_path:
+            print(f"Attempting to load LLaMA from: {llama_path}")
 
         pass
 
@@ -82,6 +131,18 @@ class AtaraxAIOrchestrator:
     def shutdown(self):
         print("MainApplication: Shutting down...")
         if self.rag_manager:
-            self.rag_manager.stop_file_monitoring() 
+            self.rag_manager.stop_file_monitoring()
         core_ai_py.CoreAIService.free_global_backends()
         print("MainApplication: Shutdown complete.")
+
+
+if __name__ == "__main__":
+    orchestrator = AtaraxAIOrchestrator()
+    try:
+        print("AtaraxAI is running. Press Ctrl+C to exit.")
+        while True:
+            pass  # Keep the application running
+    except KeyboardInterrupt:
+        print("Exiting AtaraxAI...")
+    finally:
+        orchestrator.shutdown()

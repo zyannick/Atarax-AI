@@ -9,6 +9,16 @@ from .document_base_parser import (
 
 class PPTXParser(DocumentParser):
     def parse(self, path: Path) -> List[DocumentChunk]:
+        """
+        Parses a PowerPoint (.pptx) file and extracts text content from each slide.
+
+        Args:
+            path (Path): The file path to the PowerPoint presentation.
+
+        Returns:
+            List[DocumentChunk]: A list of DocumentChunk objects, each containing the concatenated text from a slide,
+            the source file path, and metadata indicating the slide number.
+        """
         prs = Presentation(path)
         chunks = []
         for i, slide in enumerate(prs.slides):

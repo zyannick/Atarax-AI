@@ -5,16 +5,13 @@ from ataraxai.app_logic.utils.config_schemas.user_preferences_schema import (
     UserPreferences,
 )
 
-APP_NAME = "AtaraxAI"
-APP_AUTHOR = "AtaraxAI"
 PREFERENCES_FILENAME = "user_preferences.yaml"
 
 
 class PreferencesManager:
-    def __init__(self):
-        self.config_path = (
-            Path(user_config_dir(APP_NAME, APP_AUTHOR)) / PREFERENCES_FILENAME
-        )
+
+    def __init__(self, config_path: Path = None):
+        self.config_path = config_path / PREFERENCES_FILENAME
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.preferences: UserPreferences = self._load_or_create()
 
