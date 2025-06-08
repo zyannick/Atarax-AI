@@ -4,6 +4,8 @@ project(AtaraxAICoreAIModule LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+option(ATARAXAI_USE_CUDA "Enable CUDA support for AtaraxAI" OFF)
+
 include(FetchContent)
 FetchContent_Declare(
     pybind11
@@ -12,37 +14,17 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-# find_package(CUDA REQUIRED)
-# if(NOT CUDA_FOUND)
-#     # This message won't be reached if REQUIRED is used, as CMake will error out first.
-#     # But it's good for illustrating the check.
-#     message(FATAL_ERROR "CUDA Toolkit not found, but it's required for CUDA-enabled features.")
-# else()
-#     message(STATUS "Found CUDA Toolkit Version: ${CUDA_VERSION}")
-#     message(STATUS "CUDA Libraries: ${CUDA_LIBRARIES}") # General var
-#     message(STATUS "CUDA Include Dirs: ${CUDA_INCLUDE_DIRS}") # General var
-# endif()
 
-find_package(CUDAToolkit REQUIRED)
-if(NOT CUDAToolkit_FOUND)
-    message(FATAL_ERROR "CUDA Toolkit not found, but it's required for CUDA-enabled features.")
-else()
-    message(STATUS "Found CUDA Toolkit Version: ${CUDAToolkit_VERSION}")
-endif()
 
-find_package(Boost REQUIRED COMPONENTS process filesystem system)
-message(STATUS "Boost version: ${Boost_VERSION_STRING}")
+
+# find_package(Boost REQUIRED COMPONENTS process filesystem system)
+# message(STATUS "Boost version: ${Boost_VERSION_STRING}")
 
 get_filename_component(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../" ABSOLUTE)
 set(THIRD_PARTY_INSTALL_DIR "${PROJECT_ROOT}/build/third_party_install")
 
 set(LLAMA_INSTALL_PREFIX "${THIRD_PARTY_INSTALL_DIR}/llama")
-# find_library(LLAMA_LIBRARY_FILE 
-#              NAMES llama       
-#              HINTS "${LLAMA_INSTALL_PREFIX}" 
-#              PATH_SUFFIXES lib lib64       
-#              NO_DEFAULT_PATH                
-# )
+
 
 find_library(GGML_BASE_LIBRARY_FILE 
              NAMES ggml-base       
@@ -81,7 +63,7 @@ find_library(LLAMA_LIBRARY_FILE
 
 
 
-if(NOT GGML_BASE_LIBRARY_FILE OR NOT GGML_CPU_LIBRARY_FILE OR NOT GGML_LIBRARY_FILE OR NOT LLAMA_LIBRARY_FILE OR NOT GGML_GPU_LIBRARY_FILE)
+if(NOT GGML_BASE_LIBRARY_FILE OR NOT GGML_CPU_LIBRARY_FILE OR NOT GGML_LIBRARY_FILE OR NOT LLAMA_LIBRARY_FILE)
     message(FATAL_ERROR "One or more required libraries not found under ${LLAMA_INSTALL_PREFIX}/lib64/")
 else()
     message(STATUS "Found libraries:")
@@ -89,7 +71,7 @@ else()
     message(STATUS "  libggml-cpu: ${GGML_CPU_LIBRARY_FILE}")
     message(STATUS "  libggml: ${GGML_LIBRARY_FILE}")
     message(STATUS "  libllama: ${LLAMA_LIBRARY_FILE}")
-    message(STATUS "  libggml-gpu: ${GGML_GPU_LIBRARY_FILE}")
+    # message(STATUS "  libggml-gpu: ${GGML_GPU_LIBRARY_FILE}")
 endif()
 
 
@@ -129,19 +111,14 @@ target_link_libraries(core_ai_logic PRIVATE
     "${GGML_LIBRARY_FILE}"
     "${GGML_BASE_LIBRARY_FILE}"
     "${GGML_CPU_LIBRARY_FILE}"
-    "${GGML_GPU_LIBRARY_FILE}"
     "${WHISPER_LIBRARY_FILE}" 
-    Boost::process Boost::filesystem Boost::system
-    OpenMP::OpenMP_CXX 
-    # ${CUDA_LIBRARIES}
-    # CUDA::cudart 
-    # CUDA::nvcc
-    CUDA::cudart
-    CUDA::cuda_driver
-    CUDA::cublas
-    CUDA::cublasLt
+    # Boost::process Boost::filesystem Boost::system
+    # OpenMP::OpenMP_CXX 
+    # CUDA::cudart
+    # CUDA::cuda_driver
+    # CUDA::cublas
+    # CUDA::cublasLt
 )
-    #  ${CUDA_LIBRARIES} # TODO : to change later for portable CUDA support
 
 target_include_directories(core_ai_logic PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"      
@@ -162,11 +139,24 @@ pybind11_add_module(core_ai_py SHARED
 target_link_libraries(core_ai_py PRIVATE
     core_ai_logic     
     pybind11::module   
-    CUDA::cudart
-    CUDA::cuda_driver
-    CUDA::cublas
-    CUDA::cublasLt
+
 )
+
+if(ATARAXAI_USE_CUDA)
+    message(STATUS "CUDA support is ENABLED for AtaraxAI.")
+    find_package(CUDAToolkit REQUIRED)
+    message(STATUS "Found CUDA Toolkit Version: ${CUDAToolkit_VERSION}")
+
+    target_link_libraries(core_ai_py PRIVATE
+        "${GGML_GPU_LIBRARY_FILE}"
+        CUDA::cudart
+        CUDA::cuda_driver
+        CUDA::cublas
+        CUDA::cublasLt
+    )
+else()
+    message(STATUS "CUDA support is DISABLED for AtaraxAI.")
+endif()
 
 target_include_directories(core_ai_py PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
