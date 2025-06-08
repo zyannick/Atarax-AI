@@ -1,5 +1,4 @@
 from ataraxai import core_ai_py
-from ataraxai.core_ai_py import CoreAIService
 from pathlib import Path
 from ataraxai.app_logic.prompt_utils import create_prompt
 from ataraxai.app_logic.utils.config_schemas.llama_config_schema import (
