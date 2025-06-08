@@ -4,7 +4,7 @@
 #include <functional>
 
 #include "whisper_model_params.hh"
-#include "whisper_transcription_params.hh"
+#include "whisper_generation_params.hh"
 
 struct whisper_context;
 struct whisper_context_params;

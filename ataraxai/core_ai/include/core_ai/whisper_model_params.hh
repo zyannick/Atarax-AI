@@ -18,9 +18,9 @@ struct WhisperModelParams
     std::string language = "en";
 
     WhisperModelParams() = default;
-    WhisperModelParams(const std::string &model_path, const std::string &language, bool use_gpu = true, bool flash_attn = false,
-                       int32_t audio_ctx = 0)
-        : model(model_path), language(language), use_gpu(use_gpu), flash_attn(flash_attn), audio_ctx(audio_ctx) {}
+    WhisperModelParams(const std::string &model, const std::string &language, bool use_gpu = true, bool flash_attn = false,
+                       int32_t audio_ctx = 0, int32_t n_threads = std::min(4, (int32_t)std::thread::hardware_concurrency()))
+        : model(model), language(language), use_gpu(use_gpu), flash_attn(flash_attn), audio_ctx(audio_ctx), n_threads(n_threads) {}
 
     bool operator==(const WhisperModelParams &other) const
     {

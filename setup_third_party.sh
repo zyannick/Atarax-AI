@@ -46,7 +46,6 @@ fi
 echo "Using compiler: $CC"
 echo "Using C++ compiler: $CXX"
 
-rm -rf build
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 THIRD_PARTY_SRC_DIR="$PROJECT_ROOT/ataraxai/core_ai/third_party"

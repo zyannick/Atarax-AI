@@ -79,11 +79,19 @@ PYBIND11_MODULE(core_ai_py, m)
 
      py::class_<WhisperModelParams>(m, "WhisperModelParams", "Parameters for loading a Whisper model.")
          .def(py::init<>())
-         .def(py::init<const std::string &, bool>(),
-              py::arg("model_path") = "",
-              py::arg("use_gpu") = true)
-         .def_readwrite("model_path", &WhisperModelParams::model_path, "Path to the Whisper GGUF model file.")
+         .def(py::init<const std::string &, const std::string &, bool, bool, int32_t, int32_t>(),
+              py::arg("model"),
+              py::arg("language"),
+              py::arg("use_gpu") = true,
+              py::arg("flash_attn") = false,
+              py::arg("audio_ctx") = 0,
+              py::arg("n_threads") = std::min(4, (int32_t)std::thread::hardware_concurrency()))
+         .def_readwrite("model", &WhisperModelParams::model, "Path to the Whisper GGUF model file.")
+         .def_readwrite("language", &WhisperModelParams::language, "Language for the Whisper model (e.g., 'en', 'auto').")
          .def_readwrite("use_gpu", &WhisperModelParams::use_gpu, "Whether to use GPU for transcription.")
+         .def_readwrite("flash_attn", &WhisperModelParams::flash_attn, "Whether to use flash attention for faster processing.")
+         .def_readwrite("audio_ctx", &WhisperModelParams::audio_ctx, "Audio context size for the model.")
+         .def_readwrite("n_threads", &WhisperModelParams::n_threads, "Number of threads to use for processing.")
          .def("__eq__", [](const WhisperModelParams &a, const WhisperModelParams &b)
               { return a == b; })
          .def("__ne__", [](const WhisperModelParams &a, const WhisperModelParams &b)
@@ -95,18 +103,39 @@ PYBIND11_MODULE(core_ai_py, m)
 
      py::class_<WhisperGenerationParams>(m, "WhisperGenerationParams", "Parameters for Whisper audio transcription.")
          .def(py::init<>())
-         .def(py::init<int, const std::string &>(),
-              py::arg("n_threads") = 4,
-              py::arg("language") = "en")
-         .def_readwrite("n_threads", &WhisperGenerationParams::n_threads)
-         .def_readwrite("language", &WhisperGenerationParams::language, "Target language for transcription (e.g., 'en', 'auto').")
-         .def_readwrite("translate", &WhisperGenerationParams::translate, "Translate to English if true.")
-         .def_readwrite("print_special", &WhisperGenerationParams::print_special)
-         .def_readwrite("print_progress", &WhisperGenerationParams::print_progress)
-         .def_readwrite("no_context", &WhisperGenerationParams::no_context)
-         .def_readwrite("max_len", &WhisperGenerationParams::max_len)
-         .def_readwrite("single_segment", &WhisperGenerationParams::single_segment)
-         .def_readwrite("temperature", &WhisperGenerationParams::temperature)
+         .def(py::init<int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, bool, bool, bool, bool, int32_t, int32_t, bool, bool, bool, const std::string &>(),
+              py::arg("step_ms_"),
+              py::arg("length_ms_"),
+              py::arg("keep_ms_"),
+              py::arg("capture_id_"),
+              py::arg("vad_thold_"),
+              py::arg("freq_thold_"),
+              py::arg("translate_") = false,
+              py::arg("tinydiarize_") = false,
+              py::arg("no_fallback_") = false,
+              py::arg("no_context_") = false,
+              py::arg("max_tokens_") = 0,
+              py::arg("beam_size_") = 1,
+              py::arg("print_special_") = false,
+              py::arg("no_timestamps_") = false,
+              py::arg("save_audio_") = false,
+              py::arg("fname_out_") = "")
+         .def_readwrite("step_ms", &WhisperGenerationParams::step_ms, "Step size in milliseconds for audio processing.")
+         .def_readwrite("length_ms", &WhisperGenerationParams::length_ms, "Length of audio segments in milliseconds.")
+         .def_readwrite("keep_ms", &WhisperGenerationParams::keep_ms, "Duration to keep audio in milliseconds.")
+         .def_readwrite("capture_id", &WhisperGenerationParams::capture_id, "Capture device ID for audio input.")
+         .def_readwrite("vad_thold", &WhisperGenerationParams::vad_thold, "Voice Activity Detection threshold.")
+         .def_readwrite("freq_thold", &WhisperGenerationParams::freq_thold, "Frequency threshold for audio processing.")
+         .def_readwrite("translate", &WhisperGenerationParams::translate, "Whether to translate the audio to English.")
+         .def_readwrite("tinydiarize", &WhisperGenerationParams::tinydiarize, "Whether to use tiny diarization for speaker separation.")
+         .def_readwrite("no_fallback", &WhisperGenerationParams::no_fallback, "Whether to disable fallback to non-diarized transcription.")
+         .def_readwrite("no_context", &WhisperGenerationParams::no_context, "Whether to disable context for transcription.")
+         .def_readwrite("max_tokens", &WhisperGenerationParams::max_tokens, "Maximum number of tokens to generate.")
+         .def_readwrite("beam_size", &WhisperGenerationParams::beam_size, "Beam size for beam search decoding.")
+         .def_readwrite("print_special", &WhisperGenerationParams::print_special, "Whether to print special tokens in the output.")
+         .def_readwrite("no_timestamps", &WhisperGenerationParams::no_timestamps, "Whether to disable timestamps in the output.")
+         .def_readwrite("save_audio", &WhisperGenerationParams::save_audio, "Whether to save the processed audio.")
+         .def_readwrite("fname_out", &WhisperGenerationParams::fname_out, "Output filename for the processed audio.")
          .def("__eq__", [](const WhisperGenerationParams &a, const WhisperGenerationParams &b)
               { return a == b; })
          .def("__ne__", [](const WhisperGenerationParams &a, const WhisperGenerationParams &b)
