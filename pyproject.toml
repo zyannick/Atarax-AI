@@ -33,7 +33,8 @@ dependencies = [
     "peewee==3.18.1",
     "sounddevice==0.5.2",
     "webrtcvad==2.0.10",
-    "ml-collections==1.1.0"
+    "ml-collections==1.1.0",
+    "PySide6==6.9.1",
 ]
 
 [project.urls]
