@@ -10,24 +10,6 @@
 static std::once_flag backend_init_flag;
 static std::atomic<bool> backend_initialized{false};
 
-// #ifndef NO_PYBIND
-// #include <pybind11/pybind11.h>
-// using namespace pybind11;
-
-// GenerationParams GenerationParams::from_dict(const py::dict &d) {
-//     GenerationParams p;
-//     if (d.contains("n_predict")) p.n_predict = d["n_predict"].cast<int32_t>();
-//     if (d.contains("temp")) p.temp = d["temp"].cast<float>();
-//     if (d.contains("top_k")) p.top_k = d["top_k"].cast<int32_t>();
-//     if (d.contains("top_p")) p.top_p = d["top_p"].cast<float>();
-//     if (d.contains("repeat_penalty")) p.repeat_penalty = d["repeat_penalty"].cast<float>();
-//     if (d.contains("stop_sequences")) p.stop_sequences = d["stop_sequences"].cast<std::vector<std::string>>();
-//     if (d.contains("n_batch")) p.n_batch = d["n_batch"].cast<int32_t>();
-//     if (d.contains("n_threads")) p.n_threads = d["n_threads"].cast<int32_t>();
-//     return p;
-// }
-// #endif
-
 /**
  * @brief Initializes the backend for the LlamaInterface.
  *

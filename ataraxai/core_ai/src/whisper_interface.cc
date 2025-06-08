@@ -5,7 +5,11 @@
 #include <algorithm>
 #include <memory>
 #include <mutex>
+#include <atomic>
 #include <thread>
+
+static std::once_flag backend_whisper_init_flag;
+static std::atomic<bool> backend_whisper_initialized{false};
 
 WhisperInterface::WhisperInterface() : ctx_(nullptr)
 {
@@ -16,6 +20,16 @@ WhisperInterface::WhisperInterface() : ctx_(nullptr)
 WhisperInterface::~WhisperInterface()
 {
     unload_model();
+}
+
+void WhisperInterface::init_backend()
+{
+  // TODO
+}
+
+void WhisperInterface::free_backend()
+{
+    // TODO
 }
 
 /**
@@ -41,6 +55,8 @@ bool WhisperInterface::load_model(const WhisperModelParams &params)
 
     struct whisper_context_params cparams = whisper_context_default_params();
     cparams.use_gpu = current_model_params_.use_gpu;
+    cparams.flash_attn = current_model_params_.flash_attn;
+
 
     ctx_ = whisper_init_from_file_with_params(current_model_params_.model.c_str(), cparams);
 
@@ -138,5 +154,5 @@ std::string WhisperInterface::transcribe_pcm(const std::vector<float> &pcm_f32_d
         return "[Error: Empty audio data]";
     }
 
-
+    return "[Transcription result]";
 }

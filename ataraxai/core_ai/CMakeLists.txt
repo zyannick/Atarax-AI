@@ -113,7 +113,7 @@ target_link_libraries(core_ai_logic PRIVATE
     "${GGML_CPU_LIBRARY_FILE}"
     "${WHISPER_LIBRARY_FILE}" 
     # Boost::process Boost::filesystem Boost::system
-    # OpenMP::OpenMP_CXX 
+    OpenMP::OpenMP_CXX 
     # CUDA::cudart
     # CUDA::cuda_driver
     # CUDA::cublas

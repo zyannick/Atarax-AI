@@ -242,12 +242,6 @@ struct LlamaModelParams
     }
 };
 
-// #ifndef NO_PYBIND
-// namespace pybind11
-// {
-//     class dict;
-// }
-// #endif
 
 struct GenerationParams
 {
