@@ -3,13 +3,13 @@ set -e
 
 # --- Initial Configuration ---
 CLEAN=0
+CLEAN_CCACHE=0
 USE_CONDA=0
 USE_CUDA=0
 CUDA_ARCH="native"
 SETUP_ARGS="" 
 CMAKE_ARGS_STR="" 
 
-clear
 echo "Starting Atarax-AI Installation..."
 
 for arg in "$@"; do
@@ -18,6 +18,11 @@ for arg in "$@"; do
         --use-cuda)
             USE_CUDA=1
             SETUP_ARGS+=" --use-cuda"
+            ;;
+        --clean-ccache)
+            CLEAN_CCACHE=1
+            echo "[+] Cleaning ccache..."
+            ccache -C || echo "ccache not installed or clean failed."
             ;;
         --cuda-arch=*)
             CUDA_ARCH="${arg#*=}"
@@ -76,13 +81,13 @@ fi
 export CMAKE_ARGS="${CMAKE_ARGS_STR}"
 echo "[i] CMake arguments for pip: ${CMAKE_ARGS}"
 
-# echo " Running CMake..."
-# cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-# cmake --build build --config Release
+echo " Running CMake..."
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release
 
 echo "[+] Running pip install..."
 pip install -e . --verbose
 
 
 echo "[+] Verifying installation..."
-python -c "from ataraxai import core_ai_py; print('[SUCCESS] Atarax-AI installed and core module is importable!')"
+python3 -c "from ataraxai import core_ai_py; print('[SUCCESS] Atarax-AI installed and core module is importable!')"

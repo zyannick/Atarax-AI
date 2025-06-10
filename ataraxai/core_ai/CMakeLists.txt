@@ -105,6 +105,8 @@ add_library(core_ai_logic STATIC
     src/whisper_interface.cc
 )
 
+set_target_properties(core_ai_logic PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 
 target_link_libraries(core_ai_logic PRIVATE
     "${LLAMA_LIBRARY_FILE}"
@@ -129,8 +131,6 @@ target_include_directories(core_ai_logic PUBLIC
     PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"        
 )
-
-
 
 
 pybind11_add_module(core_ai_py SHARED

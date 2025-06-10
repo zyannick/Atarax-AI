@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  dcgm-exporter:
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.4-3.3.0-ubuntu22.04
+    container_name: dcgm-exporter
+    runtime: nvidia 
+    environment:
+      - DCGM_EXPORTER_LISTEN=:9400
+    volumes:
+      - /var/run/nvidia-dcgm:/var/run/nvidia-dcgm
+    ports:
+      - "9400:9400"
+    restart: unless-stopped
