@@ -35,6 +35,7 @@ dependencies = [
     "webrtcvad==2.0.10",
     "ml-collections==1.1.0",
     "PySide6==6.9.1",
+    "prometheus-client==0.22.1",
 ]
 
 [project.urls]

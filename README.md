@@ -13,19 +13,6 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 
 
 
-# Architecture design
-
-![alt text](docs/architecture/HighLevelArchitecture.svg)
-
-## Prompt engine architecture
-
-![alt text](docs/architecture/architecture_pormpt_template.svg)
-
-
-## llama.cpp interface architecture
-
-## whisper.cpp interface architecture
-
 
 # Key Features
 
@@ -38,23 +25,79 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 
 
 # Planning
-  - [x] Core Setup with llama.cpp
-  - [ ] Automatic local benchmarking
-      - In progress
+  - [x] Core Setup with llama.cpp. whisper.cpp
+  - [x] Automatic local benchmarking
   - [ ] Frompt engineering framework
   - [ ] Embedding Store + Context Management
   - [ ] System Integration
-  - [ ] Whisper.cpp Integration
-  - [ ] Vision model integration
   - [ ] UI Layer
   - [ ] Testing, Benchmarking, Optimization 
 
-# Privacy Policy
 
-- No cloud dependency
-- No external API calls
-- All data stored locally in encrypted formats
-- Source code and logs are fully inspectable by user
+# Usage 
+
+## Local installation
+
+You can install ataraxai using the command line for cpu installation:
+
+```
+./install.sh  --clean
+```
+
+and for gpu installation :
+
+```
+./install.sh --clean --use-cuda  
+```
+
+## Docker installation
+
+We have provide two versions:
+
+  - CPU: 
+  ``` 
+docker build -t ataraxai:cpu -f docker/Dockerfile.cpu .
+
+docker run -it --rm -v "$(pwd)/data:/app/data:ro"  ataraxai:cpu
+  ```
+
+  - GPU:
+  ``` 
+docker build -t ataraxai:gpu -f Dockerfile.gpu .
+
+docker run --gpus all -it --rm ataraxai:gpu
+  ``` 
+
+## Monitoring using Grafana/Prometheus
+
+We also provide some script to monitor your application. In a first terminal, you can launch:
+
+- for CPU and GPU monitoring:
+``` 
+docker-compose -f docker-compose.monitoring.base.yml -f docker-compose.monitoring.gpu.yml up -d
+``` 
+
+- for only CPU monitoring:
+``` 
+docker-compose -f docker-compose.monitoring.base.yml up -d
+``` 
+
+In a second terminal:
+
+- GPU:
+``` 
+docker run --gpus all -it --rm ataraxai:gpu
+``` 
+
+
+- CPU:
+``` 
+docker run -it --rm ataraxai:cpu
+``` 
+
+
+
+
 
 # Modules
 
@@ -78,7 +121,7 @@ This module is to setup the Prompt Engineering Framework:
 
 We will also try to setup a module for embedding storage and context management:
 
-- Integrate FAISS
+- Integrate ChromaDB
 - Add semantic search, chunking strategies
 - Implement context window manager
 
@@ -90,4 +133,9 @@ In this module we will try to integrate information from the system:
 - File system, calendar, notes, task access via APIs
 - OS-level hooks or CLI integrations
 
-## 
+# Privacy Policy
+
+- No cloud dependency
+- No external API calls
+- All data stored locally in encrypted formats
+- Source code and logs are fully inspectable by user
