@@ -56,16 +56,16 @@ We have provide two versions:
 
   - CPU: 
   ``` 
-docker build -t ataraxai:cpu -f docker/Dockerfile.cpu .
+    docker build -t ataraxai:cpu -f docker/Dockerfile.cpu .
 
-docker run -it --rm -v "$(pwd)/data:/app/data:ro"  ataraxai:cpu
+    docker run -it --rm -v "$(pwd)/data:/app/data:ro"  ataraxai:cpu
   ```
 
   - GPU:
   ``` 
-docker build -t ataraxai:gpu -f Dockerfile.gpu .
+    docker build -t ataraxai:gpu -f Dockerfile.gpu .
 
-docker run --gpus all -it --rm ataraxai:gpu
+    docker run --gpus all -it --rm ataraxai:gpu
   ``` 
 
 ## Monitoring using Grafana/Prometheus
@@ -74,12 +74,12 @@ We also provide some script to monitor your application. In a first terminal, yo
 
 - for CPU and GPU monitoring:
 ``` 
-docker-compose -f docker-compose.monitoring.base.yml -f docker-compose.monitoring.gpu.yml up -d
+docker compose -f docker-compose.monitoring.base.yml -f docker-compose.monitoring.gpu.yml up -d
 ``` 
 
 - for only CPU monitoring:
 ``` 
-docker-compose -f docker-compose.monitoring.base.yml up -d
+docker compose -f docker/docker-compose.monitoring.base.yml up -d
 ``` 
 
 In a second terminal:
@@ -95,9 +95,9 @@ docker run --gpus all -it --rm ataraxai:gpu
 docker run -it --rm ataraxai:cpu
 ``` 
 
+Then you can monitor in prometheus/grafana:
 
-
-
+![alt text](docs/api/prometheus.png)
 
 # Modules
 
