@@ -1,5 +1,3 @@
-// ataraxai/core_ai/src/bindings.cpp
-
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
@@ -175,8 +173,7 @@ PYBIND11_MODULE(core_ai_py, m)
                                    if (d.contains("n_threads")) {
                                         params.n_threads = d["n_threads"].cast<int32_t>();
                                    }
-                                   return params;
-                              })
+                                   return params; })
          .def_readwrite("model", &WhisperModelParams::model, "Path to the Whisper GGUF model file.")
          .def_readwrite("language", &WhisperModelParams::language, "Language for the Whisper model (e.g., 'en', 'auto').")
          .def_readwrite("use_gpu", &WhisperModelParams::use_gpu, "Whether to use GPU for transcription.")

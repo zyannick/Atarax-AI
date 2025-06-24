@@ -1,4 +1,5 @@
 #pragma once
+
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -11,7 +12,6 @@ using whisper_progress_callback_t = std::function<void(int)>;
 
 struct WhisperGenerationParams
 {
-    // Audio Processing
     int32_t step_ms = 3000;
     int32_t length_ms = 10000;
     int32_t keep_ms = 200;
@@ -19,7 +19,6 @@ struct WhisperGenerationParams
     float vad_thold = 0.6f;
     float freq_thold = 100.0f;
 
-    // Transcription and Decoding Options
     bool translate = false;
     bool tinydiarize = false;
     bool no_fallback = false;
@@ -36,7 +35,6 @@ struct WhisperGenerationParams
     float temperature_inc = 0.20f;
     float no_speech_thold = 0.6f;
 
-    // Output and Utility
     bool print_special = false;
     bool no_timestamps = false;
     bool save_audio = false;

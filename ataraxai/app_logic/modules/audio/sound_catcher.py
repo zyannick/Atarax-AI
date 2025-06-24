@@ -1,5 +1,5 @@
 import sounddevice as sd
-from vad_processor import VADProcessor
+from ataraxai.app_logic.modules.audio.vad_processor import VADProcessor
 import queue
 import numpy as np
 import datetime

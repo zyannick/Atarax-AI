@@ -1,44 +1,48 @@
 #!/bin/bash
 set -e
 
-# --- Initial Configuration ---
 CLEAN=0
 CLEAN_CCACHE=0
 USE_CONDA=0
 USE_CUDA=0
 CUDA_ARCH="native"
-SETUP_ARGS="" 
-CMAKE_ARGS_STR="" 
+SETUP_ARGS=""
+CMAKE_ARGS_STR=""
+ONLY_CPP=0
 
 echo "Starting Atarax-AI Installation..."
 
 for arg in "$@"; do
     case $arg in
-        --clean) CLEAN=1 ;;
-        --use-cuda)
-            USE_CUDA=1
-            SETUP_ARGS+=" --use-cuda"
-            ;;
-        --clean-ccache)
-            CLEAN_CCACHE=1
-            echo "[+] Cleaning ccache..."
-            ccache -C || echo "ccache not installed or clean failed."
-            ;;
-        --cuda-arch=*)
-            CUDA_ARCH="${arg#*=}"
-            SETUP_ARGS+=" --cuda-arch=${CUDA_ARCH}"
-            ;;
-        --use-conda)
-            USE_CONDA=1
-            SETUP_ARGS+=" --use-conda"
-            ;;
-        *)
-            echo "Unknown option: $arg"
-            exit 1
-            ;;
+    --clean) CLEAN=1 ;;
+    --use-cuda)
+        USE_CUDA=1
+        SETUP_ARGS+=" --use-cuda"
+        ;;
+    --clean-ccache)
+        CLEAN_CCACHE=1
+        echo "[+] Cleaning ccache..."
+        ccache -C || echo "ccache not installed or clean failed."
+        ;;
+    --cuda-arch=*)
+        CUDA_ARCH="${arg#*=}"
+        SETUP_ARGS+=" --cuda-arch=${CUDA_ARCH}"
+        ;;
+    --only-cpp)
+        ONLY_CPP=1
+        SETUP_ARGS+=" --only-cpp"
+        echo "[+] Only building C++ components, skipping Python bindings."
+        ;;
+    --use-conda)
+        USE_CONDA=1
+        SETUP_ARGS+=" --use-conda"
+        ;;
+    *)
+        echo "Unknown option: $arg"
+        exit 1
+        ;;
     esac
 done
-
 
 if [[ $USE_CONDA -eq 1 ]]; then
     if [[ -z "$CONDA_PREFIX" ]]; then
@@ -51,7 +55,6 @@ if [[ $USE_CONDA -eq 1 ]]; then
     export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 fi
 
-
 if [[ $CLEAN -eq 1 ]]; then
     echo "[+] Cleaning previous build artifacts..."
     rm -rf build ataraxai_assistant.egg-info dist _skbuild
@@ -62,14 +65,10 @@ fi
 echo "[+] Uninstalling any previous version..."
 pip uninstall ataraxai_assistant -y || true
 
-
-
 if [ -f "setup_third_party.sh" ]; then
     echo "[+] Setting up third-party libraries..."
     ./setup_third_party.sh ${SETUP_ARGS}
 fi
-
-
 
 if [[ $USE_CUDA -eq 1 ]]; then
     echo "[+] Configuring build for CUDA=ON"
@@ -78,16 +77,29 @@ else
     echo "[+] Configuring build for CUDA=OFF"
     CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=OFF"
 fi
+
+CMAKE_ARGS_STR+=" -DBUILD_TESTING=ON -DPYTHON_EXECUTABLE=$(which python3)"
+
 export CMAKE_ARGS="${CMAKE_ARGS_STR}"
 echo "[i] CMake arguments for pip: ${CMAKE_ARGS}"
 
-echo " Running CMake..."
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+echo " Running CMake Configuration..."
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${CMAKE_ARGS_STR}
+
+echo " Building Main Dependencies..."
 cmake --build build --config Release
 
-echo "[+] Running pip install..."
-pip install -e . --verbose
 
+echo " Building C++ Tests..."
+cmake --build build --target core_ai_tests
+
+if [[ $ONLY_CPP -eq 1 ]]; then
+    echo "[+] C++ build complete. Exiting due to --only-cpp flag."
+    exit 0
+fi
+
+echo "[+] Running pip install to build Python extension..."
+python3 -m pip install -e .
 
 echo "[+] Verifying installation..."
 python3 -c "from ataraxai import core_ai_py; print('[SUCCESS] Atarax-AI installed and core module is importable!')"

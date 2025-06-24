@@ -28,7 +28,7 @@ class ChatSession(BaseModel):
 class Message(BaseModel):
     id = UUIDField(primary_key=True)
     session = ForeignKeyField(ChatSession, backref="messages")
-    role = CharField()  # e.g., 'user', 'assistant'
+    role = CharField()  
     content = TextField()
     timestamp = DateTimeField(default=datetime.now)
 

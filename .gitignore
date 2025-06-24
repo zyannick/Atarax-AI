@@ -5,3 +5,5 @@ models/
 ataraxia/ataraxia
 *.egg-info/
 **.pyc
+.ipynb_checkpoints/
+build.log

@@ -549,8 +549,8 @@ public:
     LlamaInterface &operator=(LlamaInterface &&other) noexcept;
     ~LlamaInterface();
 
-    bool load_model(const LlamaModelParams &params);
-    void unload_model();
+    virtual bool load_model(const LlamaModelParams &params);
+    virtual void unload_model();
     bool is_model_loaded() const;
     llama_sampler *create_sampler(const GenerationParams &params);
     bool check_stop_sequences(const std::string &text, const std::vector<std::string> &stop_sequences);
@@ -558,8 +558,8 @@ public:
     int get_vocab_size() const;
     std::string get_model_info() const;
     // std::vector<int32_t> tokenize(const std::string &text, bool add_bos = true, bool special) const;
-    std::string generate_completion(const std::string &prompt_text, const GenerationParams &params);
-    bool generate_completion_streaming(const std::string &prompt_text,
+    virtual std::string generate_completion(const std::string &prompt_text, const GenerationParams &params);
+    virtual bool generate_completion_streaming(const std::string &prompt_text,
                                        const GenerationParams &params,
                                        llama_token_callback callback);
     std::vector<float> get_embeddings(const std::string &text);

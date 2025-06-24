@@ -1,5 +1,5 @@
 [build-system]
-requires = ["scikit-build-core>=0.8", "pybind11>=2.12"]
+requires = ["scikit-build-core>=0.8", "pybind11>=2.12", "setuptools<58.0.0"]
 build-backend = "scikit_build_core.build"
 
 
@@ -31,11 +31,14 @@ dependencies = [
     "pymupdf",
     "mutagen==1.47.0",
     "peewee==3.18.1",
-    "sounddevice==0.5.2",
-    "webrtcvad==2.0.10",
+    "sounddevice",
     "ml-collections==1.1.0",
     "PySide6==6.9.1",
     "prometheus-client==0.22.1",
+    "sentencepiece",
+    "pytest",
+    "openai",
+    "setuptools<58.0.0"
 ]
 
 [project.urls]
@@ -46,6 +49,11 @@ cmake.source-dir = "."
 cmake.build-type = "Release"
 cmake.args = ["-DCMAKE_BUILD_TYPE=Release"]
 wheel.packages = ["ataraxai"]
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests/python",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

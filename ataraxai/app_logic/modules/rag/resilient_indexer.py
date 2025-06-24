@@ -3,8 +3,8 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from pathlib import Path
 import queue
-from .rag_store import RAGStore
-from .ataraxai_rag_manager import RAGManifest
+from ataraxai.app_logic.modules.rag.rag_store import RAGStore
+from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
 import chromadb
 
 

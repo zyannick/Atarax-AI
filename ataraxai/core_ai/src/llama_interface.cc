@@ -128,7 +128,6 @@ bool LlamaInterface::load_model(const LlamaModelParams &params)
         unload_model();
     }
 
-    // Validate parameters
     if (params.model_path.empty())
     {
         std::cerr << "LlamaInterface Error: model path is empty" << std::endl;
@@ -143,11 +142,9 @@ bool LlamaInterface::load_model(const LlamaModelParams &params)
 
     current_model_params_ = params;
 
-    // Load model with error checking
     llama_model_params model_p = llama_model_default_params();
     model_p.n_gpu_layers = current_model_params_.n_gpu_layers;
 
-    // Add validation for GPU layers
     if (model_p.n_gpu_layers < 0)
     {
         std::cerr << "LlamaInterface Warning: negative GPU layers, setting to 0" << std::endl;
@@ -170,13 +167,12 @@ bool LlamaInterface::load_model(const LlamaModelParams &params)
         return false;
     }
 
-    // Create context with better defaults
     llama_context_params ctx_p = llama_context_default_params();
     ctx_p.n_ctx = current_model_params_.n_ctx;
-    ctx_p.n_batch = std::min(512, current_model_params_.n_ctx / 4); // Adaptive batch size
+    ctx_p.n_batch = std::min(512, current_model_params_.n_ctx / 4); 
     ctx_p.offload_kqv = true;
-    ctx_p.n_threads = std::max(1u, std::thread::hardware_concurrency() / 2);   // Use half CPU cores
-    ctx_p.n_threads_batch = std::max(1u, std::thread::hardware_concurrency()); // All cores for batch
+    ctx_p.n_threads = std::max(1u, std::thread::hardware_concurrency() / 2);   
+    ctx_p.n_threads_batch = std::max(1u, std::thread::hardware_concurrency()); 
 
     ctx_ = llama_init_from_model(model_, ctx_p);
     if (!ctx_)
@@ -235,7 +231,6 @@ std::vector<llama_token> LlamaInterface::tokenize(const std::string &text, bool 
 
     if (n_tokens < 0)
     {
-        // Buffer too small, resize and retry
         int required_size = -n_tokens;
         result.resize(required_size);
         n_tokens = llama_tokenize(vocab_, text.c_str(), text.length(), result.data(), result.size(), add_bos, special);
@@ -257,7 +252,7 @@ std::string LlamaInterface::detokenize_token(int32_t token) const
         return "";
     }
 
-    constexpr size_t buf_size = 256; // Increased buffer size for UTF-8 sequences
+    constexpr size_t buf_size = 256; 
     char buf[buf_size];
     int n = llama_token_to_piece(vocab_, token, buf, buf_size, 0, true);
 
@@ -289,27 +284,20 @@ llama_sampler *LlamaInterface::create_sampler(const GenerationParams &params)
 {
     llama_sampler *smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
 
-    // 1. Apply penalties first to modify logits based on context
     llama_sampler_chain_add(smpl, llama_sampler_init_penalties(
                                       params.penalty_last_n,
                                       params.repeat_penalty,
                                       params.penalty_freq,
                                       params.penalty_present));
 
-    // 2. Optional: Min-P sampling
-    llama_sampler_chain_add(smpl, llama_sampler_init_min_p(0.05f, 1)); // Or make min_p configurable
+    llama_sampler_chain_add(smpl, llama_sampler_init_min_p(0.05f, 1)); 
 
-    // 3. Top-K sampling
     llama_sampler_chain_add(smpl, llama_sampler_init_top_k(params.top_k));
 
-    // 4. Top-P sampling (min_keep = 1 is a common setting for the last arg)
     llama_sampler_chain_add(smpl, llama_sampler_init_top_p(params.top_p, 1));
-
-    // 5. Temperature scaling
     llama_sampler_chain_add(smpl, llama_sampler_init_temp(params.temp));
 
-    // 6. Final distribution sampling
-    llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED)); // Or make seed configurable
+    llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
     return smpl;
 }
@@ -328,18 +316,16 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
 
     const llama_vocab *vocab = llama_model_get_vocab(model_);
 
-    // initialize the context
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx = current_model_params_.n_ctx;
     ctx_params.n_batch = current_model_params_.n_batch;
 
     try
     {
-        LlamaContextWrapper ctx(model_, ctx_params); // Automatic cleanup!
+        LlamaContextWrapper ctx(model_, ctx_params); 
         llama_sampler *sampler = create_sampler(gen_params);
         std::vector<llama_token> prompt_tokens = tokenize(prompt_text, true, false);
 
-        // prepare a batch for the prompt
         llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size());
         llama_token new_token_id;
 
@@ -349,7 +335,6 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
 
         while (true)
         {
-            // check if we have enough space in the context to evaluate this batch
             int n_ctx = llama_n_ctx(ctx);
             int n_ctx_used = llama_kv_self_seq_pos_max(ctx, 0);
             if (n_ctx_used + batch.n_tokens > n_ctx)
@@ -364,16 +349,13 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
                 GGML_ABORT("failed to decode\n");
             }
 
-            // sample the next token
             new_token_id = llama_sampler_sample(sampler, ctx, -1);
 
-            // is it an end of generation?
             if (llama_vocab_is_eog(vocab, new_token_id))
             {
                 break;
             }
 
-            // convert the token to a string, print it and add it to the response
             char buf[256];
             int n = llama_token_to_piece(vocab, new_token_id, buf, sizeof(buf), 0, true);
             if (n < 0)
@@ -381,29 +363,25 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
                 GGML_ABORT("failed to convert token to piece\n");
             }
             std::string piece(buf, n);
-            // printf("%s", piece.c_str());
-            // fflush(stdout);
             completion_text += piece;
 
             current_nb_predict++;
             if (current_nb_predict >= gen_params.n_predict)
             {
                 printf("\033[0m\n");
-                break; // Stop if we reached the number of tokens to predict
+                break; 
             }
 
             bool stopped_by_sequence = false;
             if (gen_params.stop_sequences.size() > 0)
-            { // Check if there are any stop sequences defined
+            { 
                 for (size_t i = 0; i < gen_params.stop_sequences.size(); ++i)
                 {
-                    const std::string &stop_seq = gen_params.stop_sequences[i]; // Assuming accessor
+                    const std::string &stop_seq = gen_params.stop_sequences[i]; 
                     if (!stop_seq.empty() && completion_text.length() >= stop_seq.length())
                     {
                         if (completion_text.rfind(stop_seq) == (completion_text.length() - stop_seq.length()))
                         {
-                            // printf("\n[INFO: Stopped by sequence: %s]\n", stop_seq.c_str());
-                            // Optional: remove the stop sequence from the output
                             completion_text.erase(completion_text.length() - stop_seq.length());
                             stopped_by_sequence = true;
                             break;
@@ -416,11 +394,10 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
                 break;
             }
 
-            // prepare the next batch with the sampled token
             batch = llama_batch_get_one(&new_token_id, 1);
         }
 
-        llama_sampler_free(sampler); // or whatever the correct cleanup function is
+        llama_sampler_free(sampler); 
         // llama_free(ctx);
 
         return completion_text;

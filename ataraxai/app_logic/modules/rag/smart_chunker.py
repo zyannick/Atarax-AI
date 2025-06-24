@@ -5,11 +5,10 @@ from ataraxai.app_logic.modules.rag.parser.document_base_parser import DocumentC
 
 from pathlib import Path
 from typing import List
-from .parser.document_base_parser import DocumentChunk
-from .parser.pdf_parser import PDFParser
-from .parser.docx_parser import DOCXParser
-from .parser.pptx_parser import PPTXParser
-from smart_chunker import SmartChunker
+from ataraxai.app_logic.modules.rag.parser.document_base_parser import DocumentChunk
+from ataraxai.app_logic.modules.rag.parser.pdf_parser import PDFParser
+from ataraxai.app_logic.modules.rag.parser.docx_parser import DOCXParser
+from ataraxai.app_logic.modules.rag.parser.pptx_parser import PPTXParser
 
 EXT_PARSER_MAP = {
     ".pdf": PDFParser(),

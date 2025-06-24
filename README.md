@@ -14,7 +14,7 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 
 
 
-# Key Features
+## Key Features
 
 - Quantized Model Deployment: Use 4-bit or 5-bit quantization with llama.cpp to make large models run smoothly on CPU or edge devices.
 - Custom Prompt Engineering Engine: Create a modular prompting system (like reusable “prompt chains”) to allow dynamic behaviors (e.g., “summarize recent emails,” “generate shell scripts,” “answer from local docs”).
@@ -24,7 +24,7 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 - Smart Caching and Context Window Management: Implement sliding-window techniques, smart summarization, and embeddings to keep long-term context in RAM-limited environments.
 
 
-# Planning
+## Planning
   - [x] Core Setup with llama.cpp. whisper.cpp
   - [x] Automatic local benchmarking
   - [ ] Frompt engineering framework
@@ -34,9 +34,11 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
   - [ ] Testing, Benchmarking, Optimization 
 
 
-# Usage 
 
-## Local installation
+
+## Usage 
+
+### Local installation
 
 You can install ataraxai using the command line for cpu installation:
 
@@ -50,7 +52,7 @@ and for gpu installation :
 ./install.sh --clean --use-cuda  
 ```
 
-## Docker installation
+### Docker installation
 
 We have provide two versions:
 
@@ -68,7 +70,7 @@ We have provide two versions:
     docker run --gpus all -it --rm ataraxai:gpu
   ``` 
 
-## Monitoring using Grafana/Prometheus
+### Monitoring using Grafana/Prometheus
 
 We also provide some script to monitor your application. In a first terminal, you can launch:
 
@@ -99,9 +101,9 @@ Then you can monitor in prometheus/grafana:
 
 ![alt text](docs/api/prometheus.png)
 
-# Modules
+## Modules
 
-## Core Infra
+### Core Infra
 
 We try to setup a module to automatically benchmark the models on the user laptop and them select the best model and the best quantization. 
 
@@ -110,14 +112,14 @@ We try to setup a module to automatically benchmark the models on the user lapto
 - Script inference loop with logging
 - Benchmark token throughput
 
-## Prompt & Task Engine
+### Prompt & Task Engine
 
 This module is to setup the Prompt Engineering Framework:
 
 - Create modular prompt system
 - Design reusable templates and task runners
 
-## Embedding Store + Context Management 
+### Embedding Store + Context Management 
 
 We will also try to setup a module for embedding storage and context management:
 
@@ -126,16 +128,28 @@ We will also try to setup a module for embedding storage and context management:
 - Implement context window manager
 
 
-## System integration
+### System integration
 
 In this module we will try to integrate information from the system:
 
 - File system, calendar, notes, task access via APIs
 - OS-level hooks or CLI integrations
 
-# Privacy Policy
+## Privacy Policy
 
 - No cloud dependency
 - No external API calls
 - All data stored locally in encrypted formats
 - Source code and logs are fully inspectable by user
+
+
+## License
+
+This project is licensed under the [GNU GPLv3 License](LICENSE).  
+You are free to use, modify, and distribute this software under the terms of the GPL.
+
+### 🚫 No Commercial Use Without Compliance
+
+If you use this in a commercial or derivative system, **your entire codebase must also be licensed under GPLv3**.
+
+If you want a commercial license or integration support, please contact: yannickzoet@gmail.com.

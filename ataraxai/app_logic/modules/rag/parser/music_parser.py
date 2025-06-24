@@ -2,7 +2,7 @@ from mutagen.easyid3 import EasyID3
 from mutagen.mp3 import MP3
 from pathlib import Path
 from typing import List
-from .document_base_parser import DocumentChunk, DocumentParser
+from ataraxai.app_logic.modules.rag.parser.document_base_parser import DocumentChunk, DocumentParser
 import subprocess
 
 

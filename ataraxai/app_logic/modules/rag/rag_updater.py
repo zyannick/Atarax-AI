@@ -4,13 +4,13 @@ from .rag_store import RAGStore
 from .ataraxai_rag_manager import (
     RAGManifest,
 )
-from .ataraxai_embedder import AtaraxAIEmbedder
-from .parser.document_base_parser import DocumentChunk
-from .smart_chunker import SmartChunker
+from ataraxai.app_logic.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
+from ataraxai.app_logic.modules.rag.parser.document_base_parser import DocumentChunk
+from ataraxai.app_logic.modules.rag.smart_chunker import SmartChunker
 import threading
 import os
 import queue
-from .parser.base_meta_data import set_base_metadata, get_file_hash
+from ataraxai.app_logic.modules.rag.parser.base_meta_data import set_base_metadata, get_file_hash
 
 
 def process_new_file(

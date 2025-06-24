@@ -7,13 +7,11 @@
 
 struct WhisperModelParams
 {
-    // Hardware and Core Model Configuration
     int32_t n_threads = std::min(4, (int32_t)std::thread::hardware_concurrency());
     bool use_gpu = true;
     bool flash_attn = false;
-    int32_t audio_ctx = 0; // Audio context size
+    int32_t audio_ctx = 0; 
 
-    // Model and Language
     std::string model = "models/ggml-base.en.bin";
     std::string language = "en";
 

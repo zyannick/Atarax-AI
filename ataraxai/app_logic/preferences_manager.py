@@ -31,7 +31,7 @@ class PreferencesManager:
     def _save(self, prefs: UserPreferences = None):
         prefs = prefs or self.preferences
         with open(self.config_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(prefs.dict(), f)
+            yaml.safe_dump(prefs.model_dump(), f)
 
     def get(self, key: str, default=None):
         return getattr(self.preferences, key, default)

@@ -13,6 +13,7 @@ class UserPreferences(BaseModel):
 
     llm_model_path: str = ""
     whisper_model_path: str = ""
+    language: str = "en"  
 
     def is_setup_complete(self) -> bool:
         return bool(self.llm_model_path and self.whisper_model_path)
@@ -25,5 +26,6 @@ class UserPreferences(BaseModel):
             "realtime_monitoring": self.realtime_monitoring,
             "theme": self.theme,
             "llm_model_path": self.llm_model_path,
-            "whisper_model_path": self.whisper_model_path
+            "whisper_model_path": self.whisper_model_path,  
+            "language": self.language
         }

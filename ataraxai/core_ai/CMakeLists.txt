@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.18)
 project(AtaraxAICoreAIModule LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -14,7 +14,14 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(pybind11)
 
-
+find_package(Python REQUIRED COMPONENTS Interpreter Development)
+if(NOT Python_FOUND)
+    message(FATAL_ERROR "Could not find a valid Python installation.")
+else()
+    message(STATUS "Found Python Interpreter: ${Python_EXECUTABLE}")
+    message(STATUS "Found Python Includes:   ${Python_INCLUDE_DIRS}")
+    message(STATUS "Found Python Libraries:  ${Python_LIBRARIES}")
+endif()
 
 
 # find_package(Boost REQUIRED COMPONENTS process filesystem system)
@@ -27,38 +34,38 @@ set(LLAMA_INSTALL_PREFIX "${THIRD_PARTY_INSTALL_DIR}/llama")
 
 
 find_library(GGML_BASE_LIBRARY_FILE 
-             NAMES ggml-base       
-             HINTS "${LLAMA_INSTALL_PREFIX}" 
-             PATH_SUFFIXES lib lib64       
-             NO_DEFAULT_PATH                
+              NAMES ggml-base      
+              HINTS "${LLAMA_INSTALL_PREFIX}" 
+              PATH_SUFFIXES lib lib64      
+              NO_DEFAULT_PATH              
 )
 
 find_library(GGML_CPU_LIBRARY_FILE 
-             NAMES ggml-cpu       
-             HINTS "${LLAMA_INSTALL_PREFIX}" 
-             PATH_SUFFIXES lib lib64       
-             NO_DEFAULT_PATH                
+              NAMES ggml-cpu      
+              HINTS "${LLAMA_INSTALL_PREFIX}" 
+              PATH_SUFFIXES lib lib64      
+              NO_DEFAULT_PATH              
 )
 
 find_library(GGML_GPU_LIBRARY_FILE 
-             NAMES ggml-cuda       
-             HINTS "${LLAMA_INSTALL_PREFIX}" 
-             PATH_SUFFIXES lib lib64       
-             NO_DEFAULT_PATH                
+              NAMES ggml-cuda      
+              HINTS "${LLAMA_INSTALL_PREFIX}" 
+              PATH_SUFFIXES lib lib64      
+              NO_DEFAULT_PATH              
 )
 
 find_library(GGML_LIBRARY_FILE 
-             NAMES ggml       
-             HINTS "${LLAMA_INSTALL_PREFIX}" 
-             PATH_SUFFIXES lib lib64       
-             NO_DEFAULT_PATH                
+              NAMES ggml      
+              HINTS "${LLAMA_INSTALL_PREFIX}" 
+              PATH_SUFFIXES lib lib64      
+              NO_DEFAULT_PATH              
 )
 
 find_library(LLAMA_LIBRARY_FILE 
-             NAMES llama       
-             HINTS "${LLAMA_INSTALL_PREFIX}" 
-             PATH_SUFFIXES lib lib64       
-             NO_DEFAULT_PATH                
+              NAMES llama      
+              HINTS "${LLAMA_INSTALL_PREFIX}" 
+              PATH_SUFFIXES lib lib64      
+              NO_DEFAULT_PATH              
 )
 
 
@@ -77,10 +84,10 @@ endif()
 
 set(WHISPER_INSTALL_PREFIX "${THIRD_PARTY_INSTALL_DIR}/whisper")
 find_library(WHISPER_LIBRARY_FILE
-             NAMES whisper
-             HINTS "${WHISPER_INSTALL_PREFIX}"
-             PATH_SUFFIXES lib lib64
-             NO_DEFAULT_PATH
+              NAMES whisper
+              HINTS "${WHISPER_INSTALL_PREFIX}"
+              PATH_SUFFIXES lib lib64
+              NO_DEFAULT_PATH
 )
 
 find_package(OpenMP REQUIRED)
@@ -114,12 +121,10 @@ target_link_libraries(core_ai_logic PRIVATE
     "${GGML_BASE_LIBRARY_FILE}"
     "${GGML_CPU_LIBRARY_FILE}"
     "${WHISPER_LIBRARY_FILE}" 
-    # Boost::process Boost::filesystem Boost::system
     OpenMP::OpenMP_CXX 
-    # CUDA::cudart
-    # CUDA::cuda_driver
-    # CUDA::cublas
-    # CUDA::cublasLt
+     pthread
+    dl
+    m
 )
 
 target_include_directories(core_ai_logic PUBLIC 
@@ -139,8 +144,61 @@ pybind11_add_module(core_ai_py SHARED
 target_link_libraries(core_ai_py PRIVATE
     core_ai_logic     
     pybind11::module   
-
+    pthread
+    dl
+    m
 )
+
+
+include(CTest)
+
+
+if (BUILD_TESTING)
+    message(STATUS "CTest is enabled. Building unit tests...")
+
+    include(FetchContent)
+    FetchContent_Declare(
+        Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG        v3.6.0 
+    )
+    FetchContent_MakeAvailable(Catch2)
+
+    add_executable(core_ai_tests
+        tests/test_core_ai_service.cc
+        tests/test_llama_integration.cc
+        tests/test_whisper_integration.cc
+    )
+
+    set(DOWNLOADED_LLAMA_MODEL_PATH "${CMAKE_SOURCE_DIR}/test_assets/tinyllama.gguf")
+    set(DOWNLOADED_WHISPER_MODEL_PATH "${CMAKE_SOURCE_DIR}/test_assets/ggml-tiny.en.bin")
+
+    target_compile_definitions(core_ai_tests PRIVATE 
+        "TEST_LLAMA_MODEL_PATH=\"${DOWNLOADED_LLAMA_MODEL_PATH}\""
+        "TEST_WHISPER_MODEL_PATH=\"${DOWNLOADED_WHISPER_MODEL_PATH}\""
+    )
+
+
+    target_include_directories(core_ai_tests PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src"
+        ${LLAMA_INCLUDE_DIR}
+        "${LLAMA_INCLUDE_DIR}/ggml/include"
+        ${WHISPER_INCLUDE_DIR}
+    )
+
+    target_link_libraries(core_ai_tests PRIVATE 
+        core_ai_logic
+        Catch2::Catch2
+        Catch2::Catch2WithMain
+        pthread
+        dl
+        m
+    )
+
+    add_test(NAME CoreAILogicTests COMMAND core_ai_tests)
+
+endif()
 
 if(ATARAXAI_USE_CUDA)
     message(STATUS "CUDA support is ENABLED for AtaraxAI.")

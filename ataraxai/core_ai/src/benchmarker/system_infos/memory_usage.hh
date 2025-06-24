@@ -35,7 +35,7 @@ long get_memory_usage_linux()
             break;
         }
     }
-    return rss * 1024; // Convert to bytes
+    return rss * 1024; 
 }
 #elif defined(__APPLE__)
 #include <mach/mach.h>
@@ -64,6 +64,6 @@ long get_current_memory_usage()
 #elif defined(__APPLE__)
     return get_memory_usage_macos();
 #else
-    return 0; // Not implemented for this OS
+    return 0;
 #endif
 }

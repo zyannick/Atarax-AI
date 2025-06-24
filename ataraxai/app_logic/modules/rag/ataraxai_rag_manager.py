@@ -1,12 +1,10 @@
 from pathlib import Path
-import chromadb
-from .rag_store import AtaraxAIEmbedder
+from ataraxai.app_logic.modules.rag.rag_store import AtaraxAIEmbedder
 from platformdirs import user_data_dir, user_config_dir
-import json
 
-from .resilient_indexer import start_rag_file_monitoring
-from .rag_store import RAGStore
-from .rag_manifest import RAGManifest
+from ataraxai.app_logic.modules.rag.resilient_indexer import start_rag_file_monitoring
+from ataraxai.app_logic.modules.rag.rag_store import RAGStore
+from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
 from ataraxai import __version__
 
 APP_NAME = "AtaraxAI"

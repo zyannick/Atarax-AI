@@ -30,7 +30,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 100
 
-# NOTE: The old pip command is replaced with these two lines:
 
 RUN python3.12 -m ensurepip --upgrade
 

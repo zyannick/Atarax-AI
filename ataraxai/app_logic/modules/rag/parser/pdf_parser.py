@@ -1,7 +1,7 @@
 import fitz  # PyMuPDF
 from pathlib import Path
 from typing import List
-from .document_base_parser import (
+from ataraxai.app_logic.modules.rag.parser.document_base_parser import (
     DocumentParser,
     DocumentChunk,
 )

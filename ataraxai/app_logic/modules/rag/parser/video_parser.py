@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 from typing import List
-from .document_base_parser import DocumentChunk, DocumentParser
+from ataraxai.app_logic.modules.rag.parser.document_base_parser import DocumentChunk, DocumentParser
 import tempfile
 
 

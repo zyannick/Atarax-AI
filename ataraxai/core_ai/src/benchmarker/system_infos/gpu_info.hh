@@ -70,7 +70,6 @@ struct GPUInfoCollection
     void set_windows_gpu_info()
     {
 #ifdef _WIN32
-        // Use DXGI or WMI to query GPU info, e.g., via `wmic` command for simplicity
         FILE *pipe = _popen("wmic path win32_VideoController get Name,AdapterRAM,DriverVersion /format:csv", "r");
         if (!pipe)
             return;
@@ -102,7 +101,6 @@ struct GPUInfoCollection
     void set_macos_gpu_info()
     {
 #ifdef __APPLE__
-        // Use system_profiler to get GPU info
         FILE *pipe = popen("system_profiler SPDisplaysDataType | grep 'Chipset Model\\|VRAM\\|Driver Version'", "r");
         if (!pipe)
             return;

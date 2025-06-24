@@ -15,13 +15,13 @@ public:
     WhisperInterface();
     ~WhisperInterface();
 
-    bool load_model(const WhisperModelParams &params);
+    virtual bool load_model(const WhisperModelParams &params);
 
-    void unload_model();
+    virtual void unload_model();
 
     bool is_model_loaded() const;
 
-    std::string transcribe_pcm(const std::vector<float> &pcm_f32_data,
+    virtual std::string transcribe_pcm(const std::vector<float> &pcm_f32_data,
                                const WhisperGenerationParams &params);
 
     static void init_backend();

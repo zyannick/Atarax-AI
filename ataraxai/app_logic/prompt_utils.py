@@ -6,7 +6,6 @@ def create_prompt(
     if system_message:
         prompt_parts.append(f"System: {system_message.strip()}")
 
-    # prompt_parts.extend(conversation_history)
 
     prompt_parts.append(f"User: {user_query.strip()}")
     prompt_parts.append("Assistant:")

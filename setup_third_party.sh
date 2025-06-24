@@ -39,7 +39,6 @@ if [[ $USE_CONDA -eq 1 ]]; then
     fi
     export CC="$CONDA_PREFIX/bin/x86_64-conda-linux-gnu-cc"
     export CXX="$CONDA_PREFIX/bin/x86_64-conda-linux-gnu-c++"
-    # [[ -x "$CC" && -x "$CXX" ]] || { echo "Compiler not found under CONDA_PREFIX."; exit 1; }
     export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 fi
 
