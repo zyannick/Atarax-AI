@@ -109,7 +109,7 @@ jobs:
         run: python -m pip install -e .[dev]
 
       - name: Run Python Tests with Pytest
-        run: pytest --cov=ataraxai --cov-report=term-missing
+        run: pytest tests/python --cov=ataraxai --cov-report=term-missing
 
       - name: Lint with Ruff
         run: ruff check ataraxai
