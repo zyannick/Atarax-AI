@@ -30,8 +30,6 @@ jobs:
 
           sudo apt install -y ccache
 
-          sudo apt-get install -y portaudio19-dev python3-pyaudio
-
           sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 100
           
           # python3 -m ensurepip --upgrade
@@ -92,6 +90,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+
+      - name: Install PortAudio System Dependency
+        run: sudo apt-get update && sudo apt-get install -y portaudio19-dev python3-pyaudio
+
 
       - name: Download C++ build artifact
         uses: actions/download-artifact@v4
