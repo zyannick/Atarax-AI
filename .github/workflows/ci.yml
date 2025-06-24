@@ -34,8 +34,8 @@ jobs:
 
           sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 100
           
-          python3 -m ensurepip --upgrade
-          python3 -m pip install --upgrade pip setuptools wheel
+          # python3 -m ensurepip --upgrade
+          # python3 -m pip install --upgrade pip setuptools wheel
 
       - name: Build C++ extension and dependencies
         run: ./install.sh --clean
@@ -101,7 +101,7 @@ jobs:
 
       - name: Install and upgrade pip for Python 3.12
         run: |
-          python -m ensurepip --upgrade
+          # python -m ensurepip --upgrade
           python -m pip install --upgrade pip setuptools wheel
           pip install --only-binary=webrtcvad webrtcvad==2.0.10
 
