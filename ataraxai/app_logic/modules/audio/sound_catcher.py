@@ -18,7 +18,7 @@ class SoundCatcher:
     ):
         self.sound_recording_params = sound_recording_params
         self.device = device if device is not None else sd.default.device[0]
-        self.sound_queue = queue.Queue()
+        self.sound_queue: queue.Queue = queue.Queue()
         self.vad_processor = VADProcessor(
             sample_rate=sound_recording_params.sample_rate,
             mode=sound_recording_params.vad_mode,

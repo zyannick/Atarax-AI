@@ -1,7 +1,16 @@
 import uuid
 from datetime import datetime
 from pathlib import Path
-from peewee import *
+from typing import Optional
+from peewee import (
+    SqliteDatabase,
+    Model,
+    UUIDField,
+    CharField,
+    TextField,
+    DateTimeField,
+    ForeignKeyField,
+)
 
 db = SqliteDatabase(None)
 
@@ -28,7 +37,7 @@ class ChatSession(BaseModel):
 class Message(BaseModel):
     id = UUIDField(primary_key=True)
     session = ForeignKeyField(ChatSession, backref="messages")
-    role = CharField()  
+    role = CharField()
     content = TextField()
     timestamp = DateTimeField(default=datetime.now)
 
@@ -39,7 +48,7 @@ class ChatDatabaseManager:
         db.connect()
         db.create_tables([Project, ChatSession, Message], safe=True)
 
-    def create_project(self, name: str, description: str = None) -> Project:
+    def create_project(self, name: str, description: Optional[str] = None) -> Project:
         return Project.create(id=uuid.uuid4(), name=name, description=description)
 
     def list_projects(self):
@@ -62,7 +71,7 @@ class ChatDatabaseManager:
         try:
             message = Message.get(Message.id == message_id)
             message.delete_instance()
-        except Message.DoesNotExist:
+        except Exception:
             print(f"Message with ID {message_id} does not exist.")
 
     def get_messages_for_session(self, session_id: uuid.UUID):

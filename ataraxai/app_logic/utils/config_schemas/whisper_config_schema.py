@@ -1,5 +1,4 @@
-from pydantic import BaseModel, Field
-from typing import List
+from pydantic import BaseModel
 
 
 class WhisperModelParams(BaseModel):
@@ -22,6 +21,7 @@ class WhisperModelParams(BaseModel):
 
 
 class WhisperTranscriptionParams(BaseModel):
+    config_version: float = 1.0
     n_threads: int = 0
     language: str = "en"
     translate: bool = False
@@ -34,6 +34,7 @@ class WhisperTranscriptionParams(BaseModel):
     
     def to_dict(self):
         return {
+            "config_version": self.config_version,  
             "n_threads": self.n_threads,
             "language": self.language,
             "translate": self.translate,

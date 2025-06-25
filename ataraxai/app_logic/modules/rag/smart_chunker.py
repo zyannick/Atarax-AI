@@ -1,11 +1,9 @@
 import tiktoken
-from typing import List, Dict, Any, Callable
+from typing import List, Dict, Any
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from ataraxai.app_logic.modules.rag.parser.document_base_parser import DocumentChunk
 
 from pathlib import Path
-from typing import List
-from ataraxai.app_logic.modules.rag.parser.document_base_parser import DocumentChunk
 from ataraxai.app_logic.modules.rag.parser.pdf_parser import PDFParser
 from ataraxai.app_logic.modules.rag.parser.docx_parser import DOCXParser
 from ataraxai.app_logic.modules.rag.parser.pptx_parser import PPTXParser

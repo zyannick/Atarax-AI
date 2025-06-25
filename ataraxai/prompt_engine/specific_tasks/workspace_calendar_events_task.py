@@ -6,10 +6,8 @@ class WorkspaceCalendarEventsTask(BaseTask):
     """
 
     def __init__(self, workspace_id: str):
-        super().__init__(workspace_id)
+        super().__init__()
         self.task_type = "workspace_calendar_events"
         self.description = "Manage calendar events in the workspace."
         self.workspace_id = workspace_id
 
-    def execute(self, event_data: dict):
-        pass

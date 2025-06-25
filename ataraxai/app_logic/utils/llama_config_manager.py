@@ -5,6 +5,7 @@ from ataraxai.app_logic.utils.config_schemas.llama_config_schema import (
     LlamaModelParams,
     GenerationParams,
 )
+from typing_extensions import Optional
 
 
 LLAMA_CONFIG_FILENAME = "llama_config.yaml"
@@ -29,9 +30,9 @@ class LlamaConfigManager:
         self._save(config)
         return config
 
-    def _save(self, config: LlamaConfig = None):
+    def _save(self, config: Optional[LlamaConfig] = None):
         with open(self.config_path, "w", encoding="utf-8") as f:
-            yaml.dump(config.dict(), f, default_flow_style=False)
+            yaml.dump(config.model_dump() if config else self.config.model_dump(), f, default_flow_style=False)
 
     def get_llm_params(self) -> LlamaModelParams:
         return self.config.llm_model_params

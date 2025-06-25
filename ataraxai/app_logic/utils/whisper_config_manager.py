@@ -60,15 +60,15 @@ class WhisperConfigManager:
     def set_param(self, section: str, key: str, value):
         if (
             section == "whisper_model_params"
-            and key in self.config.whisper_model_params
+            and key in self.config.whisper_model_params.__dict__
         ):
-            self.config.whisper_model_params[key] = value
+            setattr(self.config.whisper_model_params, key, value)
             self._save()
         elif (
             section == "whisper_transcription_params"
-            and key in self.config.whisper_transcription_params
+            and key in self.config.whisper_transcription_params.__dict__
         ):
-            self.config.whisper_transcription_params[key] = value
+            setattr(self.config.whisper_transcription_params, key, value)
             self._save()
         else:
             raise KeyError(f"Section '{section}' or key '{key}' not found in config.")

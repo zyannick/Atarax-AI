@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field
-from typing import List
 
 
 class SoundRecordingParams(BaseModel):
+    config_version: float = 1.0
     sample_rate: int = Field(
         default=16000, description="Sample rate for audio recording"
     )
@@ -33,6 +33,7 @@ class SoundRecordingParams(BaseModel):
     
     def to_dict(self):
         return {
+            "config_version": self.config_version,
             "sample_rate": self.sample_rate,
             "frame_duration_ms": self.frame_duration_ms,
             "channels": self.channels,

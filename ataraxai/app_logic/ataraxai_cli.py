@@ -1,10 +1,8 @@
-import sys
-import time 
 from pathlib import Path
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from ataraxai import core_ai_py
+from ataraxai import core_ai_py # type: ignore [attr-defined]
 from ataraxai.app_logic.prompt_utils import create_prompt
 from ataraxai.app_logic.utils.config_schemas.llama_config_schema import (
     GenerationParams, LlamaModelParams)

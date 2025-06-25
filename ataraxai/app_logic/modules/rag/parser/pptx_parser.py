@@ -19,7 +19,7 @@ class PPTXParser(DocumentParser):
             List[DocumentChunk]: A list of DocumentChunk objects, each containing the concatenated text from a slide,
             the source file path, and metadata indicating the slide number.
         """
-        prs = Presentation(path)
+        prs = Presentation(str(path))
         chunks = []
         for i, slide in enumerate(prs.slides):
             texts = []

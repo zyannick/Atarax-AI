@@ -15,7 +15,7 @@ from PySide6.QtCore import QObject, QThread, Signal, Qt
 class MockCoreAIService:
     def process_prompt(self, prompt: str, params=None) -> str:
         import time
-        print(f"CORE_AI: Received prompt. Simulating 3-second processing time...")
+        print("CORE_AI: Received prompt. Simulating 3-second processing time...")
         time.sleep(3)
         print("CORE_AI: Processing complete.")
         user_query = "your query"

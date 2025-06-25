@@ -1,26 +1,11 @@
-import hashlib
 from pathlib import Path
-from ataraxai.app_logic.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.app_logic.preferences_manager import PreferencesManager
-from ataraxai.app_logic.utils.config_schemas.user_preferences_schema import (
-    UserPreferences,
-)
-from ataraxai.app_logic.utils.config_schemas.llama_config_schema import (
-    LlamaConfig,
-    LlamaModelParams,
-)
-from ataraxai.app_logic.utils.config_schemas.whisper_config_schema import (
-    WhisperConfig,
-    WhisperModelParams,
-    WhisperTranscriptionParams,
-)
 from ataraxai.app_logic.utils.llama_config_manager import LlamaConfigManager
 from ataraxai.app_logic.utils.whisper_config_manager import WhisperConfigManager
 from ataraxai.app_logic.utils.rag_config_manager import RAGConfigManager
-from ataraxai import core_ai_py
-from ataraxai import __version__
+from ataraxai import core_ai_py # type: ignore [attr-defined]
 from platformdirs import user_data_dir, user_config_dir, user_cache_dir, user_log_dir
-from utils.ataraxai_logger import ArataxAILogger
+from ataraxai.app_logic.utils.ataraxai_logger import ArataxAILogger
 
 
 APP_NAME = "AtaraxAI"
@@ -101,7 +86,7 @@ class AtaraxAIOrchestrator:
         )
         self.rag_config_manager = RAGConfigManager(config_path=self.app_config_dir)
 
-    def _perform_application_first_launch_setup(self):
+    def _perform_first_launch_setup(self):
         print("MainApplication: Performing application-wide first-launch tasks...")
 
         print(

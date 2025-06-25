@@ -2,8 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional, List, Dict
 
 
-from .interface.llama_cpp_interface import LlamaCppInterface
-from .interface.whisper_cpp_interface import WhisperCppInterface
 from .prompt_loader import PromptLoader
 from .context_manager import TaskContext 
 
@@ -29,9 +27,7 @@ class BaseTask(ABC):
         self,
         processed_input: Dict[str, Any],
         context: TaskContext,
-        llm_interface: LlamaCppInterface, 
         prompt_loader: PromptLoader,
-        whisper_interface: Optional[WhisperCppInterface] = None,
     ) -> Any:
         pass
 

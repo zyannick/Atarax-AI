@@ -28,6 +28,7 @@ dependencies = [
     "python-docx==1.1.2",
     "tiktoken==0.9.0",
     "pdfplumber",
+    "PyYAML",
     "pymupdf",
     "mutagen==1.47.0",
     "peewee==3.18.1",
@@ -47,7 +48,8 @@ dev = [
     "pytest-cov", 
     "pytest-mock", 
     "ruff",
-    "mypy"
+    "mypy",
+    "types-PyYAML"
 ]
 
 [project.urls]
@@ -63,6 +65,27 @@ wheel.packages = ["ataraxai"]
 testpaths = [
     "tests/python",
 ]
+
+[tool.ruff]
+exclude = [
+    ".git",
+    ".idea",
+    ".venv",
+    "build",
+    "dist",
+    "ataraxai/core_ai/third_party", # This is the key line to ignore llama.cpp
+]
+
+[tool.mypy]
+exclude = '(?x)(ataraxai/core_ai/third_party/|build/|dist/|\.venv/)'
+[[tool.mypy.overrides]]
+module = [
+    "fitz",
+    "webrtcvad",
+    "sounddevice"
+]
+ignore_missing_imports = true
+
 
 [tool.setuptools.packages.find]
 where = ["."]
