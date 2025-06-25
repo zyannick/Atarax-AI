@@ -1,4 +1,3 @@
-import time
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from pathlib import Path
@@ -12,7 +11,7 @@ class ResilientFileIndexer(FileSystemEventHandler):
     def __init__(self, manifest: RAGManifest, chroma_collection: chromadb.Collection):
         self.manifest = manifest
         self.chroma_collection = chroma_collection
-        self.processing_queue = queue.Queue()
+        self.processing_queue : queue.Queue = queue.Queue()
 
     def on_created(self, event):
         if not event.is_directory:

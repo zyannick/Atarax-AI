@@ -1,16 +1,18 @@
 import yaml
 from pathlib import Path
-from platformdirs import user_config_dir
 from ataraxai.app_logic.utils.config_schemas.user_preferences_schema import (
     UserPreferences,
 )
+from typing_extensions import Optional
 
 PREFERENCES_FILENAME = "user_preferences.yaml"
 
 
 class PreferencesManager:
 
-    def __init__(self, config_path: Path = None):
+    def __init__(self, config_path: Optional[Path] = None):
+        if config_path is None:
+            config_path = Path.home() / ".ataraxai"
         self.config_path = config_path / PREFERENCES_FILENAME
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.preferences: UserPreferences = self._load_or_create()
@@ -28,7 +30,7 @@ class PreferencesManager:
         self._save(prefs)
         return prefs
 
-    def _save(self, prefs: UserPreferences = None):
+    def _save(self, prefs: Optional[UserPreferences] = None):
         prefs = prefs or self.preferences
         with open(self.config_path, "w", encoding="utf-8") as f:
             yaml.safe_dump(prefs.model_dump(), f)

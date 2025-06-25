@@ -1,10 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List
 
 
 class RAGConfig(BaseModel):
     config_version: float = 1.0
-
     rag_model_path: str = ""
     rag_chunk_size: int = 400
     rag_chunk_overlap: int = 50
@@ -14,7 +13,7 @@ class RAGConfig(BaseModel):
 
     def is_setup_complete(self) -> bool:
         return bool(self.rag_model_path)
-    
+
     def to_dict(self):
         return {
             "config_version": self.config_version,
@@ -23,5 +22,5 @@ class RAGConfig(BaseModel):
             "rag_chunk_overlap": self.rag_chunk_overlap,
             "rag_separators": self.rag_separators,
             "rag_keep_separator": self.rag_keep_separator,
-            "rag_model_name_for_tiktoken": self.rag_model_name_for_tiktoken
+            "rag_model_name_for_tiktoken": self.rag_model_name_for_tiktoken,
         }

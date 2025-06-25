@@ -9,6 +9,3 @@ class SummarizeTextTask(BaseTask):
         self.prompt_template_name = "summarize_text"
         super().__init__()
 
-    def execute(self, text: str):
-        pass
-

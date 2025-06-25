@@ -1,9 +1,9 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List
-import ml_collections
 
 
 class LlamaModelParams(BaseModel):
+    config_version : float = 1.0
     model_path: str = ""
     n_ctx: int = 2048
     n_gpu_layers: int = 0
@@ -15,6 +15,7 @@ class LlamaModelParams(BaseModel):
     
     def to_dict(self):
         return {
+            "config_version": self.config_version,
             "model_path": self.model_path,
             "n_ctx": self.n_ctx,
             "n_gpu_layers": self.n_gpu_layers,
@@ -28,6 +29,7 @@ class LlamaModelParams(BaseModel):
 
 
 class GenerationParams(BaseModel):
+    config_version: float = 1.0
     n_predict: int = 128
     temp: float = 0.8
     top_k: int = 40
@@ -42,6 +44,7 @@ class GenerationParams(BaseModel):
     
     def to_dict(self):
         return {
+            "config_version": self.config_version,
             "n_predict": self.n_predict,
             "temp": self.temp,
             "top_k": self.top_k,

@@ -3,6 +3,7 @@ from pathlib import Path
 from .config_schemas.rag_config_schema import (
     RAGConfig,
 )
+from typing_extensions import Optional
 
 
 RAG_CONFIG_FILENAME = "rag_config.yaml"
@@ -31,10 +32,10 @@ class RAGConfigManager:
         self._save(default)
         return default
 
-    def _save(self, config: RAGConfig = None):
+    def _save(self, config: Optional[RAGConfig] = None):
         with open(self.config_path, "w", encoding="utf-8") as f:
             yaml.dump(
-                config.dict() if config else self.config.dict(),
+                config.model_dump() if config else self.config.model_dump(),
                 f,
                 default_flow_style=False,
             )

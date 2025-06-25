@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 jobs:
 
@@ -29,8 +29,6 @@ jobs:
             libcurl4-openssl-dev
 
           sudo apt install -y ccache
-
-          # sudo apt-get install portaudio19-dev python3-pyaudio
 
           sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 100
           
@@ -93,6 +91,10 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: Install PortAudio System Dependency
+        run: sudo apt-get update && sudo apt-get install -y portaudio19-dev python3-pyaudio
+
+
       - name: Download C++ build artifact
         uses: actions/download-artifact@v4
         with:
@@ -103,14 +105,13 @@ jobs:
         run: |
           # python -m ensurepip --upgrade
           python -m pip install --upgrade pip setuptools wheel
-          pip install --only-binary=webrtcvad webrtcvad==2.0.10
 
 
       - name: Install project dependencies
         run: python -m pip install -e .[dev]
 
       - name: Run Python Tests with Pytest
-        run: pytest --cov=ataraxai --cov-report=term-missing
+        run: pytest tests/python --cov=ataraxai --cov-report=term-missing
 
       - name: Lint with Ruff
         run: ruff check ataraxai

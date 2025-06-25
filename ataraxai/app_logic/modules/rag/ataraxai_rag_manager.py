@@ -5,6 +5,7 @@ from platformdirs import user_data_dir, user_config_dir
 from ataraxai.app_logic.modules.rag.resilient_indexer import start_rag_file_monitoring
 from ataraxai.app_logic.modules.rag.rag_store import RAGStore
 from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
+from typing_extensions import Optional, List, Dict, Any
 from ataraxai import __version__
 
 APP_NAME = "AtaraxAI"
@@ -41,17 +42,16 @@ class AtaraxAIRAGManager:
         self.file_observer = None
         print("AtaraxAIRAGManager initialized.")
 
-    def start_file_monitoring(self, watched_directories: list[str]):
+    def start_file_monitoring(self, watched_directories: List[str]):
         if self.file_observer and self.file_observer.is_alive():
             self.file_observer.stop()
             self.file_observer.join()
 
         if watched_directories:
             self.file_observer = start_rag_file_monitoring(
-                watched_directories=watched_directories,
+                paths_to_watch=watched_directories,
                 manifest=self.manifest,
-                rag_store=self.rag_store,
-                embedder=self.embedder,
+                chroma_collection=self.rag_store.collection,
             )
             print("File monitoring started via AtaraxAIRAGManager.")
         else:
@@ -66,9 +66,8 @@ class AtaraxAIRAGManager:
             print("No active file monitoring to stop.")
 
     def query_knowledge(
-        self, query_text: str, n_results: int = 3, filter_metadata: dict = None
+        self, query_text: str, n_results: int = 3, filter_metadata: Optional[Dict[Any, Any]] = None
     ):
-        """High-level method to query the RAG store."""
         return self.rag_store.query(
             query_text=query_text, n_results=n_results, filter_metadata=filter_metadata
         )

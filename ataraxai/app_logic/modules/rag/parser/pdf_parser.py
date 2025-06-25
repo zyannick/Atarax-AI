@@ -5,7 +5,7 @@ from ataraxai.app_logic.modules.rag.parser.document_base_parser import (
     DocumentParser,
     DocumentChunk,
 )
-from .base_meta_data import get_file_hash, set_base_metadata
+from .base_meta_data import set_base_metadata
 
 
 class PDFParser(DocumentParser):

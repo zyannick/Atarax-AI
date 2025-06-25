@@ -10,5 +10,3 @@ class ImageCaptioningTask(BaseTask):
         self.prompt_template_name = "image_captioning"
         super().__init__()
 
-    def execute(self, image_data: dict):
-        pass

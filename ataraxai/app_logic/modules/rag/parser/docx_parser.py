@@ -19,7 +19,7 @@ class DOCXParser(DocumentParser):
             List[DocumentChunk]: A list of DocumentChunk objects, each representing a non-empty paragraph from the DOCX file.
                 Each chunk contains the paragraph content, the source file path, and metadata with the type ('paragraph') and its index.
         """
-        doc = Document(path)
+        doc = Document(str(path))
         text_blocks = [
             para.text.strip() for para in doc.paragraphs if para.text.strip()
         ]

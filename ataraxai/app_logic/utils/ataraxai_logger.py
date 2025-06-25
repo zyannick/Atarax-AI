@@ -1,31 +1,23 @@
-import hashlib
-from pathlib import Path
 import logging
 
 
 class CustomFormatter(logging.Formatter):
-    grey = "\x1b[38;5;8m"
     blue = "\x1b[34;20m"
     dard_blue = "\x1b[38;5;20m"
-    yellow = "\x1b[33;20m"
     brown = "\x1b[38;5;94m"
-    red = "\x1b[31;20m"
     maroon = "\x1b[38;5;52m"
     bold_red = "\x1b[31;1m"
-    very_dark_grey = "\x1b[38;5;232m"
-    medium_grey = "\x1b[38;5;244m"
-    light_grey = "\x1b[38;5;252m"
     reset = "\x1b[0m"
-    format = (
+    log_format = (
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
     )
 
     FORMATS = {
-        logging.DEBUG: dard_blue + format + reset,
-        logging.INFO: blue + format + reset,
-        logging.WARNING: brown + format + reset,
-        logging.ERROR: maroon + format + reset,
-        logging.CRITICAL: bold_red + format + reset,
+        logging.DEBUG: dard_blue + log_format + reset,
+        logging.INFO: blue + log_format + reset,
+        logging.WARNING: brown + log_format + reset,
+        logging.ERROR: maroon + log_format + reset,
+        logging.CRITICAL: bold_red + log_format + reset,
     }
 
     def format(self, record):

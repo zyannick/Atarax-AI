@@ -1,16 +1,17 @@
 from pathlib import Path
-import hashlib
 from .rag_store import RAGStore
 from .ataraxai_rag_manager import (
     RAGManifest,
 )
 from ataraxai.app_logic.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
-from ataraxai.app_logic.modules.rag.parser.document_base_parser import DocumentChunk
 from ataraxai.app_logic.modules.rag.smart_chunker import SmartChunker
 import threading
 import os
 import queue
-from ataraxai.app_logic.modules.rag.parser.base_meta_data import set_base_metadata, get_file_hash
+from ataraxai.app_logic.modules.rag.parser.base_meta_data import (
+    set_base_metadata,
+    get_file_hash,
+)
 
 
 def process_new_file(
@@ -33,7 +34,7 @@ def process_new_file(
 
     try:
         final_texts = [cd.content for cd in chunked_document_objects]
-        final_metadatas = [cd.metadata for cd in chunked_document_objects]
+        final_metadatas = [v for cd in chunked_document_objects for k, v in cd.metadata.items()]
         chunk_ids = [
             f"{str(file_path)}_{base_metadata['file_hash'][:8]}_chunk_{i}"
             for i in range(len(final_texts))
@@ -44,7 +45,7 @@ def process_new_file(
             texts=final_texts,
             metadatas=final_metadatas,
         )
-        
+
         manifest.add_file(
             str(file_path),
             metadata={
@@ -104,10 +105,8 @@ def process_modified_file(
         if manifest_entry and manifest_entry.get("chunk_ids"):
             print(f"WORKER: Deleting old chunks for {file_path} from RAG store.")
             rag_store.delete_by_ids(ids=manifest_entry["chunk_ids"])
-   
-        process_new_file(
-            file_path_str, manifest, rag_store
-        )
+
+        process_new_file(file_path_str, manifest, rag_store, chunker)
 
     except Exception as e:
         print(f"WORKER: Error processing modified file {file_path}: {e}")
@@ -122,14 +121,12 @@ def process_deleted_file(
     print(f"WORKER: Processing DELETED file: {file_path_str}")
 
     try:
-        manifest_entry = manifest.data.pop(
-            str(file_path_str), None
-        )
+        manifest_entry = manifest.data.pop(str(file_path_str), None)
 
         if manifest_entry and manifest_entry.get("chunk_ids"):
             print(f"WORKER: Deleting chunks for {file_path_str} from RAG store.")
             rag_store.delete_by_ids(ids=manifest_entry["chunk_ids"])
-            manifest.save()  
+            manifest.save()
             print(f"WORKER: Successfully processed deletion of {file_path_str}")
         else:
             print(
@@ -139,7 +136,6 @@ def process_deleted_file(
         print(f"WORKER: Error processing deleted file {file_path_str}: {e}")
 
 
-# --- Worker Thread Function ---
 def rag_update_worker(
     processing_queue: "queue.Queue",
     manifest: "RAGManifest",
@@ -152,6 +148,14 @@ def rag_update_worker(
     )
     chunk_size = chunk_config.get("size", 400)
     chunk_overlap = chunk_config.get("overlap", 50)
+
+    chunker = SmartChunker(
+        model_name_for_tiktoken=chunk_config.get("model_name_for_tiktoken", "gpt-4"),
+        chunk_size_tokens=chunk_size,
+        chunk_overlap_tokens=chunk_overlap,
+        separators=chunk_config.get("separators", None),
+        keep_separator=chunk_config.get("keep_separator", True),
+    )
 
     while True:
         try:
@@ -172,13 +176,9 @@ def rag_update_worker(
                 continue
 
             if event_type == "created":
-                process_new_file(
-                    file_path, manifest, rag_store, embedder, chunk_size, chunk_overlap
-                )
+                process_new_file(file_path, manifest, rag_store, chunker)
             elif event_type == "modified":
-                process_modified_file(
-                    file_path, manifest, rag_store, embedder, chunk_size, chunk_overlap
-                )
+                process_modified_file(file_path, manifest, rag_store, chunker)
             elif event_type == "deleted":
                 process_deleted_file(file_path, manifest, rag_store)
             elif event_type == "moved":
@@ -188,9 +188,7 @@ def rag_update_worker(
                         dest_path,
                         manifest,
                         rag_store,
-                        embedder,
-                        chunk_size,
-                        chunk_overlap,
+                        chunker,
                     )
                 else:
                     print(
