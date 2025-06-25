@@ -49,7 +49,8 @@ dev = [
     "pytest-mock", 
     "ruff",
     "mypy",
-    "types-PyYAML"
+    "types-PyYAML",
+    "types-peewee"
 ]
 
 [project.urls]
@@ -82,7 +83,7 @@ exclude = '(?x)(ataraxai/core_ai/third_party/|build/|dist/|\.venv/)'
 module = [
     "fitz",
     "webrtcvad",
-    "sounddevice"
+    "sounddevice",
 ]
 ignore_missing_imports = true
 
