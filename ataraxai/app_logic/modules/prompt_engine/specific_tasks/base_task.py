@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Optional, List, Dict
 
 
-from .prompt_loader import PromptLoader
-from .context_manager import TaskContext 
+from ..prompt_loader import PromptLoader
+from ..context_manager import TaskContext 
 
 
 
