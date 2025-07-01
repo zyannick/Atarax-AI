@@ -7,7 +7,4 @@ class TaskRegistry:
         self._registry = {}
 
     def register(self, task_class):
-        """
-        Register a task class.
-        """
         pass

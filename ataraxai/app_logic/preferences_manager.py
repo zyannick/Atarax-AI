@@ -4,6 +4,7 @@ from ataraxai.app_logic.utils.config_schemas.user_preferences_schema import (
     UserPreferences,
 )
 from typing_extensions import Optional
+from typing import Dict, Any, Union
 
 PREFERENCES_FILENAME = "user_preferences.yaml"
 
@@ -35,10 +36,10 @@ class PreferencesManager:
         with open(self.config_path, "w", encoding="utf-8") as f:
             yaml.safe_dump(prefs.model_dump(), f)
 
-    def get(self, key: str, default=None):
-        return getattr(self.preferences, key, default)
+    def get(self, key: str, default=None): # type: ignore
+        return getattr(self.preferences, key, default) # type: ignore
 
-    def set(self, key: str, value):
+    def set(self, key: str, value : Union[str, int, bool, Dict[str, Any]]):
         setattr(self.preferences, key, value)
         self._save()
 

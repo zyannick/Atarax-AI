@@ -1,10 +1,11 @@
 from pathlib import Path
 from ataraxai.app_logic.modules.rag.rag_store import AtaraxAIEmbedder
 from platformdirs import user_data_dir, user_config_dir
-
+from ataraxai import core_ai_py  # type: ignore [attr-defined]
 from ataraxai.app_logic.modules.rag.resilient_indexer import start_rag_file_monitoring
 from ataraxai.app_logic.modules.rag.rag_store import RAGStore
 from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
+from ataraxai.app_logic.preferences_manager import PreferencesManager
 from typing_extensions import Optional, List, Dict, Any
 from ataraxai import __version__
 
@@ -13,25 +14,24 @@ APP_AUTHOR = "AtaraxAI"
 
 
 class AtaraxAIRAGManager:
-    def __init__(self, core_ai_service_instance=None):
-        self.app_config_dir = Path(
-            user_config_dir(appname=APP_NAME, appauthor=APP_AUTHOR)
-        )
-        self.app_data_dir = Path(user_data_dir(appname=APP_NAME, appauthor=APP_AUTHOR))
+    def __init__(
+        self,
+        core_ai_service: core_ai_py.CoreAIService,  # type: ignore
+        preferences_manager_instance: PreferencesManager,
+        app_data_root_path: Path,
+    ):
+        self.app_data_root_path = app_data_root_path
 
-        self.app_config_dir.mkdir(parents=True, exist_ok=True)
-        self.app_data_dir.mkdir(parents=True, exist_ok=True)
-
-        self.first_launch_marker_file = (
-            self.app_config_dir / ".ataraxai_setup_" + __version__ + "_complete"
-        )
-
-        rag_store_db_path = self.app_data_dir / "rag_chroma_store"
+        rag_store_db_path = self.app_data_root_path / "rag_chroma_store"
         rag_store_db_path.mkdir(parents=True, exist_ok=True)
 
-        self.manifest_file_path = self.app_data_dir / "rag_manifest.json"
+        self.manifest_file_path = self.app_data_root_path / "rag_manifest.json"
 
-        self.embedder = AtaraxAIEmbedder(core_ai_service=core_ai_service_instance)
+        self.embedder = AtaraxAIEmbedder(
+            model_name=self.preferences_manager_instance.get( # type: ignore
+                "rag_embedder_model", "sentence-transformers/all-MiniLM"
+            )
+        )
         self.rag_store = RAGStore(
             db_path_str=str(rag_store_db_path),
             collection_name="ataraxai_knowledge",
@@ -40,6 +40,7 @@ class AtaraxAIRAGManager:
         self.manifest = RAGManifest(self.manifest_file_path)
 
         self.file_observer = None
+
         print("AtaraxAIRAGManager initialized.")
 
     def start_file_monitoring(self, watched_directories: List[str]):
@@ -66,7 +67,10 @@ class AtaraxAIRAGManager:
             print("No active file monitoring to stop.")
 
     def query_knowledge(
-        self, query_text: str, n_results: int = 3, filter_metadata: Optional[Dict[Any, Any]] = None
+        self,
+        query_text: str,
+        n_results: int = 3,
+        filter_metadata: Optional[Dict[Any, Any]] = None,
     ):
         return self.rag_store.query(
             query_text=query_text, n_results=n_results, filter_metadata=filter_metadata

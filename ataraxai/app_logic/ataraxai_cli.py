@@ -2,18 +2,34 @@ from pathlib import Path
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
-from ataraxai import core_ai_py # type: ignore [attr-defined]
+from ataraxai import core_ai_py  # type: ignore [attr-defined]
 from ataraxai.app_logic.prompt_utils import create_prompt
 from ataraxai.app_logic.utils.config_schemas.llama_config_schema import (
-    GenerationParams, LlamaModelParams)
+    GenerationParams,
+    LlamaModelParams,
+)
 from ataraxai.app_logic.utils.config_schemas.whisper_config_schema import (
-    WhisperModelParams)
+    WhisperModelParams,
+)
 
-PROMPTS_PROCESSED = Counter('ataraxai_prompts_processed_total', 'Total number of prompts processed')
-ERRORS_TOTAL = Counter('ataraxai_errors_total', 'Total number of errors encountered', ['error_type'])
-CONVERSATION_HISTORY_LENGTH = Gauge('ataraxai_conversation_history_length', 'The current length of the conversation history')
-PROMPT_PROCESSING_DURATION = Histogram('ataraxai_prompt_processing_duration_seconds', 'Latency of prompt processing')
-MODEL_INFO = Gauge('ataraxai_model_info', 'Information about the loaded models', ['model_type', 'model_path'])
+PROMPTS_PROCESSED = Counter(
+    "ataraxai_prompts_processed_total", "Total number of prompts processed"
+)
+ERRORS_TOTAL = Counter(
+    "ataraxai_errors_total", "Total number of errors encountered", ["error_type"]
+)
+CONVERSATION_HISTORY_LENGTH = Gauge(
+    "ataraxai_conversation_history_length",
+    "The current length of the conversation history",
+)
+PROMPT_PROCESSING_DURATION = Histogram(
+    "ataraxai_prompt_processing_duration_seconds", "Latency of prompt processing"
+)
+MODEL_INFO = Gauge(
+    "ataraxai_model_info",
+    "Information about the loaded models",
+    ["model_type", "model_path"],
+)
 
 
 def init_params():
@@ -63,34 +79,26 @@ def init_params():
     return llama_params, llama_generation_params, whisper_params
 
 
-def starter():
+def initialize_core_ai_service(llama_params, whisper_params):
     """
-    Initialize the AtaraxAI application.
+    Initialize the CoreAIService with the provided model parameters.
+
+    Args:
+        llama_params (LlamaModelParams): Parameters for the Llama model.
+        whisper_params (WhisperModelParams): Parameters for the Whisper model.
+
+    Returns:
+        CoreAIService: An instance of the CoreAIService initialized with the models.
     """
-    try:
-        start_http_server(8000)
-        print("Prometheus metrics server started on http://localhost:8000")
-    except OSError as e:
-        print(f"Prometheus server already running or port 8000 is in use: {e}")
-
-
-    llama_params, llama_generation_params, whisper_params = init_params()
-
-    project_dir = Path(__file__).resolve().parent.parent.parent
-    print(project_dir)
-
     core_ai_service = core_ai_py.CoreAIService()
-    print(core_ai_service)
-    print("AtaraxAI initialized successfully.")
-
     core_ai_service.initialize_llama_model(llama_params)
     core_ai_service.initialize_whisper_model(whisper_params)
+    return core_ai_service
 
-    MODEL_INFO.labels(model_type='llama', model_path=llama_params.model_path).set(1)
-    MODEL_INFO.labels(model_type='whisper', model_path=whisper_params.model).set(1)
 
+def cli_chat(core_ai_service, llama_generation_params):
     conversation_history = []
-    CONVERSATION_HISTORY_LENGTH.set(0) 
+    CONVERSATION_HISTORY_LENGTH.set(0)
 
     while True:
         default_system_message = (
@@ -101,26 +109,53 @@ def starter():
         if user_input_text.lower() == "exit":
             print("Exiting AtaraxAI.")
             break
-        
+
         conversation_history.append(f"User: {user_input_text.strip()}")
 
         full_prompt = create_prompt(
-            user_query=user_input_text, system_message=default_system_message, conversation_history=conversation_history
+            user_query=user_input_text,
+            system_message=default_system_message,
+            conversation_history=conversation_history,
         )
         current_generation_params = llama_generation_params
 
-        with PROMPT_PROCESSING_DURATION.time(): 
-            answer = core_ai_service.process_prompt(full_prompt, current_generation_params)
-        
-        PROMPTS_PROCESSED.inc() 
+        with PROMPT_PROCESSING_DURATION.time():
+            answer = core_ai_service.process_prompt(
+                full_prompt, current_generation_params
+            )
+
+        PROMPTS_PROCESSED.inc()
 
         print(f"AtaraxAI assistant: {answer}")
         conversation_history.append(f"Assistant: {answer.strip()}")
-        CONVERSATION_HISTORY_LENGTH.set(len(conversation_history)) 
+        CONVERSATION_HISTORY_LENGTH.set(len(conversation_history))
 
-        if len(conversation_history) > 10: 
-            conversation_history = conversation_history[:1] + conversation_history[3:] 
+        if len(conversation_history) > 10:
+            conversation_history = conversation_history[:1] + conversation_history[3:]
             CONVERSATION_HISTORY_LENGTH.set(len(conversation_history))
+
+
+def starter():
+    """
+    Initialize the AtaraxAI application.
+    """
+    try:
+        start_http_server(8000)
+        print("Prometheus metrics server started on http://localhost:8000")
+    except OSError as e:
+        print(f"Prometheus server already running or port 8000 is in use: {e}")
+
+    llama_params, llama_generation_params, whisper_params = init_params()
+
+    project_dir = Path(__file__).resolve().parent.parent.parent
+    print(project_dir)
+
+    core_ai_service = initialize_core_ai_service(llama_params, whisper_params)
+
+    MODEL_INFO.labels(model_type="llama", model_path=llama_params.model_path).set(1)
+    MODEL_INFO.labels(model_type="whisper", model_path=whisper_params.model).set(1)
+
+    cli_chat(core_ai_service, llama_generation_params)
 
 
 if __name__ == "__main__":

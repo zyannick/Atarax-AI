@@ -6,9 +6,6 @@ class PromptLoader:
         self.prompt_path = prompt_path
 
     def load_template(self) -> str:
-        """
-        Load the prompt template from the specified file path.
-        """
         return self.load_prompt()
 
     def load_prompt(self) -> str:
