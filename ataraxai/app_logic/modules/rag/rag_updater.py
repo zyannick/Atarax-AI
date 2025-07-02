@@ -16,7 +16,6 @@ from typing import Optional, Dict, Any
 from typing_extensions import Union
 
 
-
 def process_new_file(
     file_path_str: str,
     manifest: RAGManifest,
@@ -37,7 +36,9 @@ def process_new_file(
 
     try:
         final_texts = [cd.content for cd in chunked_document_objects]
-        final_metadatas = [v for cd in chunked_document_objects for k, v in cd.metadata.items()]
+        final_metadatas = [
+            v for cd in chunked_document_objects for k, v in cd.metadata.items()
+        ]
         chunk_ids = [
             f"{str(file_path)}_{base_metadata['file_hash'][:8]}_chunk_{i}"
             for i in range(len(final_texts))

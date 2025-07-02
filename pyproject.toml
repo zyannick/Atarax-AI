@@ -42,6 +42,7 @@ dependencies = [
     "openai",
     "librosa",
     "soundfile",
+    "pytesseract",
 ]
 
 [project.optional-dependencies]

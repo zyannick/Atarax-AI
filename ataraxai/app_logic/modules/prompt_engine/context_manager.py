@@ -1,5 +1,7 @@
 import datetime
 from typing_extensions import Optional, Dict, Any
+from ataraxai.app_logic.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
+from typing import Callable, List
 
 
 class TaskContext:
@@ -22,9 +24,38 @@ class TaskContext:
 
 
 class ContextManager:
-    def __init__(self, db_path, faiss_index_path, config):
+    def __init__(self, config: Dict[str, Any], rag_manager: AtaraxAIRAGManager):
 
         self.config = config
+        self.rag_manager = rag_manager
+
+        self.context_providers: Dict[str, Callable] = {
+            "current_date": self._get_current_date,
+            "default_role_prompt": self._get_default_role_prompt,
+            "relevant_document_chunks": self._get_relevant_document_chunks,
+            "user_calendar_today": self._get_calendar_events_today,
+            "file_content": self._get_file_content,
+        }
+
+    def _get_relevant_document_chunks(self, user_inputs: Dict[str, Any]) -> List[str]:  # type: ignore
+        query: Optional[str] = user_inputs.get("query", None)
+        if not query:
+            return []
+
+        top_k = self.config.get("rag", {}).get("top_k", 3)
+
+        query_results = self.rag_manager.query_knowledge(
+            query_text=query, n_results=top_k
+        )
+
+        if (
+            query_results
+            and "documents" in query_results
+            and query_results["documents"]
+        ):
+            return query_results["documents"][0]
+
+        return []
 
     def get_context(
         self,
@@ -62,13 +93,9 @@ class ContextManager:
     def _get_current_date(self) -> str:
         return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    def _get_relevant_document_chunks(self, query: str, top_k: int = 3) -> list[str]:
-        # TODO: Implement the logic to retrieve relevant document chunks based on the query.
-        return ["Document chunk 1", "Document chunk 2", "Document chunk 3"]
-
     def _get_calendar_events_today(self) -> list[str]:
         # TODO: Implement the logic to retrieve calendar events for today.
-        return ["Calendar event 1", "Calendar event 2", "Calendar event 3"]
+        return []
 
     def _get_file_content(self, file_path: str) -> str | None:
         try:
@@ -80,3 +107,14 @@ class ContextManager:
         except Exception as e:
             print(f"Error reading file {file_path}: {e}")
             return None
+
+    def _get_default_role_prompt(self) -> str:
+        current_role = self.config.get("current_user_role", "default_user")
+        persona_key = (
+            self.config.get("roles", {})
+            .get(current_role, {})
+            .get("default_persona_prompt_key")
+        )
+        return self.config.get("personas", {}).get(
+            persona_key, "You are a helpful AI assistant."
+        )

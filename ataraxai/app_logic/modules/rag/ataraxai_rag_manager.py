@@ -25,14 +25,14 @@ class AtaraxAIRAGManager:
         self.manifest_file_path = self.app_data_root_path / "rag_manifest.json"
 
         self.embedder = AtaraxAIEmbedder(
-            model_name=self.preferences_manager_instance.get( # type: ignore
+            model_name=self.preferences_manager_instance.get(  # type: ignore
                 "rag_embedder_model", "sentence-transformers/all-MiniLM"
             )
         )
         self.rag_store = RAGStore(
             db_path_str=str(rag_store_db_path),
             collection_name="ataraxai_knowledge",
-            embedder_instance=self.embedder, # type: ignore
+            embedder_instance=self.embedder,  # type: ignore
         )
         self.manifest = RAGManifest(self.manifest_file_path)
 
