@@ -5,7 +5,7 @@ from .config_schemas.whisper_config_schema import (
     WhisperModelParams,
     WhisperTranscriptionParams,
 )
-
+from typing_extensions import Optional
 
 WHISPER_CONFIG_FILENAME = "whisper_config.yaml"
 
@@ -29,16 +29,22 @@ class WhisperConfigManager:
         self._save(default)
         return default
 
-    def _save(self, config=None):
+    def _save(self, config: Optional[WhisperConfig] = None):
         try:
             with open(self.config_path, "w", encoding="utf-8") as f:
                 yaml.dump(
-                    config.dict() if config else self.config.dict(),
+                    config.model_dump() if config else self.config.model_dump(),
                     f,
                     default_flow_style=False,
                 )
         except Exception as e:
             print(f"[ERROR] Failed to save config: {e}")
+
+    def _default_config(self) -> WhisperConfig:
+        return WhisperConfig(
+            whisper_model_params=WhisperModelParams(),
+            whisper_transcription_params=WhisperTranscriptionParams(),
+        )
 
     def get_whisper_params(self) -> WhisperModelParams:
         return self.config.whisper_model_params
@@ -57,7 +63,7 @@ class WhisperConfigManager:
     def get_config(self) -> WhisperConfig:
         return self.config
 
-    def set_param(self, section: str, key: str, value):
+    def set_param(self, section: str, key: str, value: str):
         if (
             section == "whisper_model_params"
             and key in self.config.whisper_model_params.__dict__

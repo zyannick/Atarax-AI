@@ -14,13 +14,4 @@ class RAGConfig(BaseModel):
     def is_setup_complete(self) -> bool:
         return bool(self.rag_model_path)
 
-    def to_dict(self):
-        return {
-            "config_version": self.config_version,
-            "rag_model_path": self.rag_model_path,
-            "rag_chunk_size": self.rag_chunk_size,
-            "rag_chunk_overlap": self.rag_chunk_overlap,
-            "rag_separators": self.rag_separators,
-            "rag_keep_separator": self.rag_keep_separator,
-            "rag_model_name_for_tiktoken": self.rag_model_name_for_tiktoken,
-        }
+

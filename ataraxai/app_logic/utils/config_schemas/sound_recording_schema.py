@@ -31,15 +31,3 @@ class SoundRecordingParams(BaseModel):
         default="wav", description="Audio format for the recording (e.g., wav, mp3)"
     )
     
-    def to_dict(self):
-        return {
-            "config_version": self.config_version,
-            "sample_rate": self.sample_rate,
-            "frame_duration_ms": self.frame_duration_ms,
-            "channels": self.channels,
-            "max_silence_ms": self.max_silence_ms,
-            "use_vad": self.use_vad,
-            "vad_mode": self.vad_mode,
-            "max_recording_duration": self.max_recording_duration,
-            "format": self.format
-        }

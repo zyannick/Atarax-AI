@@ -245,11 +245,11 @@ if __name__ == "__main__":
             use_gpu=False,
             flash_attn=False,
             language= "en",
-        ).to_dict()
+        ).model_dump( ) # type: ignore
     )
 
     whisper_generation_params = core_ai_py.WhisperGenerationParams.from_dict(  # type: ignore
-        WhisperTranscriptionParams().to_dict()
+        WhisperTranscriptionParams().model_dump()
     )
 
     core_ai_service = core_ai_py.CoreAIService()  # type: ignore
@@ -260,6 +260,6 @@ if __name__ == "__main__":
         core_ai_service=core_ai_service,  # type: ignore
         transcription_params=whisper_generation_params,
     )
-    chunks = parser.parse(Path("ataraxai/app_logic/modules/rag/parser/test_audio.mp3"))
+    chunks = parser.parse(Path("tests/python/assets/test_audio.mp3"))
     for chunk in chunks:
         print(chunk)

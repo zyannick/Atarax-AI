@@ -40,7 +40,7 @@ class LlamaConfigManager:
     def get_generation_params(self) -> GenerationParams:
         return self.config.generation_params
 
-    def set_param(self, section: str, key: str, value):
+    def set_param(self, section: str, key: str, value : str):
         if section == "llm_model_params" and hasattr(self.config.llm_model_params, key):
             setattr(self.config.llm_model_params, key, value)
         elif section == "generation_params" and hasattr(

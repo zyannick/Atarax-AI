@@ -13,18 +13,7 @@ class LlamaModelParams(BaseModel):
     use_map: bool = False
     use_mlock: bool = False
     
-    def to_dict(self):
-        return {
-            "config_version": self.config_version,
-            "model_path": self.model_path,
-            "n_ctx": self.n_ctx,
-            "n_gpu_layers": self.n_gpu_layers,
-            "main_gpu": self.main_gpu,
-            "tensor_split": self.tensor_split,
-            "vocab_only": self.vocab_only,
-            "use_map": self.use_map,
-            "use_mlock": self.use_mlock
-        }
+
 
 
 
@@ -42,18 +31,7 @@ class GenerationParams(BaseModel):
     n_batch: int = 1
     n_threads: int = 4
     
-    def to_dict(self):
-        return {
-            "config_version": self.config_version,
-            "n_predict": self.n_predict,
-            "temp": self.temp,
-            "top_k": self.top_k,
-            "top_p": self.top_p,
-            "repeat_penalty": self.repeat_penalty,
-            "stop_sequences": self.stop_sequences,
-            "n_batch": self.n_batch,
-            "n_threads": self.n_threads
-        }
+
 
 
 class LlamaConfig(BaseModel):
@@ -61,9 +39,4 @@ class LlamaConfig(BaseModel):
     llm_model_params: LlamaModelParams = LlamaModelParams()
     generation_params: GenerationParams = GenerationParams()
     
-    def to_dict(self):
-        return {
-            "config_version": self.config_version,
-            "llm_model_params": self.llm_model_params.to_dict(),
-            "generation_params": self.generation_params.to_dict()
-        }
+
