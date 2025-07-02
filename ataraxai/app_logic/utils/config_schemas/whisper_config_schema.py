@@ -28,9 +28,9 @@ class WhisperTranscriptionParams(BaseModel):
     print_special: bool = False
     print_progress: bool = True
     no_context: bool = True
-    max_len: int = 0
+    max_len: int = 512
     single_segment: bool = False
-    temperature: float = 0.0
+    temperature: float = 0.8
     
     def to_dict(self):
         return {

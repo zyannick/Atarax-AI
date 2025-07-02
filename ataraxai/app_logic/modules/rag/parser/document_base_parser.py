@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -6,7 +6,7 @@ from pathlib import Path
 class DocumentChunk:
     content: str
     source: str
-    metadata: dict
+    metadata: Dict[str, Any]
     
     def __repr__(self):
         metadata_preview = {k: v for k, v in list(self.metadata.items())[:2]} 

@@ -9,18 +9,15 @@ from ataraxai.app_logic.preferences_manager import PreferencesManager
 from typing_extensions import Optional, List, Dict, Any
 from ataraxai import __version__
 
-APP_NAME = "AtaraxAI"
-APP_AUTHOR = "AtaraxAI"
-
 
 class AtaraxAIRAGManager:
     def __init__(
         self,
-        core_ai_service: core_ai_py.CoreAIService,  # type: ignore
         preferences_manager_instance: PreferencesManager,
         app_data_root_path: Path,
     ):
         self.app_data_root_path = app_data_root_path
+        self.preferences_manager_instance = preferences_manager_instance
 
         rag_store_db_path = self.app_data_root_path / "rag_chroma_store"
         rag_store_db_path.mkdir(parents=True, exist_ok=True)
@@ -35,7 +32,7 @@ class AtaraxAIRAGManager:
         self.rag_store = RAGStore(
             db_path_str=str(rag_store_db_path),
             collection_name="ataraxai_knowledge",
-            embedder_instance=self.embedder,
+            embedder_instance=self.embedder, # type: ignore
         )
         self.manifest = RAGManifest(self.manifest_file_path)
 

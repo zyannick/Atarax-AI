@@ -39,7 +39,9 @@ dependencies = [
     "prometheus-client==0.22.1",
     "sentencepiece",
     "pytest",
-    "openai"
+    "openai",
+    "librosa",
+    "soundfile",
 ]
 
 [project.optional-dependencies]

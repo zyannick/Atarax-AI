@@ -12,6 +12,9 @@ from ataraxai.app_logic.modules.rag.parser.base_meta_data import (
     set_base_metadata,
     get_file_hash,
 )
+from typing import Optional, Dict, Any
+from typing_extensions import Union
+
 
 
 def process_new_file(
@@ -23,7 +26,7 @@ def process_new_file(
     file_path = Path(file_path_str)
     print(f"WORKER: Processing NEW file: {file_path}")
 
-    base_metadata = set_base_metadata(file_path)
+    base_metadata: Dict[str, Any] = set_base_metadata(file_path)
     chunked_document_objects = chunker.ingest_file(
         file_path=file_path,
     )
@@ -137,11 +140,10 @@ def process_deleted_file(
 
 
 def rag_update_worker(
-    processing_queue: "queue.Queue",
-    manifest: "RAGManifest",
-    rag_store: "RAGStore",
-    embedder: "AtaraxAIEmbedder",
-    chunk_config: dict,
+    processing_queue: queue.Queue[Dict[str, Any]],
+    manifest: RAGManifest,
+    rag_store: RAGStore,
+    chunk_config: Dict[str, Any],
 ):
     print(
         f"RAG Update Worker started. PID: {os.getpid()}, Thread: {threading.get_ident()}"
@@ -159,7 +161,7 @@ def rag_update_worker(
 
     while True:
         try:
-            task = processing_queue.get(timeout=1)
+            task: Dict[str, Any] = processing_queue.get(timeout=1)
             if task is None:
                 print("RAG Update Worker: Received sentinel. Exiting.")
                 processing_queue.task_done()

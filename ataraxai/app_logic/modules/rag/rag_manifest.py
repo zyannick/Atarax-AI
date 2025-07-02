@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
+from typing import Any, Dict, Optional
+from typing_extensions import Union
 
 
 class RAGManifest:
-    def __init__(self, manifest_path):
+    def __init__(self, manifest_path: Union[str, Path]):
         """
         Initializes the class with the given manifest file path.
 
@@ -15,9 +17,9 @@ class RAGManifest:
             data (Any): The data loaded from the manifest file.
         """
         self.path = Path(manifest_path)
-        self.data = self._load()
+        self.data: Dict[str, Any] = self._load()
 
-    def _load(self):
+    def _load(self) -> Dict[str, Any]:
         """
         Loads and returns the contents of a JSON file if it exists.
 
@@ -43,7 +45,9 @@ class RAGManifest:
         with open(self.path, "w") as f:
             json.dump(self.data, f, indent=4)
 
-    def add_file(self, file_path, metadata=None):
+    def add_file(
+        self, file_path: Union[str, Path], metadata: Optional[Dict[str, Any]] = None
+    ):
         """
         Adds a file and its associated metadata to the data store.
 
@@ -56,10 +60,10 @@ class RAGManifest:
         """
         if not metadata:
             metadata = {}
-        self.data[file_path] = metadata
+        self.data[str(file_path)] = metadata
         self.save()
 
-    def remove_file(self, file_path):
+    def remove_file(self, file_path: Union[str, Path]):
         """
         Remove a file entry from the manifest.
 
@@ -74,8 +78,8 @@ class RAGManifest:
             - Saves the updated manifest if the file was found and removed.
             - Prints a message if the file was not found in the manifest.
         """
-        if file_path in self.data:
-            del self.data[file_path]
+        if str(file_path) in self.data:
+            del self.data[str(file_path)]
             self.save()
         else:
             print(f"File {file_path} not found in manifest.")

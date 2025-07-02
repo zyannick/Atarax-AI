@@ -6,21 +6,19 @@
 #include <vector>
 
 #define MINIAUDIO_IMPLEMENTATION
-#include "core_ai/miniaudio.h" 
+#include "core_ai/miniaudio.h"
 
-
-CoreAIService::CoreAIService() 
-    : llama_interface_(nullptr), 
+CoreAIService::CoreAIService()
+    : llama_interface_(nullptr),
       whisper_interface_(nullptr),
-      llama_model_loaded_(false), 
+      llama_model_loaded_(false),
       whisper_model_loaded_(false)
 {
 }
 
 CoreAIService::CoreAIService(
     std::unique_ptr<LlamaInterface> llama_interface,
-    std::unique_ptr<WhisperInterface> whisper_interface
-) 
+    std::unique_ptr<WhisperInterface> whisper_interface)
     : llama_interface_(std::move(llama_interface)),
       whisper_interface_(std::move(whisper_interface)),
       llama_model_loaded_(false),
@@ -34,10 +32,10 @@ CoreAIService::~CoreAIService()
     unload_whisper_model();
 }
 
-
 bool CoreAIService::initialize_llama_model(const LlamaModelParams &params)
 {
-    if (!llama_interface_) {
+    if (!llama_interface_)
+    {
         llama_interface_ = std::make_unique<LlamaInterface>();
     }
     llama_model_loaded_ = llama_interface_->load_model(params);
@@ -46,17 +44,18 @@ bool CoreAIService::initialize_llama_model(const LlamaModelParams &params)
 
 bool CoreAIService::initialize_whisper_model(const WhisperModelParams &params)
 {
-    if (!whisper_interface_) {
+    if (!whisper_interface_)
+    {
         whisper_interface_ = std::make_unique<WhisperInterface>();
     }
     whisper_model_loaded_ = whisper_interface_->load_model(params);
     return whisper_model_loaded_;
 }
 
-
 void CoreAIService::unload_llama_model()
 {
-    if (llama_interface_) {
+    if (llama_interface_)
+    {
         llama_interface_->unload_model();
         llama_model_loaded_ = false;
     }
@@ -66,10 +65,6 @@ bool CoreAIService::is_llama_model_loaded() const
 {
     return llama_interface_ && llama_model_loaded_;
 }
-
-
-
-
 
 std::string CoreAIService::process_prompt(const std::string &prompt_text, const GenerationParams &llama_generation_params_)
 {
@@ -82,7 +77,6 @@ std::string CoreAIService::process_prompt(const std::string &prompt_text, const 
         return "[Error: Llama model not loaded]";
     }
 }
-
 
 bool CoreAIService::stream_prompt(const std::string &prompt_text,
                                   const GenerationParams &llama_generation_params,
@@ -102,7 +96,6 @@ bool CoreAIService::stream_prompt(const std::string &prompt_text,
     }
 }
 
-
 bool CoreAIService::is_whisper_model_loaded() const
 {
     if (whisper_interface_)
@@ -121,7 +114,6 @@ void CoreAIService::unload_whisper_model()
     }
 }
 
-
 std::string CoreAIService::transcribe_audio_pcm(const std::vector<float> &pcm_f32_data, const WhisperGenerationParams &whisper_model_params_)
 {
     if (is_whisper_model_loaded())
@@ -133,7 +125,6 @@ std::string CoreAIService::transcribe_audio_pcm(const std::vector<float> &pcm_f3
         return "[Error: Whisper model not loaded]";
     }
 }
-
 
 std::vector<float> CoreAIService::convert_audio_file_to_pcm_f32(const std::string &audio_file_path)
 {
@@ -180,7 +171,6 @@ std::vector<float> CoreAIService::convert_audio_file_to_pcm_f32(const std::strin
     return pcm_data;
 }
 
-
 std::string CoreAIService::transcribe_audio_file(const std::string &audio_file_path, const WhisperGenerationParams &whisper_model_params_)
 {
     std::vector<float> pcm_f32_data;
@@ -192,12 +182,10 @@ std::string CoreAIService::transcribe_audio_file(const std::string &audio_file_p
     return transcribe_audio_pcm(pcm_f32_data, whisper_model_params_);
 }
 
-
 void CoreAIService::initialize_global_backends()
 {
     LlamaInterface::init_backend();
 }
-
 
 void CoreAIService::free_global_backends()
 {
