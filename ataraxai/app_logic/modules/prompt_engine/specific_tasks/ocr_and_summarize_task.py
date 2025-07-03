@@ -51,12 +51,15 @@ class OCRandSummarizeTask(BaseTask):
 
         print(f"Extracted {len(extracted_text)} characters from image.")
 
+        prompt_manager = dependencies["prompt_manager"]
+
         print("Summarizing extracted text...")
         try:
-            summarization_prompt_template = dependencies[
-                "prompt_manager"
-            ].load_template(self.prompt_template_name)
-            final_prompt = summarization_prompt_template.format(ocr_text=extracted_text)
+            final_prompt = prompt_manager.load_template(
+                self.prompt_template_name,
+                ocr_text=extracted_text 
+            )
+    
             summary: str = dependencies["core_ai_service"].process_prompt(  # type: ignore
                 final_prompt, dependencies["generation_params"]
             )
