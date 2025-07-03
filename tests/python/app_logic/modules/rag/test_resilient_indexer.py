@@ -6,8 +6,6 @@ with patch("ataraxai.app_logic.modules.rag.resilient_indexer.chromadb") as mock_
     from ataraxai.app_logic.modules.rag.resilient_indexer import (
         ResilientFileIndexer,
         start_rag_file_monitoring,
-        ResilientMailIndexer,
-        ResilientCalendarIndexer,
     )
 
 class DummyEvent:
@@ -83,24 +81,3 @@ def test_start_rag_file_monitoring_warns_on_missing_path(MockObserver):
         )
         assert MockObserver.return_value.start.called
 
-def test_process_email_prints(monkeypatch):
-    manifest = MagicMock()
-    rag_store = MagicMock()
-    indexer = ResilientMailIndexer(manifest, rag_store)
-    printed = {}
-    def fake_print(msg):
-        printed["msg"] = msg
-    monkeypatch.setattr("builtins.print", fake_print)
-    indexer.process_email("mail.eml")
-    assert printed["msg"] == "Processing email for indexing: mail.eml"
-
-def test_process_calendar_event_prints(monkeypatch):
-    manifest = MagicMock()
-    rag_store = MagicMock()
-    indexer = ResilientCalendarIndexer(manifest, rag_store)
-    printed = {}
-    def fake_print(msg):
-        printed["msg"] = msg
-    monkeypatch.setattr("builtins.print", fake_print)
-    indexer.process_calendar_event("event.ics")
-    assert printed["msg"] == "Processing calendar event for indexing: event.ics"

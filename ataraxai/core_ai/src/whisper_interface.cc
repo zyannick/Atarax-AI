@@ -199,6 +199,7 @@ std::string WhisperInterface::transcribe_pcm(const std::vector<float> &pcm_f32_d
         std::cout << "whisper_full if passed  " << pcm_f32_data.size() << std::endl;
 
         std::string result;
+        result.append("<whisper>");
         std::ofstream fout;
 
         

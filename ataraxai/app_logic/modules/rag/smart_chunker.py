@@ -7,10 +7,7 @@ from pathlib import Path
 from ataraxai.app_logic.modules.rag.parser.pdf_parser import PDFParser
 from ataraxai.app_logic.modules.rag.parser.docx_parser import DOCXParser
 from ataraxai.app_logic.modules.rag.parser.pptx_parser import PPTXParser
-from ataraxai.app_logic.modules.rag.parser.audio_parser import AudioParser
-from ataraxai.app_logic.modules.rag.parser.video_parser import VideoParser
-from typing import Optional, Dict, Any, Callable
-from typing_extensions import Union
+from typing import Callable
 
 
 EXT_PARSER_MAP: Dict[str, Any] = {

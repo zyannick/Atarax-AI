@@ -13,7 +13,10 @@ LLAMA_CONFIG_FILENAME = "llama_config.yaml"
 
 class LlamaConfigManager:
     def __init__(self, config_path: Path):
-        self.config_path = config_path / LLAMA_CONFIG_FILENAME
+        if config_path.is_dir():
+            self.config_path = config_path / LLAMA_CONFIG_FILENAME
+        else:
+            raise ValueError(f"Invalid config path: {config_path}")
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.config: LlamaConfig = self._load_or_initialize()
 
@@ -32,7 +35,11 @@ class LlamaConfigManager:
 
     def _save(self, config: Optional[LlamaConfig] = None):
         with open(self.config_path, "w", encoding="utf-8") as f:
-            yaml.dump(config.model_dump() if config else self.config.model_dump(), f, default_flow_style=False)
+            yaml.dump(
+                config.model_dump() if config else self.config.model_dump(),
+                f,
+                default_flow_style=False,
+            )
 
     def get_llm_params(self) -> LlamaModelParams:
         return self.config.llm_model_params
@@ -40,7 +47,7 @@ class LlamaConfigManager:
     def get_generation_params(self) -> GenerationParams:
         return self.config.generation_params
 
-    def set_param(self, section: str, key: str, value : str):
+    def set_param(self, section: str, key: str, value: str):
         if section == "llm_model_params" and hasattr(self.config.llm_model_params, key):
             setattr(self.config.llm_model_params, key, value)
         elif section == "generation_params" and hasattr(

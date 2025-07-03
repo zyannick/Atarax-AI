@@ -3,7 +3,6 @@ from .rag_store import RAGStore
 from .ataraxai_rag_manager import (
     RAGManifest,
 )
-from ataraxai.app_logic.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
 from ataraxai.app_logic.modules.rag.smart_chunker import SmartChunker
 import threading
 import os
@@ -12,8 +11,7 @@ from ataraxai.app_logic.modules.rag.parser.base_meta_data import (
     set_base_metadata,
     get_file_hash,
 )
-from typing import Optional, Dict, Any
-from typing_extensions import Union
+from typing import Dict, Any
 
 
 def process_new_file(

@@ -53,7 +53,7 @@ dev = [
     "ruff",
     "mypy",
     "types-PyYAML",
-    "types-peewee"
+    "types-peewee",
 ]
 
 [project.urls]
@@ -77,7 +77,7 @@ exclude = [
     ".venv",
     "build",
     "dist",
-    "ataraxai/core_ai/third_party", # This is the key line to ignore llama.cpp
+    "ataraxai/core_ai/third_party",
 ]
 
 [tool.mypy]
@@ -87,6 +87,7 @@ module = [
     "fitz",
     "webrtcvad",
     "sounddevice",
+    "pytesseract"
 ]
 ignore_missing_imports = true
 

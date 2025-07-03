@@ -1,11 +1,8 @@
 from typing import Any, Dict
 
 from ataraxai.app_logic.modules.prompt_engine.specific_tasks.base_task import BaseTask
-from ataraxai.app_logic.modules.prompt_engine.context_manager import ContextManager, TaskContext
-from ataraxai.app_logic.modules.prompt_engine.prompt_manager import PromptManager
-from ataraxai import core_ai_py  # type: ignore
-from ataraxai.app_logic.modules.chat.chat_database_manager import ChatDatabaseManager
-from ataraxai.app_logic.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
+from ataraxai.app_logic.modules.prompt_engine.context_manager import TaskContext
+from ataraxai.app_logic.modules.chat.chat_context_manager import ChatContextManager
 
 class StandardChatTask(BaseTask):
     def __init__(self):
@@ -22,20 +19,19 @@ class StandardChatTask(BaseTask):
         self,
         processed_input: Dict[str, Any],
         context: TaskContext,  
-        prompt_manager: PromptManager,
-        core_ai_service: core_ai_py.CoreAIService, # type: ignore
-        generation_params: Dict[str, Any],
-        chat_db_manager: ChatDatabaseManager,
-        rag_manager: AtaraxAIRAGManager,
+        dependencies: Dict[str, Any],
     ) -> str:
 
         user_query = processed_input["user_query"]
         session_id = processed_input["session_id"]
 
-        chat_db_manager.add_message(session_id, role="user", content=user_query)
+        chat_context : ChatContextManager = dependencies["chat_context"]
 
-        conversation_history = chat_db_manager.get_messages_for_session(session_id)
-        rag_results = rag_manager.query_knowledge(query_text=user_query, n_results=3)
+        chat_context.add_message(session_id, role="user", content=user_query)
+
+        conversation_history = chat_context.get_messages_for_session(session_id)
+        
+        rag_results = dependencies["rag_manager"].query_knowledge(query_text=user_query, n_results=3)
 
         rag_context = (
             "\n".join(rag_results["documents"][0])
@@ -43,18 +39,21 @@ class StandardChatTask(BaseTask):
             else "No relevant documents found."
         )
 
-        final_prompt = prompt_manager.load_template(
-            self.prompt_template_name, # type: ignore
+        final_prompt = dependencies["prompt_manager"].load_template(
+            self.prompt_template_name,  # type: ignore
             history=conversation_history,
             context=rag_context,
             query=user_query,
         )
 
-        model_response_text : str = core_ai_service.process_prompt(  # type: ignore
-                final_prompt, generation_params
-            )
+        core_ai_service = dependencies["core_ai_service"]  # type: ignore
+        generation_params = dependencies.get("generation_params", {})
 
-        chat_db_manager.add_message(
+        model_response_text: str = core_ai_service.process_prompt(  # type: ignore
+            final_prompt, generation_params
+        )
+
+        chat_context.add_message(
             session_id, role="assistant", content=model_response_text
         )
 

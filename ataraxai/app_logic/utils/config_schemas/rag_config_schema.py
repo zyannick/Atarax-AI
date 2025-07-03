@@ -13,5 +13,3 @@ class RAGConfig(BaseModel):
 
     def is_setup_complete(self) -> bool:
         return bool(self.rag_model_path)
-
-

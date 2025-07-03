@@ -3,7 +3,7 @@ from typing import List
 
 
 class LlamaModelParams(BaseModel):
-    config_version : float = 1.0
+    config_version: float = 1.0
     model_path: str = ""
     n_ctx: int = 2048
     n_gpu_layers: int = 0
@@ -12,9 +12,6 @@ class LlamaModelParams(BaseModel):
     vocab_only: bool = False
     use_map: bool = False
     use_mlock: bool = False
-    
-
-
 
 
 class GenerationParams(BaseModel):
@@ -30,13 +27,9 @@ class GenerationParams(BaseModel):
     stop_sequences: List[str] = ["</s>", "\n\n", "User:"]
     n_batch: int = 1
     n_threads: int = 4
-    
-
 
 
 class LlamaConfig(BaseModel):
     config_version: float = 1.0
     llm_model_params: LlamaModelParams = LlamaModelParams()
     generation_params: GenerationParams = GenerationParams()
-    
-

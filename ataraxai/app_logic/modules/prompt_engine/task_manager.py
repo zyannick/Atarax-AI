@@ -1,8 +1,7 @@
-import os
 import importlib
 import inspect
 from pathlib import Path
-from typing import Dict, List, Type
+from typing import Dict, List
 from ataraxai.app_logic.modules.prompt_engine.specific_tasks.base_task import BaseTask
 
 

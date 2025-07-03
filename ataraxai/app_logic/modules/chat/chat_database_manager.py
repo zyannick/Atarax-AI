@@ -46,7 +46,7 @@ class Project(BaseModel):
         return str(self.description) if self.description else None
 
     def save(self, *args, **kwargs) -> int: # type: ignore
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now()  # type: ignore
         return super().save(*args, **kwargs) # type: ignore
 
     def __str__(self):

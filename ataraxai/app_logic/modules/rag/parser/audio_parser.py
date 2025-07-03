@@ -4,7 +4,6 @@ from mutagen.mp3 import MP3
 from mutagen.wave import WAVE
 from pathlib import Path
 from typing import List
-import numpy as np
 import librosa
 import soundfile as sf  # type: ignore
 from ataraxai.app_logic.modules.rag.parser.document_base_parser import (
@@ -58,7 +57,6 @@ class AudioParser(DocumentParser):
             chunk_samples = int(self.chunk_duration * sr)
             overlap_samples = int(self.overlap_duration * sr)
 
-            chunks = []
             chunk_paths: List[Path] = []
 
             start = 0
@@ -175,10 +173,10 @@ class AudioParser(DocumentParser):
             if str(path).lower().endswith(".mp3"):
                 audio = MP3(str(path), ID3=EasyID3)
             elif str(path).lower().endswith(".wav"):
-                audio = WAVE(str(path))
+                audio = WAVE(str(path))  # type: ignore
             elif str(path).lower().endswith((".flac", ".ogg", ".m4a", ".aac", ".opus")):
-                audio = EasyID3(str(path))
-            else:
+                audio = EasyID3(str(path))  # type: ignore
+            else: 
                 raise ValueError(f"Unsupported audio format: {path.suffix}")
 
             tags: Dict[str, Any] = {}

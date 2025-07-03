@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class SoundRecordingParams(BaseModel):
@@ -30,4 +30,12 @@ class SoundRecordingParams(BaseModel):
     format: str = Field(
         default="wav", description="Audio format for the recording (e.g., wav, mp3)"
     )
+    
+    
+    @field_validator('sample_rate')
+    @classmethod
+    def validate_sample_rate(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError('Sample rate must be a positive integer')
+        return v
     

@@ -12,11 +12,10 @@ from watchdog.events import (
 )
 from pathlib import Path
 import queue
-from ataraxai.app_logic.modules.rag.rag_store import RAGStore
 from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
 import chromadb
 from typing_extensions import Union
-from typing_extensions import Optional, List, Dict, Any
+from typing_extensions import Dict, Any
 
 
 class ResilientFileIndexer(FileSystemEventHandler):
@@ -27,26 +26,22 @@ class ResilientFileIndexer(FileSystemEventHandler):
 
     def on_created(self, event: Union[DirCreatedEvent, FileCreatedEvent]):
         if not event.is_directory:
-            print(f"New file created: {event.src_path}")
             task: Dict[str, Any] = {"event_type": "created", "file_path": event.src_path}
             self.processing_queue.put(task)
 
 
     def on_modified(self, event: Union[DirModifiedEvent, FileModifiedEvent]):
         if not event.is_directory:
-            print(f"File modified: {event.src_path}")
             task : Dict[str, Any] = {"event_type": "modified", "file_path": event.src_path}
             self.processing_queue.put(task)
 
     def on_deleted(self, event: Union[DirDeletedEvent, FileDeletedEvent]):
         if not event.is_directory:
-            print(f"File deleted: {event.src_path}")
             task : Dict[str, Any] = {"event_type": "deleted", "file_path": event.src_path}
             self.processing_queue.put(task)
 
     def on_moved(self, event: Union[DirMovedEvent, FileMovedEvent]):
         if not event.is_directory:
-            print(f"File moved: {event.src_path} to {event.dest_path}")
             task : Dict[str, Any] = {
                 "event_type": "moved",
                 "src_path": event.src_path,

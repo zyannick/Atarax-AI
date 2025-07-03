@@ -1,7 +1,6 @@
 import hashlib
 from pathlib import Path
-from typing import Optional, Dict, Any
-from typing_extensions import Union
+from typing import Dict, Any
 
 
 def get_file_hash(file_path: Path) -> str | None:

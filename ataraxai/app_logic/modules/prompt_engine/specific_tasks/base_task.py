@@ -1,16 +1,16 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, List, Dict
-from ataraxai.app_logic.modules.prompt_engine.prompt_manager import PromptManager
 from ataraxai.app_logic.modules.prompt_engine.context_manager import TaskContext
+
 
 class BaseTask(ABC):
     id: str
     description: str
     required_inputs: List[str] = []
     prompt_template_name: Optional[str] = None
-    
+
     def __init__(self):
-        self._initialized: bool = False 
+        self._initialized: bool = False
         if not hasattr(self, "id") or not self.id:
             raise NotImplementedError("Concrete tasks must define an 'id'")
         if not hasattr(self, "description") or not self.description:
@@ -23,12 +23,17 @@ class BaseTask(ABC):
             self._initialized = True
             print(f"Resources for '{self.id}' loaded successfully.")
 
-    def run(self, input_data: Dict[str, Any], context: "TaskContext", prompt_loader: "PromptManager") -> Any:
+    def run(
+        self,
+        input_data: Dict[str, Any],
+        context: TaskContext,
+        dependencies: Dict[str, Any],
+    ) -> Any:
         try:
             self.load_if_needed()
             self.validate_inputs(input_data)
             processed_input = self.preprocess(input_data, context)
-            raw_output = self.execute(processed_input, context, prompt_loader)
+            raw_output = self.execute(processed_input, context, dependencies)
             return self.postprocess(raw_output, context)
         except Exception as e:
             return self.handle_error(e, context)
@@ -46,7 +51,9 @@ class BaseTask(ABC):
         print(f"ERROR during execution of task '{self.id}': {error}")
         raise error
 
-    def preprocess(self, input_data: Dict[str, Any], context: TaskContext) -> Dict[str, Any]:
+    def preprocess(
+        self, input_data: Dict[str, Any], context: TaskContext
+    ) -> Dict[str, Any]:
         return input_data
 
     @abstractmethod
@@ -54,18 +61,18 @@ class BaseTask(ABC):
         self,
         processed_input: Dict[str, Any],
         context: TaskContext,
-        prompt_loader: PromptManager,
+        dependencies: Dict[str, Any],
     ) -> Any:
         pass
 
     def postprocess(self, raw_output: Any, context: TaskContext) -> Any:
         return raw_output
-        
+
     @property
     def metadata(self) -> Dict[str, Any]:
         return {
             "id": self.id,
             "description": self.description,
             "required_inputs": self.required_inputs,
-            "prompt_template": self.prompt_template_name
+            "prompt_template": self.prompt_template_name,
         }

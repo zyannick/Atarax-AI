@@ -3,7 +3,8 @@ from .context_manager import ContextManager, TaskContext
 from ataraxai.app_logic.modules.prompt_engine.prompt_manager import PromptManager
 from ataraxai.app_logic.modules.prompt_engine.task_manager import TaskManager
 from ataraxai.app_logic.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
-from ataraxai.app_logic.modules.chat.chat_database_manager import ChatDatabaseManager
+from ataraxai.app_logic.modules.chat.chat_context_manager import ChatContextManager
+
 
 class ChainRunner:
     def __init__(
@@ -12,15 +13,23 @@ class ChainRunner:
         context_manager: ContextManager,
         prompt_manager: PromptManager,
         core_ai_service: Any,  # type: ignore
-        chat_db_manager: ChatDatabaseManager,
+        chat_context: ChatContextManager,
         rag_manager: AtaraxAIRAGManager
     ):
         self.task_manager = task_manager
         self.context_manager = context_manager
         self.prompt_manager = prompt_manager
         self.core_ai_service = core_ai_service
-        self.chat_db_manager = chat_db_manager
+        self.chat_context = chat_context
         self.rag_manager = rag_manager
+
+        self.dependencies: Dict[str, Any] = {
+            "context_manager": context_manager,
+            "prompt_manager": prompt_manager,
+            "core_ai_service": core_ai_service,
+            "chat_context": chat_context,
+            "rag_manager": rag_manager
+        }
 
     def run_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
@@ -48,10 +57,7 @@ class ChainRunner:
             print(f"\n--- Running Step {i}: Task '{task_id}' ---")
 
             try:
-                task.validate_inputs(input_data)
-                processed_input = task.preprocess(input_data, context)
-                raw_output = task.execute(processed_input, context, self.prompt_manager)
-                final_result = task.postprocess(raw_output, context)
+                final_result = task.run(input_data, context, self.dependencies)
 
                 step_outputs[f"step_{i}"] = {"output": final_result}
                 print(

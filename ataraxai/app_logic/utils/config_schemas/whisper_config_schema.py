@@ -5,10 +5,9 @@ class WhisperModelParams(BaseModel):
     n_threads: int = 0
     use_gpu: bool = True
     flash_attn: bool = True
-    audio_ctx : int = 0
+    audio_ctx: int = 0
     model: str = "models/ggml-base.en.bin"
     language: str = "en"
-    
 
 
 class WhisperTranscriptionParams(BaseModel):
@@ -22,7 +21,7 @@ class WhisperTranscriptionParams(BaseModel):
     max_len: int = 512
     single_segment: bool = False
     temperature: float = 0.8
-    
+
 
 class WhisperConfig(BaseModel):
     config_version: float = 1.0
@@ -30,4 +29,3 @@ class WhisperConfig(BaseModel):
     whisper_transcription_params: WhisperTranscriptionParams = (
         WhisperTranscriptionParams()
     )
-    

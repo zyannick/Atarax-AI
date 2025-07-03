@@ -1,8 +1,8 @@
-import uuid
 from pathlib import Path
-from typing import Any, List, Dict
+from typing import Any, List
 
 from ataraxai import __version__, core_ai_py  # type: ignore
+from ataraxai.app_logic.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.app_logic.preferences_manager import PreferencesManager
 from ataraxai.app_logic.utils.ataraxai_logger import ArataxAILogger
 from ataraxai.app_logic.utils.config_schemas.llama_config_schema import LlamaModelParams
@@ -16,7 +16,6 @@ from ataraxai.app_logic.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManag
 
 from ataraxai.app_logic.modules.prompt_engine.context_manager import (
     ContextManager,
-    TaskContext,
 )
 
 from ataraxai.app_logic.modules.prompt_engine.prompt_manager import PromptManager
@@ -26,7 +25,6 @@ from ataraxai.app_logic.modules.prompt_engine.chain_runner import ChainRunner
 
 from ataraxai.app_logic.utils.config_schemas.llama_config_schema import (
     GenerationParams,
-    LlamaModelParams,
 )
 from ataraxai.app_logic.utils.config_schemas.whisper_config_schema import (
     WhisperModelParams,
@@ -45,7 +43,6 @@ def init_params(
     whisper_model_params: WhisperModelParams,
     whisper_transcription_params: WhisperTranscriptionParams,
 ) -> Tuple[Any, Any, Any, Any]:
-    project_dir = Path(__file__).resolve().parent.parent.parent
 
     llama_model_params_cc = core_ai_py.LlamaModelParams.from_dict(  # type: ignore
         llama_model_params.model_dump()
@@ -105,12 +102,12 @@ class AtaraxAIOrchestrator:
             whisper_transcription_params=self.whisper_config_manager.get_transcription_params(),
         )
         self.cpp_service = initialize_core_ai_service(  # type: ignore
-            llama_params=llama_model_params_cc,
-            whisper_params=whisper_model_params_cc
+            llama_params=llama_model_params_cc, whisper_params=whisper_model_params_cc
         )  # type: ignore
 
         db_path = self.app_data_dir / "chat_history.sqlite"
         self.db_manager = ChatDatabaseManager(db_path=db_path)
+        self.chat_context = ChatContextManager(db_manager=self.db_manager)
 
         self.rag_manager = AtaraxAIRAGManager(
             preferences_manager_instance=self.prefs_manager,
@@ -134,7 +131,7 @@ class AtaraxAIOrchestrator:
             context_manager=self.context_manager,
             prompt_manager=self.prompt_manager,
             core_ai_service=self.cpp_service,  # type: ignore
-            chat_db_manager=self.db_manager,
+            chat_context=self.chat_context,
             rag_manager=self.rag_manager,
         )
         print("Prompt Engine Initialized.")
@@ -184,5 +181,7 @@ class AtaraxAIOrchestrator:
         print("Shutting down...")
         self.rag_manager.stop_file_monitoring()
         self.db_manager.close()
-        if hasattr(self, 'cpp_service') and self.cpp_service: # type: ignore
+        if hasattr(self, "cpp_service") and self.cpp_service:  # type: ignore
             self.cpp_service.shutdown()  # type: ignore
+
+

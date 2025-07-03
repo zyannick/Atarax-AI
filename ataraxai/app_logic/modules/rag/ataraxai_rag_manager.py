@@ -1,13 +1,10 @@
 from pathlib import Path
 from ataraxai.app_logic.modules.rag.rag_store import AtaraxAIEmbedder
-from platformdirs import user_data_dir, user_config_dir
-from ataraxai import core_ai_py  # type: ignore [attr-defined]
 from ataraxai.app_logic.modules.rag.resilient_indexer import start_rag_file_monitoring
 from ataraxai.app_logic.modules.rag.rag_store import RAGStore
 from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
 from ataraxai.app_logic.preferences_manager import PreferencesManager
 from typing_extensions import Optional, List, Dict, Any
-from ataraxai import __version__
 
 
 class AtaraxAIRAGManager:

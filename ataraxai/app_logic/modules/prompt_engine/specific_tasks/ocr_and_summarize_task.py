@@ -33,9 +33,7 @@ class OCRandSummarizeTask(BaseTask):
         self,
         processed_input: Dict[str, Any],
         context: TaskContext,
-        prompt_manager: PromptManager,
-        core_ai_service: core_ai_py.CoreAiService,  # type: ignore
-        generation_params: Dict[str, Any]
+        dependencies: Dict[str, Any],
     ) -> str:
         image_path = processed_input.get("image_path")
         if not image_path:
@@ -55,12 +53,12 @@ class OCRandSummarizeTask(BaseTask):
 
         print("Summarizing extracted text...")
         try:
-            summarization_prompt_template = prompt_manager.load_template(
-                self.prompt_template_name
-            )
+            summarization_prompt_template = dependencies[
+                "prompt_manager"
+            ].load_template(self.prompt_template_name)
             final_prompt = summarization_prompt_template.format(ocr_text=extracted_text)
-            summary: str = core_ai_service.process_prompt(  # type: ignore
-                final_prompt, generation_params
+            summary: str = dependencies["core_ai_service"].process_prompt(  # type: ignore
+                final_prompt, dependencies["generation_params"]
             )
 
             return summary  # type: ignore
