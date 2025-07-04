@@ -1,21 +1,24 @@
 import chromadb
-
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
+
 from ataraxai.app_logic.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
-from chromadb.api.types import Embeddings, Metadata, Document, Documents
-from typing_extensions import List
-from typing import Dict, Any
+from typing import Dict, List, Union, Mapping
+
+MetadataDict = Mapping[str, Union[str, int, float, bool, None]]
 
 
 class RAGStore:
-    def __init__(
-        self, db_path_str: str, collection_name: str, embedder: AtaraxAIEmbedder
-    ):
+    def __init__(self, db_path_str: str, collection_name: str, embedder: AtaraxAIEmbedder):
         self.db_path = Path(db_path_str)
         self.db_path.mkdir(parents=True, exist_ok=True)
         self.collection_name = collection_name
-        self.embedder = embedder if embedder else AtaraxAIEmbedder()
+
+
+        if not embedder:
+            raise ValueError("An embedder instance must be provided to RAGStore.")
+        self.embedder = embedder
+
         self.client = chromadb.PersistentClient(path=str(self.db_path))
 
         self.collection = self.client.get_or_create_collection(
@@ -29,33 +32,17 @@ class RAGStore:
 
     def add_chunks(
         self,
-        ids: list[str],
-        texts: list[str],
-        metadatas: List[Metadata],
-        embeddings_list: Optional[Embeddings] = None,
+        ids: List[str],
+        texts: List[str],
+        metadatas: List[MetadataDict],
     ):
 
         if len(metadatas) != len(texts):
-            raise ValueError(
-                "Length of metadatas must match length of texts. "
-                f"Got {len(metadatas)} metadata entries for {len(texts)} texts."
-            )
+            raise ValueError("Length of metadatas must match length of texts.")
 
-        if not embeddings_list:
-            if not self.embedder:
-                raise ValueError(
-                    "Embedder not available in RAGStore to generate embeddings."
-                )
-            print(f"RAGStore: Generating embeddings for {len(texts)} texts...")
-            embeddings_list = self.embedder(texts)
-            if len(embeddings_list) == 0 or len(embeddings_list) != len(texts):
-                raise ValueError(
-                    "Embedding generation failed or returned an incorrect number of embeddings."
-                )
 
         self.collection.add(
             ids=ids,
-            embeddings=embeddings_list,
             documents=texts,
             metadatas=metadatas,
         )
@@ -65,36 +52,26 @@ class RAGStore:
 
     def query(
         self,
-        query_text: Optional[str] = None,
-        query_embedding: Optional[Embeddings] = None,
+        query_text: str, 
         n_results: int = 5,
         filter_metadata: Optional[Dict[str, Any]] = None,
     ):
-        if not query_embedding and query_text:
-            if not self.embedder:
-                raise ValueError(
-                    "Embedder not available in RAGStore to generate query embedding."
-                )
-            print(f"RAGStore: Generating embedding for query: '{query_text[:50]}...'")
-            document_query = Document(query_text)
-            documents_query = Documents([document_query])  # type: ignore
-            query_embedding = self.embedder(documents_query)
+        if not query_text:
+            raise ValueError("query_text must be provided.")
+            
+        print(f"RAGStore: Querying with text: '{query_text[:50]}...'")
 
-        if query_embedding:
-            return self.collection.query(
-                query_embeddings=query_embedding,
-                n_results=n_results,
-                where=filter_metadata,
-                include=["metadatas", "documents", "distances"],  # Request desired info
-            )
-        else:
-            raise ValueError("Either query_text or query_embedding must be provided.")
+
+        return self.collection.query(
+            query_texts=[query_text], 
+            n_results=n_results,
+            where=filter_metadata,
+            include=["metadatas", "documents", "distances"],
+        )
 
     def delete_by_metadata(self, metadata_filter: Dict[str, Any]):
         if not metadata_filter:
-            print(
-                "RAGStore: Delete_by_metadata called with empty filter. No action taken."
-            )
+            print("RAGStore: Delete_by_metadata called with empty filter. No action taken.")
             return
         self.collection.delete(where=metadata_filter)
         print(

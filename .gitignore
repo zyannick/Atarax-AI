@@ -10,5 +10,6 @@ build.log
 .ruff_cache/
 .pytest_cache/
 .mypy_cache/
-
+ataraxai.log
+.coverage
 *.mp3

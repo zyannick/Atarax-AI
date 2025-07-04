@@ -6,7 +6,7 @@ from ataraxai.app_logic.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManag
 @pytest.fixture
 def mock_preferences_manager():
     mock_pm = mock.Mock()
-    mock_pm.get.return_value = "sentence-transformers/all-MiniLM"
+    mock_pm.get.return_value = "sentence-transformers/all-MiniLM-L6-v2"
     return mock_pm
 
 @pytest.fixture

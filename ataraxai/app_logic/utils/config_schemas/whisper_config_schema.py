@@ -6,7 +6,7 @@ class WhisperModelParams(BaseModel):
     use_gpu: bool = True
     flash_attn: bool = True
     audio_ctx: int = 0
-    model: str = "models/ggml-base.en.bin"
+    model: str = "data/last_models/models/whisper/ggml-base.en.bin"
     language: str = "en"
 
 

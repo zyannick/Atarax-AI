@@ -4,7 +4,7 @@ from typing import List
 
 class LlamaModelParams(BaseModel):
     config_version: float = 1.0
-    model_path: str = ""
+    model_path: str = "data/last_models/models/llama/Qwen3-30B-A3B-UD-IQ1_M.gguf"
     n_ctx: int = 2048
     n_gpu_layers: int = 0
     main_gpu: int = 0

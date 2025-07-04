@@ -23,13 +23,13 @@ class AtaraxAIRAGManager:
 
         self.embedder = AtaraxAIEmbedder(
             model_name=self.preferences_manager_instance.get(  # type: ignore
-                "rag_embedder_model", "sentence-transformers/all-MiniLM"
+                "rag_embedder_model", "sentence-transformers/all-MiniLM-L6-v2"
             )
         )
         self.rag_store = RAGStore(
             db_path_str=str(rag_store_db_path),
             collection_name="ataraxai_knowledge",
-            embedder_instance=self.embedder,  # type: ignore
+            embedder=self.embedder,  # type: ignore
         )
         self.manifest = RAGManifest(self.manifest_file_path)
 

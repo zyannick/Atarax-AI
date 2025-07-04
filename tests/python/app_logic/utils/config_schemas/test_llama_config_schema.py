@@ -9,7 +9,7 @@ from ataraxai.app_logic.utils.config_schemas.llama_config_schema import (
 def test_llama_model_params_defaults():
     params = LlamaModelParams()
     assert params.config_version == 1.0
-    assert params.model_path == ""
+    assert params.model_path == "data/last_models/models/llama/Qwen3-30B-A3B-UD-IQ1_M.gguf"
     assert params.n_ctx == 2048
     assert params.n_gpu_layers == 0
     assert params.main_gpu == 0

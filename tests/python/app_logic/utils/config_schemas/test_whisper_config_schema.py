@@ -13,7 +13,7 @@ def test_whisper_model_params_defaults():
     assert params.use_gpu is True
     assert params.flash_attn is True
     assert params.audio_ctx == 0
-    assert params.model == "models/ggml-base.en.bin"
+    assert params.model == "data/last_models/models/whisper/ggml-base.en.bin"
     assert params.language == "en"
 
 

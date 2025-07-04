@@ -69,6 +69,12 @@ wheel.packages = ["ataraxai"]
 testpaths = [
     "tests/python",
 ]
+markers = [
+    "integration: marks tests as integration tests (can be slow)",
+]
+filterwarnings = [
+    "ignore:.*builtin type SwigPy.*:DeprecationWarning",
+]
 
 [tool.ruff]
 exclude = [

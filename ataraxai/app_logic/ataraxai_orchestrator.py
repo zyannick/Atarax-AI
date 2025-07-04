@@ -1,6 +1,5 @@
 from pathlib import Path
 from typing import Any, List
-
 from ataraxai import __version__, core_ai_py  # type: ignore
 from ataraxai.app_logic.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.app_logic.preferences_manager import PreferencesManager
@@ -56,7 +55,7 @@ def init_params(
         whisper_model_params.model_dump()
     )
 
-    whisper_transcription_params_cc = core_ai_py.WhisperTranscriptionParams.from_dict(  # type: ignore
+    whisper_transcription_params_cc = core_ai_py.WhisperGenerationParams.from_dict(  # type: ignore
         whisper_transcription_params.model_dump()
     )
 
@@ -89,21 +88,9 @@ class AtaraxAIOrchestrator:
 
         self._init_configs()
 
-        print("Initializing Core Services...")
-        (
-            llama_model_params_cc,
-            llama_generation_params_cc,
-            whisper_model_params_cc,
-            whisper_transcription_params_cc,
-        ) = init_params(
-            llama_model_params=self.llama_config_manager.get_llm_params(),
-            llama_generation_params=self.llama_config_manager.get_generation_params(),
-            whisper_model_params=self.whisper_config_manager.get_whisper_params(),
-            whisper_transcription_params=self.whisper_config_manager.get_transcription_params(),
-        )
-        self.cpp_service = initialize_core_ai_service(  # type: ignore
-            llama_params=llama_model_params_cc, whisper_params=whisper_model_params_cc
-        )  # type: ignore
+        self.cpp_service = None
+        self._init_core_ai_services()
+        self.cpp_service_is_init = self.cpp_service is not None
 
         db_path = self.app_data_dir / "chat_history.sqlite"
         self.db_manager = ChatDatabaseManager(db_path=db_path)
@@ -136,10 +123,40 @@ class AtaraxAIOrchestrator:
         )
         print("Prompt Engine Initialized.")
 
-        if is_app_first_launch:
+        if not is_app_first_launch:
             self._perform_first_launch_setup()
 
         self._start_rag_monitoring()
+
+    def _init_core_ai_services(self):
+        print("Initializing Core Services...")
+        llm_params = self.llama_config_manager.get_llm_params()
+        whisper_params = self.whisper_config_manager.get_whisper_params()
+        if not llm_params.model_path or not Path(llm_params.model_path).exists():
+            print(f"Llama model path {llm_params.model_path} is invalid. You need to provide a real path.")
+            return None
+
+        if (
+            not whisper_params.model
+            or not Path(whisper_params.model).exists()
+        ):
+            print("Whisper model path is invalid.")
+            return None
+
+        (
+            llama_model_params_cc,
+            llama_generation_params_cc,
+            whisper_model_params_cc,
+            whisper_transcription_params_cc,
+        ) = init_params(
+            llama_model_params=llm_params,
+            llama_generation_params=self.llama_config_manager.get_generation_params(),
+            whisper_model_params=self.whisper_config_manager.get_whisper_params(),
+            whisper_transcription_params=self.whisper_config_manager.get_transcription_params(),
+        )
+        self.cpp_service = initialize_core_ai_service(  # type: ignore
+            llama_params=llama_model_params_cc, whisper_params=whisper_model_params_cc
+        )  # type: ignore
 
     def run_task_chain(self, chain_definition: list, initial_user_query: str) -> Any:
         print(f"Orchestrator executing chain for query: '{initial_user_query}'")
@@ -171,7 +188,8 @@ class AtaraxAIOrchestrator:
 
     def _perform_first_launch_setup(self):
         print("Performing application-wide first-launch tasks...")
-        self.app_setup_marker_file.touch(exist_ok=False)
+        if not self.app_setup_marker_file.exists():
+            self.app_setup_marker_file.touch(exist_ok=False)
 
     def _start_rag_monitoring(self):
         watched_dirs: List[str] = self.prefs_manager.get("rag_watched_directories", [])  # type: ignore
@@ -183,5 +201,3 @@ class AtaraxAIOrchestrator:
         self.db_manager.close()
         if hasattr(self, "cpp_service") and self.cpp_service:  # type: ignore
             self.cpp_service.shutdown()  # type: ignore
-
-

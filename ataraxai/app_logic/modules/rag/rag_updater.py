@@ -11,8 +11,9 @@ from ataraxai.app_logic.modules.rag.parser.base_meta_data import (
     set_base_metadata,
     get_file_hash,
 )
-from typing import Dict, Any
+from typing import Dict, List, Union, Mapping, Any
 
+MetadataDict = Mapping[str, Union[str, int, float, bool, None]]
 
 def process_new_file(
     file_path_str: str,
@@ -34,7 +35,7 @@ def process_new_file(
 
     try:
         final_texts = [cd.content for cd in chunked_document_objects]
-        final_metadatas = [
+        final_metadatas: List[MetadataDict] = [
             v for cd in chunked_document_objects for k, v in cd.metadata.items()
         ]
         chunk_ids = [
