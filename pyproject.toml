@@ -43,6 +43,7 @@ dependencies = [
     "librosa",
     "soundfile",
     "pytesseract",
+    "python-multipart"
 ]
 
 [project.optional-dependencies]

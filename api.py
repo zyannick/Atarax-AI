@@ -69,7 +69,7 @@ async def create_new_session(
 
 @app.post("/v1/sessions/{session_id}/messages", response_model=ChatMessageResponse)
 async def send_chat_message(
-    session_id: uuid.UUID = Path(..., description="The ID of the chat session."),
+    session_id: uuid.UUID,
     user_query: str = Form(..., description="The user's message to the AI."),
 ):
     try:
