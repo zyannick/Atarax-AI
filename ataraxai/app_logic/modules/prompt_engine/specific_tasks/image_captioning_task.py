@@ -4,7 +4,6 @@ import torch
 from transformers import AutoProcessor, LlavaForConditionalGeneration
 
 from ataraxai.app_logic.modules.prompt_engine.context_manager import TaskContext
-from ataraxai.app_logic.modules.prompt_engine.prompt_manager import PromptManager
 from ataraxai.app_logic.modules.prompt_engine.specific_tasks.base_task import BaseTask
 from typing import Optional
 

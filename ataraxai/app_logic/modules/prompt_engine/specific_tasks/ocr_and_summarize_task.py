@@ -3,11 +3,8 @@ from PIL import Image
 import pytesseract
 
 from ataraxai.app_logic.modules.prompt_engine.context_manager import TaskContext
-from ataraxai.app_logic.modules.prompt_engine.prompt_manager import PromptManager
 from ataraxai.app_logic.modules.prompt_engine.specific_tasks.base_task import BaseTask
 from typing import List
-
-from ataraxai import core_ai_py  # type: ignore
 
 
 class OCRandSummarizeTask(BaseTask):
@@ -56,10 +53,9 @@ class OCRandSummarizeTask(BaseTask):
         print("Summarizing extracted text...")
         try:
             final_prompt = prompt_manager.load_template(
-                self.prompt_template_name,
-                ocr_text=extracted_text 
+                self.prompt_template_name, ocr_text=extracted_text
             )
-    
+
             summary: str = dependencies["core_ai_service"].process_prompt(  # type: ignore
                 final_prompt, dependencies["generation_params"]
             )
