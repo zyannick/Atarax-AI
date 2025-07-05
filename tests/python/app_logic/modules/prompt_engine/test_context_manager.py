@@ -52,7 +52,7 @@ def test_get_relevant_document_chunks_returns_first_document_list(context_manage
     mock_rag_manager.query_knowledge.return_value = {"documents": documents}
     result = context_manager._get_relevant_document_chunks(user_inputs)
     assert result == ["chunk1", "chunk2", "chunk3"]
-    mock_rag_manager.query_knowledge.assert_called_once_with(query_text="test", n_results=5)
+    mock_rag_manager.query_knowledge.assert_called_once_with(query_text="test")
 
 def test_get_relevant_document_chunks_uses_default_top_k(context_manager, mock_rag_manager):
     context_manager.config.pop("rag", None)
@@ -61,7 +61,7 @@ def test_get_relevant_document_chunks_uses_default_top_k(context_manager, mock_r
     mock_rag_manager.query_knowledge.return_value = {"documents": documents}
     result = context_manager._get_relevant_document_chunks(user_inputs)
     assert result == ["chunkA"]
-    mock_rag_manager.query_knowledge.assert_called_once_with(query_text="test", n_results=3)
+    mock_rag_manager.query_knowledge.assert_called_once_with(query_text="test")
 
 def test_get_current_date_format(context_manager):
     date_str = context_manager._get_current_date()

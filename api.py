@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 import uuid
 from fastapi import FastAPI, Form
 from ataraxai.app_logic.ataraxai_orchestrator import AtaraxAIOrchestrator
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+
 
 
 class ChatMessageResponse(BaseModel):
@@ -95,3 +97,4 @@ async def send_chat_message(
 def shutdown_event():
     print("API is shutting down. Closing orchestrator resources.")
     orchestrator.shutdown()
+

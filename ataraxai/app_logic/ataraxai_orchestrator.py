@@ -99,6 +99,7 @@ class AtaraxAIOrchestrator:
         self.rag_manager = AtaraxAIRAGManager(
             preferences_manager_instance=self.prefs_manager,
             app_data_root_path=self.app_data_dir,
+            core_ai_service=self.cpp_service,  # type: ignore
         )
         print("Core Services Initialized.")
 

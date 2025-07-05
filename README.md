@@ -27,8 +27,8 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 ## Planning
   - [x] Core Setup with llama.cpp. whisper.cpp
   - [x] Automatic local benchmarking
-  - [ ] Frompt engineering framework
-  - [ ] Embedding Store + Context Management
+  - [x] Frompt engineering framework
+  - [x] Embedding Store + Context Management
   - [ ] System Integration
   - [ ] UI Layer
   - [ ] Testing, Benchmarking, Optimization 

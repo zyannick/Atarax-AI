@@ -30,7 +30,7 @@ class RAGManifest:
             with open(self.path, "r") as f:
                 return json.load(f)
         return {}
-
+    
     def save(self):
         """
         Saves the current data to a JSON file at the specified path.

@@ -42,18 +42,16 @@ class ContextManager:
         if not query:
             return []
 
-        top_k = self.config.get("rag", {}).get("top_k", 3)
-
-        query_results = self.rag_manager.query_knowledge(
-            query_text=query, n_results=top_k
+        query_results: List[str] = self.rag_manager.query_knowledge(
+            query_text=query
         )
 
         if (
             query_results
             and "documents" in query_results
-            and query_results["documents"]
+            and query_results["documents"] # type: ignore
         ):
-            return query_results["documents"][0]
+            return query_results["documents"][0] # type: ignore
 
         return []
 
@@ -80,6 +78,7 @@ class ContextManager:
             and user_inputs
             and "query" in user_inputs
         ):
+            print(user_inputs["query"])
             return self._get_relevant_document_chunks(user_inputs["query"])
         elif context_key == "user_calendar_today":
             return self._get_calendar_events_today()
