@@ -26,11 +26,11 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-class ArataxAILogger:
+class ArataxAILogger(logging.Logger):
 
     def __init__(self, log_file: str = "ataraxai.log"):
-        self.logger = logging.getLogger("AtaraxaiLogger")
-        self.logger.setLevel(logging.DEBUG)
+        super().__init__("AtaraxaiLogger")
+        self.setLevel(logging.DEBUG)
 
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(logging.DEBUG)
@@ -44,20 +44,20 @@ class ArataxAILogger:
         )
         file_handler.setFormatter(formatter)
 
-        self.logger.addHandler(file_handler)
-        self.logger.addHandler(console_handler)
+        self.addHandler(file_handler)
+        self.addHandler(console_handler)
 
     def debug(self, message: str):
-        self.logger.debug(message)
+        self.debug(message)
 
     def info(self, message: str):
-        self.logger.info(message)
+        self.info(message)
 
     def warning(self, message: str):
-        self.logger.warning(message)
+        self.warning(message)
 
     def error(self, message: str):
-        self.logger.error(message)
+        self.error(message)
 
     def critical(self, message: str):
-        self.logger.critical(message)
+        self.critical(message)

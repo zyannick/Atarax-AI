@@ -1,26 +1,32 @@
 from pathlib import Path
+import queue
 from typing import Tuple
 from ataraxai.app_logic.modules.rag.rag_store import AtaraxAIEmbedder
 from ataraxai.app_logic.modules.rag.resilient_indexer import start_rag_file_monitoring
 from ataraxai.app_logic.modules.rag.rag_store import RAGStore
 from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
+from ataraxai.app_logic.modules.rag.rag_updater import process_new_file
 from ataraxai.app_logic.preferences_manager import PreferencesManager
 from typing_extensions import Optional, List, Dict, Any
 from sentence_transformers import CrossEncoder
 from chromadb import QueryResult
 import numpy as np
 from functools import lru_cache
+import os
+import threading
+from ataraxai.app_logic.modules.rag.rag_updater import rag_update_worker
+from ataraxai.app_logic.utils.rag_config_manager import RAGConfigManager
 
 
 class AtaraxAIRAGManager:
     def __init__(
         self,
-        preferences_manager_instance: PreferencesManager,
+        rag_config_manager: RAGConfigManager,
         app_data_root_path: Path,
         core_ai_service: Any,
     ):
         self.app_data_root_path = app_data_root_path
-        self.preferences_manager_instance = preferences_manager_instance
+        self.rag_config_manager = rag_config_manager
         self.llm_engine = core_ai_service
 
         rag_store_db_path = self.app_data_root_path / "rag_chroma_store"
@@ -29,7 +35,7 @@ class AtaraxAIRAGManager:
         self.manifest_file_path = self.app_data_root_path / "rag_manifest.json"
 
         self.embedder = AtaraxAIEmbedder(
-            model_name=self.preferences_manager_instance.get(  # type: ignore
+            model_name=self.rag_config_manager.get(  # type: ignore
                 "rag_embedder_model", "sentence-transformers/all-MiniLM-L6-v2"
             )
         )
@@ -40,26 +46,87 @@ class AtaraxAIRAGManager:
         )
         self.manifest = RAGManifest(self.manifest_file_path)
 
-        self.rag_use_reranking: bool = bool(self.preferences_manager_instance.get("rag_use_reranking", False))  # type: ignore
+        self.rag_use_reranking: bool = bool(self.rag_config_manager.get("rag_use_reranking", False))  # type: ignore
 
-        self.n_result: int = int(self.preferences_manager_instance.get("n_result", 5))  # type: ignore
-        self.n_result_final: int = int(self.preferences_manager_instance.get("n_result_final", 3))  # type: ignore
-        self.use_hyde: bool = bool(self.preferences_manager_instance.get("use_hyde", True))  # type: ignore
-
+        self.n_result: int = int(self.rag_config_manager.get("n_result", 5))  # type: ignore
+        self.n_result_final: int = int(self.rag_config_manager.get("n_result_final", 3))  # type: ignore
+        self.use_hyde: bool = bool(self.rag_config_manager.get("use_hyde", True))  # type: ignore
+        self.processing_queue: queue.Queue[Dict[str, Any]] = queue.Queue()
         self.file_observer = None
 
         print("AtaraxAIRAGManager initialized.")
 
-    def start_file_monitoring(self, watched_directories: List[str]):
+    def check_manifest_validity(self):
+        is_valid = self.manifest.is_valid(self.rag_store)
+        return is_valid
+
+    def rebuild_index(self, directories_to_scan: Optional[List[str | Any]]):
+        """
+        Deletes all existing data from the RAG store and manifest,
+        and then performs a full re-scan and re-indexing of the specified directories.
+        """
+        print("Rebuilding RAG index from scratch...")
+
+        if not directories_to_scan:
+            print("Unable to rebuild RAG index: No directories specified.")
+            return
+
+        self.rag_store.client.delete_collection(name=self.rag_store.collection_name)
+        self.rag_store.collection = self.rag_store.client.get_or_create_collection(
+            name=self.rag_store.collection_name,
+            embedding_function=self.embedder,
+            metadata={"hnsw:space": "cosine"},
+        )
+        self.manifest.clear()
+
+        self.perform_initial_scan(directories_to_scan)
+
+    def perform_initial_scan(self, directories_to_scan: Optional[List[str]]):
+        """
+        Scans directories for existing files and adds them to the processing queue.
+        """
+        if not directories_to_scan:
+            print("No directories to scan.")
+            return
+
+        print(f"Performing initial scan of directories: {directories_to_scan}...")
+        for directory in directories_to_scan:
+            for root, _, files in os.walk(directory):
+                for filename in files:
+                    file_path = os.path.join(root, filename)
+                    if not self.manifest.is_file_in_manifest(file_path):
+                        task = {"event_type": "created", "path": file_path}
+                        self.processing_queue.put(task)
+
+    def start_file_monitoring(self, watched_directories: Optional[List[str]]):
+        if not watched_directories:
+            print("No directories specified for monitoring.")
+            return
+
         if self.file_observer and self.file_observer.is_alive():
             self.file_observer.stop()
             self.file_observer.join()
+
+        if not self.worker_thread or not self.worker_thread.is_alive():
+            self.worker_thread = threading.Thread(
+                target=rag_update_worker,
+                args=(
+                    self.processing_queue,
+                    self.manifest,
+                    self.rag_store,
+                    self.rag_config_manager.get("rag_chunk_config", {}),  # type: ignore
+                ),
+                daemon=True,
+            )
+            self.worker_thread.start()
+            print("RAG update worker thread started.")
 
         if watched_directories:
             self.file_observer = start_rag_file_monitoring(
                 paths_to_watch=watched_directories,
                 manifest=self.manifest,
-                chroma_collection=self.rag_store.collection,
+                rag_store=self.rag_store,
+                chunk_config=self.rag_config_manager.get("rag_chunk_config", {}),  # type: ignore
             )
             print("File monitoring started via AtaraxAIRAGManager.")
         else:
@@ -88,7 +155,7 @@ class AtaraxAIRAGManager:
     def cross_encoder(self):
         if not hasattr(self, "_cross_encoder"):
             if self.rag_use_reranking and self.llm_engine:
-                cross_encoder_model: str = self.preferences_manager_instance.get(  # type: ignore
+                cross_encoder_model: str = self.rag_config_manager.get(  # type: ignore
                     "rag_cross_encoder_model", "cross-encoder/ms-marco-MiniLM-L-6-v2"
                 )
                 self._cross_encoder = CrossEncoder(cross_encoder_model)

@@ -31,5 +31,5 @@ class GenerationParams(BaseModel):
 
 class LlamaConfig(BaseModel):
     config_version: float = 1.0
-    llm_model_params: LlamaModelParams = LlamaModelParams()
+    llama_cpp_model_params: LlamaModelParams = LlamaModelParams()
     generation_params: GenerationParams = GenerationParams()

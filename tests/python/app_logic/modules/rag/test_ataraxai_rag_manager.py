@@ -53,7 +53,7 @@ def manager(mock_preferences_manager, tmp_app_data_root):
         # Instantiate the manager, passing the mock_core_ai object directly
         # as the 'core_ai_service' argument.
         manager_instance = AtaraxAIRAGManager(
-            preferences_manager_instance=mock_preferences_manager,
+            rag_config_manager=mock_preferences_manager,
             app_data_root_path=tmp_app_data_root,
             core_ai_service=mock_core_ai,
         )

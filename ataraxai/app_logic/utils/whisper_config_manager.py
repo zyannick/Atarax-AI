@@ -49,11 +49,15 @@ class WhisperConfigManager:
     def get_whisper_params(self) -> WhisperModelParams:
         return self.config.whisper_model_params
 
+    def update_whisper_model_params(self, params: WhisperModelParams):
+        self.config.whisper_model_params = params
+        self._save()
+
     def get_transcription_params(self) -> WhisperTranscriptionParams:
         return self.config.whisper_transcription_params
 
-    def update_whisper_params(self, params: WhisperModelParams):
-        self.config.whisper_model_params = params
+    def update_whisper_transcription_params(self, params: WhisperTranscriptionParams):
+        self.config.whisper_transcription_params = params
         self._save()
 
     def update_transcription_params(self, params: WhisperTranscriptionParams):

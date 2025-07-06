@@ -41,15 +41,23 @@ class LlamaConfigManager:
                 default_flow_style=False,
             )
 
-    def get_llm_params(self) -> LlamaModelParams:
-        return self.config.llm_model_params
+    def get_llama_cpp_params(self) -> LlamaModelParams:
+        return self.config.llama_cpp_model_params
+
+    def set_llama_cpp_params(self, params: LlamaModelParams):
+        self.config.llama_cpp_model_params = params
+        self._save()
 
     def get_generation_params(self) -> GenerationParams:
         return self.config.generation_params
 
+    def set_generation_params(self, params: GenerationParams):
+        self.config.generation_params = params
+        self._save()
+
     def set_param(self, section: str, key: str, value: str):
-        if section == "llm_model_params" and hasattr(self.config.llm_model_params, key):
-            setattr(self.config.llm_model_params, key, value)
+        if section == "llm_model_params" and hasattr(self.config.llama_cpp_model_params, key):
+            setattr(self.config.llama_cpp_model_params, key, value)
         elif section == "generation_params" and hasattr(
             self.config.generation_params, key
         ):

@@ -1,11 +1,10 @@
-from fastapi import FastAPI, HTTPException,BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 import uuid
 from fastapi import FastAPI, Form
 from ataraxai.app_logic.ataraxai_orchestrator import AtaraxAIOrchestrator
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-
 
 
 class ChatMessageResponse(BaseModel):
@@ -51,6 +50,52 @@ async def create_new_project(
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 
+@app.delete("/v1/projects/{project_id}", response_model=CreateProjectResponse)
+async def delete_project(project_id: uuid.UUID):
+    project = orchestrator.db_manager.get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    orchestrator.db_manager.delete_project(project_id)
+    return CreateProjectResponse(
+        project_id=project.id, name=project.name, description=project.description
+    )
+
+
+@app.get("/v1/projects/{project_id}", response_model=CreateProjectResponse)
+async def get_project(project_id: uuid.UUID):
+    project = orchestrator.db_manager.get_project(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return CreateProjectResponse(
+        project_id=project.id, name=project.name, description=project.description
+    )
+
+
+@app.get("/v1/projects", response_model=List[CreateProjectResponse])
+async def list_projects():
+    projects = orchestrator.db_manager.list_projects()
+    return [
+        CreateProjectResponse(
+            project_id=project.id, name=project.name, description=project.description
+        )
+        for project in projects
+    ]
+
+
+@app.get(
+    "/v1/projects/{project_id}/sessions", response_model=List[CreateSessionResponse]
+)
+async def list_sessions(project_id: uuid.UUID):
+    sessions = orchestrator.db_manager.list_sessions(project_id)
+    return [
+        CreateSessionResponse(
+            session_id=session.id, title=session.title, project_id=session.project.id
+        )
+        for session in sessions
+    ]
+
+
 @app.post("/v1/sessions", response_model=CreateSessionResponse)
 async def create_new_session(
     project_id: uuid.UUID = Form(
@@ -67,6 +112,18 @@ async def create_new_session(
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/v1/sessions/{session_id}", response_model=CreateSessionResponse)
+async def delete_session(session_id: uuid.UUID):
+    session = orchestrator.db_manager.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    orchestrator.db_manager.delete_session(session_id)
+    return CreateSessionResponse(
+        session_id=session.id, title=session.title, project_id=session.project.id
+    )
 
 
 @app.post("/v1/sessions/{session_id}/messages", response_model=ChatMessageResponse)
@@ -97,4 +154,3 @@ async def send_chat_message(
 def shutdown_event():
     print("API is shutting down. Closing orchestrator resources.")
     orchestrator.shutdown()
-

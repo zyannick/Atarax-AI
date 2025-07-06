@@ -5,6 +5,8 @@ from typing import Optional, Any
 from ataraxai.app_logic.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
 from typing import Dict, List, Union, Mapping
 
+from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
+
 MetadataDict = Mapping[str, Union[str, int, float, bool, None]]
 
 
@@ -34,6 +36,7 @@ class RAGStore:
             f"RAGStore: Collection '{self.collection.name}' loaded/created with {self.collection.count()} items."
         )
 
+
     def add_chunks(
         self,
         ids: List[str],
@@ -52,6 +55,8 @@ class RAGStore:
         print(
             f"Added/updated {len(ids)} items to collection '{self.collection.name}'. New count: {self.collection.count()}"
         )
+
+
 
     def query(
         self,

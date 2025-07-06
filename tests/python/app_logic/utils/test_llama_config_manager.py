@@ -31,12 +31,12 @@ def test_loads_existing_config(temp_config_dir):
     with open(config_file, "w", encoding="utf-8") as f:
         yaml.dump(config_data, f)
     manager = LlamaConfigManager(temp_config_dir)
-    assert manager.config.llm_model_params.model_path == "test-model"
+    assert manager.config.llama_cpp_model_params.model_path == "test-model"
     assert manager.config.generation_params.n_predict == 123
 
 def test_get_llm_params_and_generation_params(temp_config_dir):
     manager = LlamaConfigManager(temp_config_dir)
-    llm_params = manager.get_llm_params()
+    llm_params = manager.get_llama_cpp_params()
     gen_params = manager.get_generation_params()
     assert isinstance(llm_params, LlamaModelParams)
     assert isinstance(gen_params, GenerationParams)

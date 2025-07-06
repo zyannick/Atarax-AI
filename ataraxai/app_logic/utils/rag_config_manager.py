@@ -39,6 +39,15 @@ class RAGConfigManager:
                 f,
                 default_flow_style=False,
             )
+            
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, RAGConfigManager):
+            return NotImplemented
+        return self.config == value.config
+    
+    def set(self, key: str, value: Optional[object]):
+        setattr(self.config, key, value)
+        self._save()
 
     def get_config(self) -> RAGConfig:
         return self.config

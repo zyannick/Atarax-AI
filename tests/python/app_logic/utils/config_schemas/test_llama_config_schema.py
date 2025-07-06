@@ -86,9 +86,9 @@ def test_generation_params_custom_values():
 def test_llama_config_defaults():
     config = LlamaConfig()
     assert config.config_version == 1.0
-    assert isinstance(config.llm_model_params, LlamaModelParams)
+    assert isinstance(config.llama_cpp_model_params, LlamaModelParams)
     assert isinstance(config.generation_params, GenerationParams)
-    assert config.llm_model_params.n_ctx == 2048
+    assert config.llama_cpp_model_params.n_ctx == 2048
     assert config.generation_params.n_predict == 128
 
 def test_llama_config_custom_values():
@@ -96,12 +96,12 @@ def test_llama_config_custom_values():
     gen_params = GenerationParams(n_predict=10, temp=0.1)
     config = LlamaConfig(
         config_version=2.0,
-        llm_model_params=model_params,
+        llama_cpp_model_params=model_params,
         generation_params=gen_params,
     )
     assert config.config_version == 2.0
-    assert config.llm_model_params.model_path == "foo.bin"
-    assert config.llm_model_params.n_ctx == 1024
+    assert config.llama_cpp_model_params.model_path == "foo.bin"
+    assert config.llama_cpp_model_params.n_ctx == 1024
     assert config.generation_params.n_predict == 10
     assert config.generation_params.temp == 0.1
     
@@ -126,18 +126,18 @@ def test_llama_config_type_enforcement():
     with pytest.raises(ValueError):
         LlamaConfig(config_version="not_a_float")
     with pytest.raises(ValueError):
-        LlamaConfig(llm_model_params="not_a_llama_model_params")
+        LlamaConfig(llama_cpp_model_params="not_a_llama_model_params")
     with pytest.raises(ValueError):
         LlamaConfig(generation_params="not_a_generation_params")
 
 def test_llama_config_nested_dict_instantiation():
     config = LlamaConfig(
-        llm_model_params={"model_path": "bar.bin", "n_ctx": 512},
+        llama_cpp_model_params={"model_path": "bar.bin", "n_ctx": 512},
         generation_params={"n_predict": 5, "temp": 0.2},
     )
-    assert isinstance(config.llm_model_params, LlamaModelParams)
-    assert config.llm_model_params.model_path == "bar.bin"
-    assert config.llm_model_params.n_ctx == 512
+    assert isinstance(config.llama_cpp_model_params, LlamaModelParams)
+    assert config.llama_cpp_model_params.model_path == "bar.bin"
+    assert config.llama_cpp_model_params.n_ctx == 512
     assert isinstance(config.generation_params, GenerationParams)
     assert config.generation_params.n_predict == 5
     assert config.generation_params.temp == 0.2

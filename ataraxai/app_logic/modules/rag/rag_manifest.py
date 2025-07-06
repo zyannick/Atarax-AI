@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from typing_extensions import Union
 
+from ataraxai.app_logic.modules.rag.rag_store import RAGStore
+
 
 class RAGManifest:
     def __init__(self, manifest_path: Union[str, Path]):
@@ -61,6 +63,48 @@ class RAGManifest:
         if not metadata:
             metadata = {}
         self.data[str(file_path)] = metadata
+        self.save()
+
+    def is_file_in_manifest(self, file_path: Union[str, Path]) -> bool:
+        """
+        Checks if a file is in the manifest.
+
+        Args:
+            file_path (str or Path): The path to the file to check.
+
+        Returns:
+            bool: True if the file is in the manifest, False otherwise.
+        """
+        return str(file_path) in self.data
+    
+    def is_valid(self, rag_store: RAGStore) -> bool:
+        if not self.data:
+            return True #
+
+        all_manifest_chunk_ids = set() # type: ignore
+        for file_info in self.data.values():
+            chunk_ids = file_info.get("chunk_ids")
+            if isinstance(chunk_ids, list):
+                all_manifest_chunk_ids.update(chunk_ids) # type: ignore
+
+        if not all_manifest_chunk_ids:
+            print("Manifest contains no chunk IDs to validate.")
+            return True
+
+        retrieved_chunks = rag_store.collection.get(
+            ids=list(all_manifest_chunk_ids)
+        )
+        retrieved_ids = set(retrieved_chunks.get("ids", []))
+
+        if all_manifest_chunk_ids == retrieved_ids:
+            return True
+        else:
+            missing_in_store = all_manifest_chunk_ids - retrieved_ids # type: ignore
+            extra_in_store = retrieved_ids - all_manifest_chunk_ids
+            return False
+        
+    def clear(self):
+        self.data = {}
         self.save()
 
     def remove_file(self, file_path: Union[str, Path]):
