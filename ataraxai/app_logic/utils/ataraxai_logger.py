@@ -2,11 +2,13 @@ import logging
 
 
 class CustomFormatter(logging.Formatter):
+    # from https://stackoverflow.com/a/56944256
     blue = "\x1b[34;20m"
     dard_blue = "\x1b[38;5;20m"
     brown = "\x1b[38;5;94m"
     maroon = "\x1b[38;5;52m"
     bold_red = "\x1b[31;1m"
+    light_red = "\x1b[38;5;196m"
     reset = "\x1b[0m"
     log_format = (
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
@@ -16,7 +18,7 @@ class CustomFormatter(logging.Formatter):
         logging.DEBUG: dard_blue + log_format + reset,
         logging.INFO: blue + log_format + reset,
         logging.WARNING: brown + log_format + reset,
-        logging.ERROR: maroon + log_format + reset,
+        logging.ERROR: light_red + log_format + reset,
         logging.CRITICAL: bold_red + log_format + reset,
     }
 
@@ -26,11 +28,11 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-class ArataxAILogger(logging.Logger):
+class ArataxAILogger:
 
     def __init__(self, log_file: str = "ataraxai.log"):
-        super().__init__("AtaraxaiLogger")
-        self.setLevel(logging.DEBUG)
+        self.logger = logging.getLogger("AtaraxaiLogger")
+        self.logger.setLevel(logging.DEBUG)
 
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(logging.DEBUG)
@@ -44,20 +46,20 @@ class ArataxAILogger(logging.Logger):
         )
         file_handler.setFormatter(formatter)
 
-        self.addHandler(file_handler)
-        self.addHandler(console_handler)
+        self.logger.addHandler(file_handler)
+        self.logger.addHandler(console_handler)
 
     def debug(self, message: str):
-        self.debug(message)
+        self.logger.debug(message)
 
     def info(self, message: str):
-        self.info(message)
+        self.logger.info(message)
 
     def warning(self, message: str):
-        self.warning(message)
+        self.logger.warning(message)
 
     def error(self, message: str):
-        self.error(message)
+        self.logger.error(message)
 
     def critical(self, message: str):
-        self.critical(message)
+        self.logger.critical(message)

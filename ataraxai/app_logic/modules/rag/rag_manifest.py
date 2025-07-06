@@ -1,10 +1,8 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from typing_extensions import Union
-
 from ataraxai.app_logic.modules.rag.rag_store import RAGStore
-
 
 class RAGManifest:
     def __init__(self, manifest_path: Union[str, Path]):
@@ -32,7 +30,16 @@ class RAGManifest:
             with open(self.path, "r") as f:
                 return json.load(f)
         return {}
-    
+
+    def get_all_files(self) -> List[str]:
+        """
+        Returns a list of all file paths in the manifest.
+
+        Returns:
+            list: A list of file paths.
+        """
+        return list(self.data.keys())
+
     def save(self):
         """
         Saves the current data to a JSON file at the specified path.

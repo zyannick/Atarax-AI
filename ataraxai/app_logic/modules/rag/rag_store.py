@@ -5,8 +5,6 @@ from typing import Optional, Any
 from ataraxai.app_logic.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
 from typing import Dict, List, Union, Mapping
 
-from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
-
 MetadataDict = Mapping[str, Union[str, int, float, bool, None]]
 
 
@@ -45,7 +43,7 @@ class RAGStore:
     ):
 
         if len(metadatas) != len(texts):
-            raise ValueError("Length of metadatas must match length of texts.")
+            raise ValueError("Length of metadatas must match length of texts. {} vs {}".format(len(metadatas), len(texts)))
 
         self.collection.add(
             ids=ids,

@@ -24,11 +24,11 @@ class ChainRunner:
         self.rag_manager = rag_manager
 
         self.dependencies: Dict[str, Any] = {
-            "context_manager": context_manager,
-            "prompt_manager": prompt_manager,
-            "core_ai_service": core_ai_service,
-            "chat_context": chat_context,
-            "rag_manager": rag_manager
+            "context_manager": self.context_manager,
+            "prompt_manager": self.prompt_manager,
+            "core_ai_service": self.core_ai_service,
+            "chat_context": self.chat_context,
+            "rag_manager": self.rag_manager
         }
 
     def run_chain(

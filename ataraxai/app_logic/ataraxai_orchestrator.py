@@ -34,6 +34,7 @@ from ataraxai.app_logic.modules.chat.chat_models import (
     ProjectResponse,
     MessageResponse,
 )
+import time
 
 APP_NAME = "AtaraxAI"
 APP_AUTHOR = "AtaraxAI"
@@ -47,6 +48,9 @@ class ServiceStatus(Enum):
 
 
 class AtaraxAIError(Exception):
+    pass
+
+class CoreAIServiceError(AtaraxAIError):
     pass
 
 
@@ -128,7 +132,7 @@ class InputValidator:
 
 class ConfigurationManager:
 
-    def __init__(self, config_dir: Path, logger: logging.Logger):
+    def __init__(self, config_dir: Path, logger: ArataxAILogger):
         self.config_dir = config_dir
         self.logger = logger
         self._init_config_managers()
@@ -161,20 +165,28 @@ class ConfigurationManager:
 
 class CoreAIServiceManager:
 
-    def __init__(self, config_manager: ConfigurationManager, logger: logging.Logger):
+    def __init__(self, config_manager: ConfigurationManager, logger: ArataxAILogger):
         self.config_manager = config_manager
         self.logger = logger
         self.service: Optional[Any] = None
         self.status = ServiceStatus.NOT_INITIALIZED
-
+    
+    def get_service(self) -> Any:
+        if self.status == ServiceStatus.NOT_INITIALIZED:
+            self.initialize()
+        elif self.status == ServiceStatus.FAILED:
+            raise ServiceInitializationError("Core AI service initialization previously failed")
+        
+        return self.service
+    
     def initialize(self) -> None:
         if self.status == ServiceStatus.INITIALIZED:
             self.logger.info("Core AI services already initialized")
             return
-
+        
         self.status = ServiceStatus.INITIALIZING
         self.logger.info("Initializing Core AI services...")
-
+        
         try:
             self._validate_model_paths()
             self._initialize_services()
@@ -183,97 +195,130 @@ class CoreAIServiceManager:
         except Exception as e:
             self.status = ServiceStatus.FAILED
             self.logger.error(f"Failed to initialize core AI services: {e}")
-            raise ServiceInitializationError(
-                f"Core AI service initialization failed: {e}"
-            )
-
+            raise ServiceInitializationError(f"Core AI service initialization failed: {e}")
+    
+    def is_configured(self) -> bool:
+        try:
+            self._validate_model_paths()
+            return True
+        except ValidationError:
+            return False
+    
+    def get_configuration_status(self) -> Dict[str, Any]:
+        status: Dict[str, Any] = {
+            "llama_configured": False,
+            "whisper_configured": False,
+            "llama_model_path": None,
+            "whisper_model_path": None,
+            "llama_path_exists": False,
+            "whisper_path_exists": False,
+            "initialization_status": self.status.value
+        }
+        
+        try:
+            llama_params = self.config_manager.llama_config.get_llama_cpp_params()
+            status["llama_model_path"] = llama_params.model_path
+            status["llama_configured"] = bool(llama_params.model_path)
+            if llama_params.model_path:
+                status["llama_path_exists"] = Path(llama_params.model_path).exists()
+        except Exception as e:
+            self.logger.warning(f"Could not get Llama configuration: {e}")
+        
+        try:
+            whisper_params = self.config_manager.whisper_config.get_whisper_params()
+            status["whisper_model_path"] = whisper_params.model
+            status["whisper_configured"] = bool(whisper_params.model)
+            if whisper_params.model:
+                status["whisper_path_exists"] = Path(whisper_params.model).exists()
+        except Exception as e:
+            self.logger.warning(f"Could not get Whisper configuration: {e}")
+        
+        return status
+    
     def _validate_model_paths(self) -> None:
-        llm_params = self.config_manager.llama_config.get_llama_cpp_params()
+        llama_params = self.config_manager.llama_config.get_llama_cpp_params()
         whisper_params = self.config_manager.whisper_config.get_whisper_params()
 
-        if not llm_params.model_path:
+        if not llama_params.model_path:
             raise ValidationError("Llama model path not configured")
 
-        if not Path(llm_params.model_path).exists():
-            raise ValidationError(
-                f"Llama model path does not exist: {llm_params.model_path}"
-            )
+        if not Path(llama_params.model_path).exists():
+            raise ValidationError(f"Llama model path does not exist: {llama_params.model_path}")
 
         if not whisper_params.model:
             raise ValidationError("Whisper model path not configured")
-
+        
         if not Path(whisper_params.model).exists():
-            raise ValidationError(
-                f"Whisper model path does not exist: {whisper_params.model}"
-            )
-
+            raise ValidationError(f"Whisper model path does not exist: {whisper_params.model}")
+    
     def _initialize_services(self) -> None:
-        """Initialize the actual services"""
-        llm_params = self.config_manager.llama_config.get_llama_cpp_params()
+        llama_params = self.config_manager.llama_config.get_llama_cpp_params()
         whisper_params = self.config_manager.whisper_config.get_whisper_params()
-
+        
         (
             llama_model_params_cc,
             llama_generation_params_cc,
             whisper_model_params_cc,
             whisper_transcription_params_cc,
-        ) = self._convert_params(llm_params, whisper_params)
+        ) = self._convert_params(llama_params, whisper_params)
 
         self.service = self._create_core_ai_service(
-            llama_model_params_cc, whisper_model_params_cc
+            llama_model_params_cc, 
+            whisper_model_params_cc
         )
 
-    def _convert_params(
-        self, llm_params: LlamaModelParams, whisper_params: WhisperModelParams
-    ) -> Tuple[Any, Any, Any, Any]:
-        llama_model_params_cc = core_ai_py.LlamaModelParams.from_dict(  # type: ignore
-            llm_params.model_dump()
+    def _convert_params(self, llama_params: LlamaModelParams, whisper_params: WhisperModelParams) -> Tuple[Any, Any, Any, Any]:
+        llama_model_params_cc : Any = core_ai_py.LlamaModelParams.from_dict(  # type: ignore
+            llama_params.model_dump()
         )
 
-        llama_generation_params_cc = core_ai_py.GenerationParams.from_dict(  # type: ignore
+        llama_generation_params_cc : Any = core_ai_py.GenerationParams.from_dict( # type: ignore
             self.config_manager.llama_config.get_generation_params().model_dump()
         )
 
-        whisper_model_params_cc = core_ai_py.WhisperModelParams.from_dict(  # type: ignore
+        whisper_model_params_cc : Any = core_ai_py.WhisperModelParams.from_dict( # type: ignore
             whisper_params.model_dump()
         )
 
-        whisper_transcription_params_cc = core_ai_py.WhisperGenerationParams.from_dict(  # type: ignore
+        whisper_transcription_params_cc : Any = core_ai_py.WhisperGenerationParams.from_dict( # type: ignore
             self.config_manager.whisper_config.get_transcription_params().model_dump()
         )
-
+        
         return (
             llama_model_params_cc,
             llama_generation_params_cc,
             whisper_model_params_cc,
             whisper_transcription_params_cc,
-        )  # type: ignore
-
+        ) # type: ignore
+    
     def _create_core_ai_service(self, llama_params: Any, whisper_params: Any) -> Any:
-        service = core_ai_py.CoreAIService()  # type: ignore
-        service.initialize_llama_model(llama_params)  # type: ignore
-        service.initialize_whisper_model(whisper_params)  # type: ignore
-        return service  # type: ignore
-
+        service = core_ai_py.CoreAIService() # type: ignore
+        service.initialize_llama_model(llama_params) # type: ignore
+        service.initialize_whisper_model(whisper_params) # type: ignore
+        return service # type: ignore
+    
     def shutdown(self) -> None:
+        """Shutdown core AI services"""
         if self.service:
             try:
-                self.service.shutdown()
+                # self.service.shutdown()
                 self.logger.info("Core AI services shut down successfully")
             except Exception as e:
                 self.logger.error(f"Error shutting down core AI services: {e}")
             finally:
                 self.service = None
                 self.status = ServiceStatus.NOT_INITIALIZED
-
+    
     @property
     def is_initialized(self) -> bool:
+        """Check if services are initialized"""
         return self.status == ServiceStatus.INITIALIZED
+
 
 
 class ChatManager:
 
-    def __init__(self, db_manager: ChatDatabaseManager, logger: logging.Logger):
+    def __init__(self, db_manager: ChatDatabaseManager, logger: ArataxAILogger):
         self.db_manager = db_manager
         self.logger = logger
         self.validator = InputValidator()
@@ -385,7 +430,7 @@ class ChatManager:
 class SetupManager:
 
     def __init__(
-        self, directories: AppDirectories, config: AppConfig, logger: logging.Logger
+        self, directories: AppDirectories, config: AppConfig, logger: ArataxAILogger
     ):
         self.directories = directories
         self.config = config
@@ -433,26 +478,30 @@ class AtaraxAIOrchestrator:
 
         self._initialize_application()
 
-    def _init_logger(self) -> logging.Logger:
+    def _init_logger(self) -> ArataxAILogger:
         return ArataxAILogger()
 
     def _initialize_application(self) -> None:
         try:
             self.logger.info(f"Starting AtaraxAI v{__version__}")
-
+            
             if self.setup_manager.is_first_launch():
                 self.setup_manager.perform_first_launch_setup()
-
+            
             self._init_database()
             self._init_rag_manager()
             self._init_prompt_engine()
-
-            self.core_ai_manager.initialize()
-
+            
+            config_status = self.core_ai_manager.get_configuration_status()
+            if config_status["llama_configured"] and config_status["whisper_configured"]:
+                self.logger.info("AI services are properly configured and ready for use")
+            else:
+                self.logger.warning("AI services are not fully configured - some features may be unavailable")
+            
             self._finalize_setup()
-
+            
             self.logger.info("AtaraxAI initialization completed successfully")
-
+            
         except Exception as e:
             self.logger.error(f"Failed to initialize AtaraxAI: {e}")
             raise
@@ -468,7 +517,7 @@ class AtaraxAIOrchestrator:
         self.rag_manager = AtaraxAIRAGManager(
             rag_config_manager=self.config_manager.rag_config,
             app_data_root_path=self.directories.data,
-            core_ai_service=self.core_ai_manager.service,
+            core_ai_service=None,
         )
         self.logger.info("RAG manager initialized successfully")
 
@@ -486,7 +535,7 @@ class AtaraxAIOrchestrator:
             task_manager=self.task_manager,
             context_manager=self.context_manager,
             prompt_manager=self.prompt_manager,
-            core_ai_service=self.core_ai_manager.service,
+            core_ai_service=None,
             chat_context=self.chat_context,
             rag_manager=self.rag_manager,
         )
@@ -510,17 +559,28 @@ class AtaraxAIOrchestrator:
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
         InputValidator.validate_string(initial_user_query, "Initial user query")
-
+        
         if not chain_definition:
             raise ValidationError("Chain definition cannot be empty")
+        
+        # Initialize AI services on-demand
+        try:
+            core_ai_service = self.core_ai_manager.get_service()
+        except ServiceInitializationError as e:
+            self.logger.error(f"Cannot run task chain: {e}")
+            raise
+        
+        if self.chain_runner.core_ai_service is None:
+            self.chain_runner.core_ai_service = core_ai_service
 
-        if not self.core_ai_manager.is_initialized:
-            raise ServiceInitializationError("Core AI services not initialized")
-
+        if self.rag_manager.core_ai_service is None:  # type: ignore
+            self.rag_manager.core_ai_service = core_ai_service
+        
         self.logger.info(f"Executing chain for query: '{initial_user_query}'")
         try:
             result = self.chain_runner.run_chain(
-                chain_definition=chain_definition, initial_user_query=initial_user_query
+                chain_definition=chain_definition, 
+                initial_user_query=initial_user_query
             )
             self.logger.info("Chain execution completed successfully")
             return result
@@ -599,10 +659,11 @@ class AtaraxAIOrchestrator:
         self.shutdown()
 
 
-# Usage example:
 if __name__ == "__main__":
-    # Using as context manager
     with AtaraxAIOrchestrator() as orchestrator:
-        # Your application logic here
         projects = orchestrator.list_projects()
+        current_user_home = Path.home()
+        orchestrator.add_watch_directory(str(current_user_home / "Documents"))
+        while True:
+            time.sleep(1)
         print(f"Found {len(projects)} projects")

@@ -1,3 +1,4 @@
+from typing import Union, Any, Dict
 import yaml
 from pathlib import Path
 from .config_schemas.rag_config_schema import (
@@ -39,15 +40,20 @@ class RAGConfigManager:
                 f,
                 default_flow_style=False,
             )
-            
+
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, RAGConfigManager):
             return NotImplemented
         return self.config == value.config
-    
+
     def set(self, key: str, value: Optional[object]):
         setattr(self.config, key, value)
         self._save()
+
+    def get(
+        self, key: str, default: Optional[Union[str, int, bool, Dict[str, Any]]] = None
+    ) -> Optional[Union[str, int, bool, Dict[str, Any]]]:
+        return getattr(self.config, key, default)
 
     def get_config(self) -> RAGConfig:
         return self.config
