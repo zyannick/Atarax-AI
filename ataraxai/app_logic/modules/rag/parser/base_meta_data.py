@@ -1,6 +1,6 @@
 import hashlib
 from pathlib import Path
-
+from typing import Dict, Any
 
 
 def get_file_hash(file_path: Path) -> str | None:
@@ -26,8 +26,8 @@ def get_file_hash(file_path: Path) -> str | None:
     except IOError as e:
         print(f"Error hashing file {file_path}: {e}")
         return None
-    
-def set_base_metadata(file_path: Path) -> dict:
+
+def set_base_metadata(file_path: Path) -> Dict[str, Any]:
     """
     Generates and returns a dictionary containing base metadata for a given file.
     Args:

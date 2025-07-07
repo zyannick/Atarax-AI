@@ -4,6 +4,7 @@ from ataraxai.app_logic.utils.config_schemas.user_preferences_schema import (
     UserPreferences,
 )
 from typing_extensions import Optional
+from typing import Dict, Any, Union
 
 PREFERENCES_FILENAME = "user_preferences.yaml"
 
@@ -26,19 +27,23 @@ class PreferencesManager:
             except Exception as e:
                 print(f"[ERROR] Failed to load preferences: {e}")
         print("[INFO] Using default user preferences.")
-        prefs = UserPreferences()
-        self._save(prefs)
-        return prefs
+        self.preferences = UserPreferences()
+        self._save()
+        return self.preferences
 
-    def _save(self, prefs: Optional[UserPreferences] = None):
-        prefs = prefs or self.preferences
+    def _save(self):
         with open(self.config_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(prefs.model_dump(), f)
+            yaml.safe_dump(self.preferences.model_dump(), f)
 
-    def get(self, key: str, default=None):
-        return getattr(self.preferences, key, default)
+    def update_user_preferences(self, new_prefs: UserPreferences):
+        self.preferences = new_prefs
+        self._save()
 
-    def set(self, key: str, value):
+
+    def get(self, key: str, default=None) -> Union[int, str, bool]:  # type: ignore
+        return getattr(self.preferences, key, default)  # type: ignore
+
+    def set(self, key: str, value: Union[str, int, bool, Dict[str, Any]]):
         setattr(self.preferences, key, value)
         self._save()
 

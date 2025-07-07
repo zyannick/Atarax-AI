@@ -1,9 +1,11 @@
 import json
 from pathlib import Path
-
+from typing import Any, Dict, List, Optional
+from typing_extensions import Union
+from ataraxai.app_logic.modules.rag.rag_store import RAGStore
 
 class RAGManifest:
-    def __init__(self, manifest_path):
+    def __init__(self, manifest_path: Union[str, Path]):
         """
         Initializes the class with the given manifest file path.
 
@@ -15,9 +17,9 @@ class RAGManifest:
             data (Any): The data loaded from the manifest file.
         """
         self.path = Path(manifest_path)
-        self.data = self._load()
+        self.data: Dict[str, Any] = self._load()
 
-    def _load(self):
+    def _load(self) -> Dict[str, Any]:
         """
         Loads and returns the contents of a JSON file if it exists.
 
@@ -28,6 +30,15 @@ class RAGManifest:
             with open(self.path, "r") as f:
                 return json.load(f)
         return {}
+
+    def get_all_files(self) -> List[str]:
+        """
+        Returns a list of all file paths in the manifest.
+
+        Returns:
+            list: A list of file paths.
+        """
+        return list(self.data.keys())
 
     def save(self):
         """
@@ -43,7 +54,9 @@ class RAGManifest:
         with open(self.path, "w") as f:
             json.dump(self.data, f, indent=4)
 
-    def add_file(self, file_path, metadata=None):
+    def add_file(
+        self, file_path: Union[str, Path], metadata: Optional[Dict[str, Any]] = None
+    ):
         """
         Adds a file and its associated metadata to the data store.
 
@@ -56,10 +69,52 @@ class RAGManifest:
         """
         if not metadata:
             metadata = {}
-        self.data[file_path] = metadata
+        self.data[str(file_path)] = metadata
         self.save()
 
-    def remove_file(self, file_path):
+    def is_file_in_manifest(self, file_path: Union[str, Path]) -> bool:
+        """
+        Checks if a file is in the manifest.
+
+        Args:
+            file_path (str or Path): The path to the file to check.
+
+        Returns:
+            bool: True if the file is in the manifest, False otherwise.
+        """
+        return str(file_path) in self.data
+    
+    def is_valid(self, rag_store: RAGStore) -> bool:
+        if not self.data:
+            return True #
+
+        all_manifest_chunk_ids = set() # type: ignore
+        for file_info in self.data.values():
+            chunk_ids = file_info.get("chunk_ids")
+            if isinstance(chunk_ids, list):
+                all_manifest_chunk_ids.update(chunk_ids) # type: ignore
+
+        if not all_manifest_chunk_ids:
+            print("Manifest contains no chunk IDs to validate.")
+            return True
+
+        retrieved_chunks = rag_store.collection.get(
+            ids=list(all_manifest_chunk_ids)
+        )
+        retrieved_ids = set(retrieved_chunks.get("ids", []))
+
+        if all_manifest_chunk_ids == retrieved_ids:
+            return True
+        else:
+            # missing_in_store = all_manifest_chunk_ids - retrieved_ids # type: ignore
+            # extra_in_store = retrieved_ids - all_manifest_chunk_ids
+            return False
+        
+    def clear(self):
+        self.data = {}
+        self.save()
+
+    def remove_file(self, file_path: Union[str, Path]):
         """
         Remove a file entry from the manifest.
 
@@ -74,8 +129,8 @@ class RAGManifest:
             - Saves the updated manifest if the file was found and removed.
             - Prints a message if the file was not found in the manifest.
         """
-        if file_path in self.data:
-            del self.data[file_path]
+        if str(file_path) in self.data:
+            del self.data[str(file_path)]
             self.save()
         else:
             print(f"File {file_path} not found in manifest.")

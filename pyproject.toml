@@ -37,9 +37,14 @@ dependencies = [
     "ml-collections==1.1.0",
     "PySide6==6.9.1",
     "prometheus-client==0.22.1",
+    "prometheus-fastapi-instrumentator",
     "sentencepiece",
     "pytest",
-    "openai"
+    "openai",
+    "librosa",
+    "soundfile",
+    "pytesseract",
+    "python-multipart"
 ]
 
 [project.optional-dependencies]
@@ -50,7 +55,7 @@ dev = [
     "ruff",
     "mypy",
     "types-PyYAML",
-    "types-peewee"
+    "types-peewee",
 ]
 
 [project.urls]
@@ -66,6 +71,12 @@ wheel.packages = ["ataraxai"]
 testpaths = [
     "tests/python",
 ]
+markers = [
+    "integration: marks tests as integration tests (can be slow)",
+]
+filterwarnings = [
+    "ignore:.*builtin type SwigPy.*:DeprecationWarning",
+]
 
 [tool.ruff]
 exclude = [
@@ -74,7 +85,7 @@ exclude = [
     ".venv",
     "build",
     "dist",
-    "ataraxai/core_ai/third_party", # This is the key line to ignore llama.cpp
+    "ataraxai/core_ai/third_party",
 ]
 
 [tool.mypy]
@@ -84,6 +95,7 @@ module = [
     "fitz",
     "webrtcvad",
     "sounddevice",
+    "pytesseract"
 ]
 ignore_missing_imports = true
 

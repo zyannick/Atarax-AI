@@ -1,0 +1,7 @@
+The following text was extracted from an image using OCR. Summarize the key information in no more than three concise bullet points.
+
+--- TEXT FROM IMAGE ---
+{ocr_text}
+--- END TEXT ---
+
+Summary:

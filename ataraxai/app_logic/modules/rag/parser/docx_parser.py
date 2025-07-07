@@ -32,3 +32,14 @@ class DOCXParser(DocumentParser):
             for i, block in enumerate(text_blocks)
         ]
         return chunks
+
+
+if __name__ == "__main__":
+    docx_path = Path("tests/python/assets/Attention is All you need.docx")  
+    parser = DOCXParser()
+    document_chunks = parser.parse(docx_path)
+    for chunk in document_chunks:
+        print(f"Paragraph {chunk.metadata.get('index')}: {chunk.content[:100]}...")  
+        print(f"Source: {chunk.source}")
+        print(f"Metadata: {chunk.metadata}")
+    print(f"Total paragraphs parsed: {len(document_chunks)}")

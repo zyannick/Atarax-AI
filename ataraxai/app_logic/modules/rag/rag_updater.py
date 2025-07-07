@@ -1,9 +1,8 @@
 from pathlib import Path
-from .rag_store import RAGStore
-from .ataraxai_rag_manager import (
+from ataraxai.app_logic.modules.rag.rag_store import RAGStore
+from ataraxai.app_logic.modules.rag.rag_manifest import (
     RAGManifest,
 )
-from ataraxai.app_logic.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
 from ataraxai.app_logic.modules.rag.smart_chunker import SmartChunker
 import threading
 import os
@@ -12,6 +11,10 @@ from ataraxai.app_logic.modules.rag.parser.base_meta_data import (
     set_base_metadata,
     get_file_hash,
 )
+from typing import Dict, List, Union, Mapping, Any
+
+
+MetadataDict = Mapping[str, Union[str, int, float, bool, None]]
 
 
 def process_new_file(
@@ -23,7 +26,7 @@ def process_new_file(
     file_path = Path(file_path_str)
     print(f"WORKER: Processing NEW file: {file_path}")
 
-    base_metadata = set_base_metadata(file_path)
+    base_metadata: Dict[str, Any] = set_base_metadata(file_path)
     chunked_document_objects = chunker.ingest_file(
         file_path=file_path,
     )
@@ -34,7 +37,14 @@ def process_new_file(
 
     try:
         final_texts = [cd.content for cd in chunked_document_objects]
-        final_metadatas = [v for cd in chunked_document_objects for k, v in cd.metadata.items()]
+
+        final_metadatas: List[MetadataDict] = []
+        for cd in chunked_document_objects:
+            dict_value: Dict[str, Any] = {}
+            for k, v in cd.metadata.items():
+                dict_value[k] = v
+            final_metadatas.append(dict_value)
+
         chunk_ids = [
             f"{str(file_path)}_{base_metadata['file_hash'][:8]}_chunk_{i}"
             for i in range(len(final_texts))
@@ -45,6 +55,8 @@ def process_new_file(
             texts=final_texts,
             metadatas=final_metadatas,
         )
+
+        print(base_metadata)
 
         manifest.add_file(
             str(file_path),
@@ -59,7 +71,7 @@ def process_new_file(
         print(f"WORKER: Successfully processed and indexed {file_path}")
 
     except Exception as e:
-        print(f"WORKER: Error processing new file {file_path}: {e}")
+        # print(f"WORKER: Error processing new file {file_path}: {e}")
         if manifest.data.get(str(file_path)):
             manifest.data[str(file_path)]["status"] = f"error: {e}"
             manifest.save()
@@ -137,11 +149,10 @@ def process_deleted_file(
 
 
 def rag_update_worker(
-    processing_queue: "queue.Queue",
-    manifest: "RAGManifest",
-    rag_store: "RAGStore",
-    embedder: "AtaraxAIEmbedder",
-    chunk_config: dict,
+    processing_queue: queue.Queue[Dict[str, Any]],
+    manifest: RAGManifest,
+    rag_store: RAGStore,
+    chunk_config: Dict[str, Any],
 ):
     print(
         f"RAG Update Worker started. PID: {os.getpid()}, Thread: {threading.get_ident()}"
@@ -158,8 +169,9 @@ def rag_update_worker(
     )
 
     while True:
+        print("RAG Update Worker: Waiting for tasks...")
         try:
-            task = processing_queue.get(timeout=1)
+            task: Dict[str, Any] = processing_queue.get(timeout=1)
             if task is None:
                 print("RAG Update Worker: Received sentinel. Exiting.")
                 processing_queue.task_done()
@@ -198,13 +210,16 @@ def rag_update_worker(
                 print(
                     f"RAG Update Worker: Unknown event type '{event_type}' for task: {task}"
                 )
-
+            processing_queue.task_done()
         except queue.Empty:
             continue
         except Exception as e:
-            print(
-                f"RAG Update Worker: Unhandled error processing task {task if 'task' in locals() else 'UNKNOWN_TASK'}: {e}"
-            )
-        finally:
-            if "task" in locals() and task is not None:
-                processing_queue.task_done()
+            print(f"RAG Update Worker: Error processing task: {e}")
+            # It's good practice to still call task_done() even on an error
+            # to prevent the queue from getting stuck.
+            processing_queue.task_done()
+        # finally:
+        #     # if "task" in locals() and task is not None:
+        #     #     processing_queue.task_done()
+        #     print(f"RAG Update Worker: Error processing task: {e}")
+        #     processing_queue.task_done()

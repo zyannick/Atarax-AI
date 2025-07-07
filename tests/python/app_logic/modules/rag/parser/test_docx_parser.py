@@ -54,3 +54,40 @@ def test_parse_preserves_paragraph_order_and_index():
     for i, chunk in enumerate(chunks):
         assert chunk.content == paragraphs[i]
         assert chunk.metadata["index"] == i
+        
+        
+        
+def test_parse_handles_unicode_and_special_characters():
+    paragraphs = ["Hello, world!", "Café naïve résumé.", "中文段落", "Emoji 🚀🔥"]
+    docx_path = create_temp_docx(paragraphs)
+    parser = DOCXParser()
+    chunks = parser.parse(docx_path)
+    assert len(chunks) == len(paragraphs)
+    for i, chunk in enumerate(chunks):
+        assert chunk.content == paragraphs[i]
+        assert chunk.metadata["index"] == i
+
+def test_parse_handles_long_paragraphs():
+    long_text = "A" * 10000
+    paragraphs = [long_text, "Short one."]
+    docx_path = create_temp_docx(paragraphs)
+    parser = DOCXParser()
+    chunks = parser.parse(docx_path)
+    assert chunks[0].content == long_text
+    assert chunks[1].content == "Short one."
+
+def test_parse_metadata_contains_correct_keys():
+    paragraphs = ["Para1", "Para2"]
+    docx_path = create_temp_docx(paragraphs)
+    parser = DOCXParser()
+    chunks = parser.parse(docx_path)
+    for chunk in chunks:
+        assert "type" in chunk.metadata
+        assert "index" in chunk.metadata
+        assert chunk.metadata["type"] == "paragraph"
+
+def test_parse_with_nonexistent_file_raises_exception():
+    parser = DOCXParser()
+    with pytest.raises(Exception):
+        parser.parse(Path("/nonexistent/path/to/file.docx"))
+

@@ -1,0 +1,7 @@
+You are a highly skilled summarization assistant. Your task is to provide a concise summary of the following text. The summary should capture the main points and key information.
+
+--- TEXT TO SUMMARIZE ---
+{text_to_summarize}
+--- END TEXT ---
+
+SUMMARY:

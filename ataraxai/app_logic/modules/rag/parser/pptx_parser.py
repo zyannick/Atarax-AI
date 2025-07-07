@@ -20,12 +20,12 @@ class PPTXParser(DocumentParser):
             the source file path, and metadata indicating the slide number.
         """
         prs = Presentation(str(path))
-        chunks = []
+        chunks: List[DocumentChunk] = []
         for i, slide in enumerate(prs.slides):
             texts = []
             for shape in slide.shapes:
-                if hasattr(shape, "text") and shape.text.strip():
-                    texts.append(shape.text.strip())
+                if hasattr(shape, "text") and shape.text.strip():  # type: ignore
+                    texts.append(shape.text.strip())  # type: ignore
             if texts:
                 chunks.append(
                     DocumentChunk(
@@ -35,3 +35,16 @@ class PPTXParser(DocumentParser):
                     )
                 )
         return chunks
+
+
+if __name__ == "__main__":
+    pptx_path = Path(
+        "tests/python/assets/Attention is All you need.pptx"
+    )
+    parser = PPTXParser()
+    document_chunks = parser.parse(pptx_path)
+    for chunk in document_chunks:
+        print(f"Slide {chunk.metadata.get('slide')}: {chunk.content[:100]}...")
+        print(f"Source: {chunk.source}")
+        print(f"Metadata: {chunk.metadata}")
+    print(f"Total slides parsed: {len(document_chunks)}")

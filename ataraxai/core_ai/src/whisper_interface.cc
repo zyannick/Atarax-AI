@@ -7,6 +7,7 @@
 #include <mutex>
 #include <atomic>
 #include <thread>
+#include <fstream>
 
 static std::once_flag backend_whisper_init_flag;
 static std::atomic<bool> backend_whisper_initialized{false};
@@ -24,7 +25,10 @@ WhisperInterface::~WhisperInterface()
 
 void WhisperInterface::init_backend()
 {
-  // TODO
+    // std::call_once(backend_whisper_init_flag, []() {
+    //     whisper_backend_init();
+    //     std::cerr << "Whisper backend initialized." << std::endl;
+    // });
 }
 
 void WhisperInterface::free_backend()
@@ -56,7 +60,6 @@ bool WhisperInterface::load_model(const WhisperModelParams &params)
     struct whisper_context_params cparams = whisper_context_default_params();
     cparams.use_gpu = current_model_params_.use_gpu;
     cparams.flash_attn = current_model_params_.flash_attn;
-
 
     ctx_ = whisper_init_from_file_with_params(current_model_params_.model.c_str(), cparams);
 
@@ -154,5 +157,124 @@ std::string WhisperInterface::transcribe_pcm(const std::vector<float> &pcm_f32_d
         return "[Error: Empty audio data]";
     }
 
-    return "[Transcription result]";
+    std::cout << "WhisperInterface: Starting transcription..." << std::endl;
+
+    std::vector<whisper_token> prompt_tokens;
+
+    // run the inference
+    {
+        whisper_full_params wparams = whisper_full_default_params(transcription_params.beam_size > 1 ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY);
+
+        std::cout << "Start 1" << std::endl;
+        wparams.print_progress = false;
+        wparams.print_special = transcription_params.print_special;
+        wparams.print_realtime = false;
+        wparams.print_timestamps = !transcription_params.no_timestamps;
+        wparams.translate = transcription_params.translate;
+        wparams.single_segment = true;
+        wparams.max_tokens = transcription_params.max_tokens;
+        wparams.language = current_model_params_.language.c_str();
+        wparams.n_threads = current_model_params_.n_threads;
+        wparams.beam_search.beam_size = transcription_params.beam_size;
+
+        wparams.audio_ctx = transcription_params.audio_ctx;
+
+        wparams.tdrz_enable = transcription_params.tinydiarize; // [TDRZ]
+
+        // disable temperature fallback
+        wparams.temperature_inc = transcription_params.no_fallback ? 0.0f : wparams.temperature_inc;
+        wparams.duration_ms = 1000.0f * pcm_f32_data.size() / 16000.0f;
+
+
+        wparams.prompt_tokens = transcription_params.no_context ? nullptr : prompt_tokens.data();
+        wparams.prompt_n_tokens = transcription_params.no_context ? 0 : prompt_tokens.size();
+
+        std::cout << "pcm_f32_data.size()  " << pcm_f32_data.size() << std::endl;
+
+        if (whisper_full(ctx_, wparams, pcm_f32_data.data(), pcm_f32_data.size()) != 0)
+        {
+            return "[Error: Whisper full processing failed]";
+        }
+
+        std::cout << "whisper_full if passed  " << pcm_f32_data.size() << std::endl;
+
+        std::string result;
+        result.append("<whisper>");
+        std::ofstream fout;
+
+        
+
+        if (transcription_params.fname_out.length() > 0)
+        {
+            fout.open(transcription_params.fname_out);
+            if (!fout.is_open())
+            {
+                std::cerr << "Warning: Could not open output file: " << transcription_params.fname_out << std::endl;
+            }
+        }
+
+        const int n_segments = whisper_full_n_segments(ctx_);
+        for (int i = 0; i < n_segments; ++i)
+        {
+            const char *text = whisper_full_get_segment_text(ctx_, i);
+
+            std::cout << "WhisperInterface: Segment " << i << ": " << text << std::endl;
+
+            if (transcription_params.no_timestamps)
+            {
+                result += text;
+
+                // // Optional: still print to stdout if needed
+                // if (transcription_params.print_to_stdout)
+                // {
+                //     printf("%s", text);
+                //     fflush(stdout);
+                // }
+
+                if (fout.is_open())
+                {
+                    fout << text;
+                }
+            }
+            else
+            {
+                const int64_t t0 = whisper_full_get_segment_t0(ctx_, i);
+                const int64_t t1 = whisper_full_get_segment_t1(ctx_, i);
+
+                // Format with timestamps
+                char timestamp_buffer[64];
+                snprintf(timestamp_buffer, sizeof(timestamp_buffer), "[%02d:%02d.%03d --> %02d:%02d.%03d] ",
+                         (int)(t0 / 600000), (int)(t0 / 10000) % 60, (int)(t0 % 10000) / 10,
+                         (int)(t1 / 600000), (int)(t1 / 10000) % 60, (int)(t1 % 10000) / 10);
+
+                std::string output = std::string(timestamp_buffer) + text;
+
+                if (whisper_full_get_segment_speaker_turn_next(ctx_, i))
+                {
+                    output += " [SPEAKER_TURN]";
+                }
+
+                output += "\n";
+                result += output;
+
+                // if (transcription_params.print_to_stdout)
+                // {
+                //     printf("%s", output.c_str());
+                //     fflush(stdout);
+                // }
+
+                if (fout.is_open())
+                {
+                    fout << output;
+                }
+            }
+        }
+
+        if (fout.is_open())
+        {
+            fout.close();
+        }
+
+        return result;
+    }
 }

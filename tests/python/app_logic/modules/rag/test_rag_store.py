@@ -26,13 +26,11 @@ def test_add_chunks_with_embeddings(rag_store):
     ids = ["id1", "id2"]
     texts = ["text one", "text two"]
     metadatas = [{"meta": 1}, {"meta": 2}]
-    embeddings = [[0.1, 0.2, 0.3], [0.4, 0.5, 0.6]]
 
-    rag_store.add_chunks(ids, texts, metadatas, embeddings_list=embeddings)
+    rag_store.add_chunks(ids, texts, metadatas)
 
     rag_store.collection.add.assert_called_once_with(
         ids=ids,
-        embeddings=embeddings,
         documents=texts,
         metadatas=metadatas,
     )
@@ -46,7 +44,6 @@ def test_add_chunks_without_embeddings_uses_embedder(rag_store):
 
     rag_store.collection.add.assert_called_once_with(
         ids=ids,
-        embeddings=[[0.0, 0.0, 0.0]],
         documents=texts,
         metadatas=metadatas,
     )
