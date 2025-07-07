@@ -8,6 +8,7 @@ class RAGConfig(BaseModel):
     rag_chunk_size: int = 400
     rag_chunk_overlap: int = 50
     rag_watched_directories: List[str] | None = None
+    rag_time_out_update: float = 30.0
     rag_separators: List[str] | None = None
     rag_keep_separator: bool = True
     rag_model_name_for_tiktoken: str = "gpt-3.5-turbo"

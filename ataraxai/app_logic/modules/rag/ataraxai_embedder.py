@@ -12,7 +12,7 @@ class AtaraxAIEmbedder(EmbeddingFunction):
         print(f"AtaraxAIEmbedder: Initialized with model '{self.model_name}'.")
 
     def __call__(self, input: Documents) -> Embeddings:
-        return self.model.encode(list(input)).tolist()
+        return self.model.encode(list(input)).tolist() # type: ignore
 
     def name(self) -> str: # type: ignore[override]
         return self.model_name

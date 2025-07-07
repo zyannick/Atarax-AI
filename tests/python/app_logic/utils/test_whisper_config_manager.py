@@ -46,7 +46,7 @@ def test_loads_existing_config(tmp_config_dir):
 def test_update_whisper_params_and_save(tmp_config_dir):
     manager = WhisperConfigManager(tmp_config_dir)
     params = WhisperModelParams(language="fr")
-    manager.update_whisper_params(params)
+    manager.update_whisper_model_params(params)
     manager.reload()
     assert manager.get_whisper_params().language == "fr"
 

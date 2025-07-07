@@ -40,7 +40,7 @@ class PreferencesManager:
         self._save()
 
 
-    def get(self, key: str, default=None):  # type: ignore
+    def get(self, key: str, default=None) -> Union[int, str, bool]:  # type: ignore
         return getattr(self.preferences, key, default)  # type: ignore
 
     def set(self, key: str, value: Union[str, int, bool, Dict[str, Any]]):

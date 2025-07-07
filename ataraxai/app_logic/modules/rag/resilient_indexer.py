@@ -13,7 +13,6 @@ from watchdog.events import (
 from pathlib import Path
 import queue
 from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
-import chromadb
 from typing_extensions import Union
 from typing_extensions import Dict, Any
 import threading
@@ -86,7 +85,7 @@ def start_rag_file_monitoring(
     worker_thread.start() 
  
     event_handler = ResilientFileIndexer(processing_queue)
-    observer = Observer(timeout=5)
+    observer = Observer(timeout=30)
     for path_str in paths_to_watch:
         path = Path(path_str)
         if path.exists():

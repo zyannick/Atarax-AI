@@ -25,7 +25,7 @@ def test_initializes_default_config_if_not_exists(temp_config_dir):
 def test_loads_existing_config(temp_config_dir):
     config_file = temp_config_dir / LLAMA_CONFIG_FILENAME
     config_data = {
-        "llm_model_params": {"model_path": "test-model"},
+        "llama_cpp_model_params": {"model_path": "test-model"},
         "generation_params": {"n_predict": 123},
     }
     with open(config_file, "w", encoding="utf-8") as f:
@@ -43,10 +43,10 @@ def test_get_llm_params_and_generation_params(temp_config_dir):
 
 def test_set_param_updates_and_saves(temp_config_dir):
     manager = LlamaConfigManager(temp_config_dir)
-    manager.set_param("llm_model_params", "model_path", "new-model")
-    assert manager.config.llm_model_params.model_path == "new-model"
+    manager.set_param("llama_cpp_model_params", "model_path", "new-model")
+    assert manager.config.llama_cpp_model_params.model_path == "new-model"
     manager.reload()
-    assert manager.config.llm_model_params.model_path == "new-model"
+    assert manager.config.llama_cpp_model_params.model_path == "new-model"
 
 def test_set_param_invalid_section_raises(temp_config_dir):
     manager = LlamaConfigManager(temp_config_dir)
@@ -56,18 +56,17 @@ def test_set_param_invalid_section_raises(temp_config_dir):
 def test_set_param_invalid_key_raises(temp_config_dir):
     manager = LlamaConfigManager(temp_config_dir)
     with pytest.raises(ValueError):
-        manager.set_param("llm_model_params", "not_a_key", "value")
+        manager.set_param("llama_cpp_model_params", "not_a_key", "value")
 
 def test_reload_reloads_config(temp_config_dir):
     manager = LlamaConfigManager(temp_config_dir)
-    manager.set_param("llm_model_params", "model_path", "foo")
+    manager.set_param("llama_cpp_model_params", "model_path", "foo")
     manager.reload()
-    assert manager.config.llm_model_params.model_path == "foo"
+    assert manager.config.llama_cpp_model_params.model_path == "foo"
 
 def test_load_or_initialize_handles_parse_error(temp_config_dir):
     config_file = temp_config_dir / LLAMA_CONFIG_FILENAME
     config_file.write_text("not: valid: yaml: [")
-    # Patch print to suppress error output
     with mock.patch("builtins.print"):
         manager = LlamaConfigManager(temp_config_dir)
     assert isinstance(manager.config, LlamaConfig)

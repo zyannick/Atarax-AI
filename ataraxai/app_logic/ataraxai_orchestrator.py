@@ -1,12 +1,9 @@
 from pathlib import Path
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Protocol, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 from dataclasses import dataclass
-from contextlib import contextmanager
 from enum import Enum
 import uuid
-import logging
-from abc import ABC, abstractmethod
 
 from ataraxai import __version__, core_ai_py  # type: ignore
 from ataraxai.app_logic.modules.chat.chat_context_manager import ChatContextManager
@@ -24,10 +21,8 @@ from ataraxai.app_logic.modules.prompt_engine.context_manager import ContextMana
 from ataraxai.app_logic.modules.prompt_engine.prompt_manager import PromptManager
 from ataraxai.app_logic.modules.prompt_engine.task_manager import TaskManager
 from ataraxai.app_logic.modules.prompt_engine.chain_runner import ChainRunner
-from ataraxai.app_logic.utils.config_schemas.llama_config_schema import GenerationParams
 from ataraxai.app_logic.utils.config_schemas.whisper_config_schema import (
     WhisperModelParams,
-    WhisperTranscriptionParams,
 )
 from ataraxai.app_logic.modules.chat.chat_models import (
     ChatSessionResponse,
@@ -35,6 +30,14 @@ from ataraxai.app_logic.modules.chat.chat_models import (
     MessageResponse,
 )
 import time
+from prometheus_client import Counter
+
+
+CHAINS_EXECUTED_COUNTER = Counter(
+    'ataraxai_chains_executed_total',
+    'Total number of task chains executed',
+    ['chain_name']  
+)
 
 APP_NAME = "AtaraxAI"
 APP_AUTHOR = "AtaraxAI"
@@ -436,12 +439,12 @@ class SetupManager:
         self.config = config
         self.logger = logger
         self.version = __version__
-
-    def is_first_launch(self) -> bool:
-        marker_file = self.directories.config / self.config.get_setup_marker_filename(
+        self._marker_file = self.directories.config / self.config.get_setup_marker_filename(
             self.version
         )
-        return not marker_file.exists()
+
+    def is_first_launch(self) -> bool:
+        return not self._marker_file.exists()
 
     def perform_first_launch_setup(self) -> None:
         if not self.is_first_launch():
@@ -457,10 +460,7 @@ class SetupManager:
             raise
 
     def _create_setup_marker(self) -> None:
-        marker_file = self.directories.config / self.config.get_setup_marker_filename(
-            self.version
-        )
-        marker_file.touch(exist_ok=False)
+        self._marker_file.touch(exist_ok=False)
 
 
 class AtaraxAIOrchestrator:
@@ -563,7 +563,6 @@ class AtaraxAIOrchestrator:
         if not chain_definition:
             raise ValidationError("Chain definition cannot be empty")
         
-        # Initialize AI services on-demand
         try:
             core_ai_service = self.core_ai_manager.get_service()
         except ServiceInitializationError as e:
@@ -578,6 +577,8 @@ class AtaraxAIOrchestrator:
         
         self.logger.info(f"Executing chain for query: '{initial_user_query}'")
         try:
+            chain_name = chain_definition[0].get("task_id", "unknown")
+            CHAINS_EXECUTED_COUNTER.labels(chain_name=chain_name).inc()
             result = self.chain_runner.run_chain(
                 chain_definition=chain_definition, 
                 initial_user_query=initial_user_query

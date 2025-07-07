@@ -4,7 +4,6 @@ from pathlib import Path
 from ataraxai.app_logic.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
 from ataraxai.app_logic.modules.rag.rag_store import RAGStore
 
-
 @pytest.mark.integration
 def test_rag_embedding_and_retrieval(tmp_path: Path):
 
@@ -27,5 +26,5 @@ def test_rag_embedding_and_retrieval(tmp_path: Path):
     results = rag_store.query(query_text=query_text, n_results=1)
 
     assert results is not None
-    assert "documents" in results and len(results["documents"][0]) == 1
-    assert results["documents"][0][0] == "The sky is blue."
+    assert "documents" in results and len(results["documents"][0]) == 1 # type: ignore
+    assert results["documents"][0][0] == "The sky is blue." # type: ignore

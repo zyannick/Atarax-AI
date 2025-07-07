@@ -1,14 +1,13 @@
 from pathlib import Path
 import queue
 from types import TracebackType
-from typing import Tuple, Type, Optional, Union
+from typing import Tuple, Type, Optional, List, Dict, Any
 from ataraxai.app_logic.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
 from ataraxai.app_logic.modules.rag.resilient_indexer import start_rag_file_monitoring
 from ataraxai.app_logic.modules.rag.rag_store import RAGStore
 from ataraxai.app_logic.modules.rag.rag_manifest import RAGManifest
-from ataraxai.app_logic.modules.rag.rag_updater import process_new_file
-from ataraxai.app_logic.preferences_manager import PreferencesManager
-from typing_extensions import Optional, List, Dict, Any
+# from ataraxai.app_logic.modules.rag.rag_updater import process_new_file
+# from ataraxai.app_logic.preferences_manager import PreferencesManager
 from sentence_transformers import CrossEncoder
 from chromadb import QueryResult
 import numpy as np
@@ -65,7 +64,7 @@ class AtaraxAIRAGManager:
 
         self.processing_queue: queue.Queue[Dict[str, Any]] = queue.Queue()
         self.file_observer = None
-        self.worker_thread = None
+        # self.worker_thread : threading.Thread = None
 
         self._cross_encoder = None
         self._cross_encoder_initialized = False
@@ -152,7 +151,7 @@ class AtaraxAIRAGManager:
                 or not self.worker_thread
                 or not self.worker_thread.is_alive()
             ):
-                self.worker_thread = threading.Thread(
+                self.worker_thread : threading.Thread = threading.Thread(
                     target=rag_update_worker,
                     args=(
                         self.processing_queue,

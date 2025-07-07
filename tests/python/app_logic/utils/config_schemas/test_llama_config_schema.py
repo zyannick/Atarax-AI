@@ -145,7 +145,8 @@ def test_llama_config_nested_dict_instantiation():
 def test_llama_config_dict_serialization():
     config = LlamaConfig()
     config_dict = config.model_dump()
-    assert "llm_model_params" in config_dict
+    print(config_dict)  # For debugging purposes
+    assert "llama_cpp_model_params" in config_dict
     assert "generation_params" in config_dict
-    assert config_dict["llm_model_params"]["n_ctx"] == 2048
+    assert config_dict["llama_cpp_model_params"]["n_ctx"] == 2048
     assert config_dict["generation_params"]["n_predict"] == 128

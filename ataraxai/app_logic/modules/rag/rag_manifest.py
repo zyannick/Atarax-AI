@@ -106,8 +106,8 @@ class RAGManifest:
         if all_manifest_chunk_ids == retrieved_ids:
             return True
         else:
-            missing_in_store = all_manifest_chunk_ids - retrieved_ids # type: ignore
-            extra_in_store = retrieved_ids - all_manifest_chunk_ids
+            # missing_in_store = all_manifest_chunk_ids - retrieved_ids # type: ignore
+            # extra_in_store = retrieved_ids - all_manifest_chunk_ids
             return False
         
     def clear(self):

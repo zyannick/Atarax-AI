@@ -50,7 +50,7 @@ def test_custom_formatter_all_levels():
         (logging.DEBUG, CustomFormatter.dard_blue),
         (logging.INFO, CustomFormatter.blue),
         (logging.WARNING, CustomFormatter.brown),
-        (logging.ERROR, CustomFormatter.maroon),
+        (logging.ERROR, CustomFormatter.light_red),
         (logging.CRITICAL, CustomFormatter.bold_red),
     ]:
         record = logging.LogRecord(
@@ -61,10 +61,3 @@ def test_custom_formatter_all_levels():
         assert color in formatted
         assert "msg" in formatted
 
-# def test_logger_multiple_handlers(tmp_path):
-#     log_file = tmp_path / "multi.log"
-#     logger = ArataxAILogger(str(log_file))
-#     assert len(logger.logger.handlers) == 2
-#     logger.info("handler test")
-#     with open(log_file, "r") as f:
-#         assert "handler test" in f.read()

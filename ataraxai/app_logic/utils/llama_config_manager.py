@@ -56,7 +56,7 @@ class LlamaConfigManager:
         self._save()
 
     def set_param(self, section: str, key: str, value: str):
-        if section == "llm_model_params" and hasattr(self.config.llama_cpp_model_params, key):
+        if section == "llama_cpp_model_params" and hasattr(self.config.llama_cpp_model_params, key):
             setattr(self.config.llama_cpp_model_params, key, value)
         elif section == "generation_params" and hasattr(
             self.config.generation_params, key
