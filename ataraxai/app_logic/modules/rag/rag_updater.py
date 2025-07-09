@@ -23,6 +23,26 @@ def process_new_file(
     rag_store: RAGStore,
     chunker: SmartChunker,
 ):
+    """
+    Processes a new file for ingestion into the RAG (Retrieval-Augmented Generation) system.
+
+    This function performs the following steps:
+    1. Converts the file path string to a Path object and sets base metadata.
+    2. Uses the provided chunker to split the file into document chunks.
+    3. If chunks are generated, extracts their content and metadata.
+    4. Generates unique chunk IDs and adds the chunks to the RAG store.
+    5. Updates the manifest with file metadata, chunk IDs, and status.
+    6. Handles errors by updating the manifest status accordingly.
+
+    Args:
+        file_path_str (str): The path to the file to be processed.
+        manifest (RAGManifest): The manifest object for tracking file and chunk metadata.
+        rag_store (RAGStore): The storage backend for adding document chunks.
+        chunker (SmartChunker): The chunker used to split the file into manageable pieces.
+
+    Returns:
+        None
+    """
     file_path = Path(file_path_str)
     print(f"WORKER: Processing NEW file: {file_path}")
 
@@ -83,6 +103,24 @@ def process_modified_file(
     rag_store: RAGStore,
     chunker: SmartChunker,
 ):
+    """
+    Processes a modified file by updating its entry in the RAG manifest and RAG store.
+
+    This function checks if the specified file exists and is not a directory. If the file is missing,
+    it treats the event as a deletion and processes it accordingly. If the file exists, it computes
+    the file's hash and compares it with the hash stored in the manifest. If the content is unchanged,
+    it updates the timestamp if necessary. If the content has changed or the file needs re-indexing,
+    it deletes old chunks from the RAG store and processes the file as a new file.
+
+    Args:
+        file_path_str (str): The path to the file to process.
+        manifest (RAGManifest): The manifest object tracking file metadata and chunk IDs.
+        rag_store (RAGStore): The RAG store object responsible for storing and deleting chunks.
+        chunker (SmartChunker): The chunker used to process and split the file content.
+
+    Raises:
+        Exception: Any exception encountered during processing is caught, logged, and the manifest is updated with the error status.
+    """
     file_path = Path(file_path_str)
     print(f"WORKER: Processing MODIFIED file: {file_path}")
 
@@ -130,6 +168,21 @@ def process_modified_file(
 def process_deleted_file(
     file_path_str: str, manifest: "RAGManifest", rag_store: "RAGStore"
 ):
+    """
+    Processes the deletion of a file from the RAG system by removing its entry from the manifest
+    and deleting associated chunks from the RAG store.
+
+    Args:
+        file_path_str (str): The file path of the deleted file as a string.
+        manifest (RAGManifest): The manifest object containing metadata about files and their chunks.
+        rag_store (RAGStore): The RAG store object responsible for storing and deleting chunks.
+
+    Behavior:
+        - Removes the file entry from the manifest.
+        - Deletes associated chunk IDs from the RAG store if present.
+        - Saves the updated manifest.
+        - Logs the process and handles exceptions gracefully.
+    """
     print(f"WORKER: Processing DELETED file: {file_path_str}")
 
     try:
@@ -154,6 +207,33 @@ def rag_update_worker(
     rag_store: RAGStore,
     chunk_config: Dict[str, Any],
 ):
+    """
+    Worker function that processes file system events from a queue and updates the RAG (Retrieval-Augmented Generation) store accordingly.
+
+    This function continuously listens for tasks from the provided processing queue, handling file creation, modification, deletion, and movement events. For each event, it updates the RAG manifest and store using a configurable chunking strategy.
+
+    Args:
+        processing_queue (queue.Queue[Dict[str, Any]]): Queue containing file event tasks to process.
+        manifest (RAGManifest): The manifest object representing the current state of indexed files.
+        rag_store (RAGStore): The storage backend for RAG chunks and metadata.
+        chunk_config (Dict[str, Any]): Configuration for chunking, including size, overlap, model name, separators, etc.
+
+    Task Dict Format:
+        {
+            "event_type": str,   # One of "created", "modified", "deleted", "moved"
+            "path": str,         # Path to the affected file
+            "dest_path": str,    # (Optional) Destination path for "moved" events
+            ...
+        }
+
+    Behavior:
+        - Waits for tasks from the queue.
+        - Processes each task according to its event type.
+        - Uses SmartChunker to split file contents as needed.
+        - Calls appropriate processing functions for each event.
+        - Exits cleanly when a sentinel (None) is received.
+        - Handles errors gracefully and ensures queue task completion.
+    """
     print(
         f"RAG Update Worker started. PID: {os.getpid()}, Thread: {threading.get_ident()}"
     )

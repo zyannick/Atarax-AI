@@ -10,6 +10,22 @@ from typing import Optional
 
 class ImageCaptioningTask(BaseTask):
     def __init__(self, model_id: str = "llava-hf/llava-1.5-7b-hf"):
+        """
+        Initializes the image captioning task with the specified model.
+
+        Args:
+            model_id (str, optional): The identifier of the model to use for image captioning. 
+                Defaults to "llava-hf/llava-1.5-7b-hf".
+
+        Attributes:
+            id (str): Unique identifier for the image captioning task.
+            description (str): Description of the task.
+            required_inputs (List[str]): List of required input keys for the task.
+            model_id (str): The model identifier used for loading the captioning model.
+            device (str): The device to run the model on ("cuda" if available, otherwise "cpu").
+            model (Optional[LlavaForConditionalGeneration]): The loaded captioning model instance.
+            processor (Optional[AutoProcessor]): The processor for preparing inputs for the model.
+        """
         self.id = "image_captioning"
         self.description = "Generates a descriptive caption for a given image."
         self.required_inputs = ["image_path"]
@@ -23,6 +39,21 @@ class ImageCaptioningTask(BaseTask):
         super().__init__()
 
     def _load_resources(self) -> None:
+        """
+        Loads the image captioning model and its processor into memory.
+
+        This method initializes the model specified by `self.model_id` onto the device specified by `self.device`,
+        using half-precision (float16) and optimized memory usage settings. It also loads the corresponding processor
+        for preprocessing inputs.
+
+        Side Effects:
+            - Sets `self.model` to an instance of LlavaForConditionalGeneration loaded with the specified parameters.
+            - Sets `self.processor` to an instance of AutoProcessor for the same model.
+
+        Raises:
+            Any exceptions raised by `LlavaForConditionalGeneration.from_pretrained` or `AutoProcessor.from_pretrained`
+            if loading fails.
+        """
         print(
             f"ImageCaptioningTask: Loading model '{self.model_id}' to device '{self.device}'..."
         )
@@ -40,6 +71,21 @@ class ImageCaptioningTask(BaseTask):
         context: TaskContext,
         dependencies: Dict[str, Any],
     ) -> str:
+        """
+        Executes the image captioning task by generating a brief description of the main subjects in the provided image.
+
+        Args:
+            processed_input (Dict[str, Any]): A dictionary containing the input data. Must include the key 'image_path' with the path to the image file.
+            context (TaskContext): The context object for the current task execution.
+            dependencies (Dict[str, Any]): A dictionary of dependencies required for task execution.
+
+        Returns:
+            str: A one-sentence description of the main subjects in the image, or an error message if resources are unavailable.
+
+        Raises:
+            ValueError: If 'image_path' is not present in the input dictionary.
+            IOError: If the image file cannot be opened or read.
+        """
         image_path = processed_input.get("image_path")
         if not image_path:
             raise ValueError("Input dictionary must contain 'image_path'.")

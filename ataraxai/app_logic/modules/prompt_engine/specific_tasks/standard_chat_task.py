@@ -6,6 +6,15 @@ from ataraxai.app_logic.modules.chat.chat_context_manager import ChatContextMana
 
 class StandardChatTask(BaseTask):
     def __init__(self):
+        """
+        Initializes the StandardChatTask with default properties.
+
+        Attributes:
+            id (str): Unique identifier for the task.
+            description (str): Brief description of the task's purpose.
+            required_inputs (list): List of required input keys for the task.
+            prompt_template_name (str): Name of the prompt template to use.
+        """
         self.id = "standard_chat"
         self.description = "Performs a standard chat interaction with RAG context."
         self.required_inputs = ["user_query", "session_id"]
@@ -21,6 +30,18 @@ class StandardChatTask(BaseTask):
         context: TaskContext,  
         dependencies: Dict[str, Any],
     ) -> str:
+        """
+        Executes the standard chat task by processing the user query, updating the chat context,
+        retrieving relevant documents via RAG (Retrieval-Augmented Generation), constructing the final prompt,
+        and generating a response using the core AI service.
+        Args:
+            processed_input (Dict[str, Any]): Dictionary containing user input data, including 'user_query' and 'session_id'.
+            context (TaskContext): The current task context object.
+            dependencies (Dict[str, Any]): Dictionary of dependencies required for execution, such as chat context manager,
+                RAG manager, prompt manager, core AI service, and optional generation parameters.
+        Returns:
+            str: The generated response text from the AI assistant.
+        """
 
         user_query = processed_input["user_query"]
         session_id = processed_input["session_id"]

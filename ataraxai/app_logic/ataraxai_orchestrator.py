@@ -959,13 +959,34 @@ class AtaraxAIOrchestrator:
             raise
 
     def _init_database(self) -> None:
+        """
+        Initializes the application's database and related managers.
+
+        This method sets up the database path, creates an instance of the ChatDatabaseManager
+        with the appropriate security manager, and initializes the chat context and chat manager.
+        Logs a message upon successful initialization.
+        """
         db_path = self.directories.data / self.app_config.database_filename
-        self.db_manager = ChatDatabaseManager(db_path=db_path)
+        self.db_manager = ChatDatabaseManager(db_path=db_path, security_manager=self.security_manager)
         self.chat_context = ChatContextManager(db_manager=self.db_manager)
         self.chat_manager = ChatManager(self.db_manager, self.logger)
         self.logger.info("Database initialized successfully")
 
     def set_master_password(self, password: str):
+        """
+        Sets the master password for the vault during the first launch.
+
+        This method derives a cryptographic key from the provided password,
+        creates a vault check to verify the integrity of the vault, updates
+        the application state to UNLOCKED, and initializes services that
+        require the vault to be unlocked.
+
+        Args:
+            password (str): The master password to set for the vault.
+
+        Raises:
+            RuntimeError: If the method is called when the application is not in the FIRST_LAUNCH state.
+        """
         if self.state != AppState.FIRST_LAUNCH:
             raise RuntimeError("Cannot set master password on an existing vault.")
 
@@ -975,6 +996,21 @@ class AtaraxAIOrchestrator:
         self._initialize_unlocked_services()
 
     def unlock(self, password: str):
+        """
+        Unlocks the application vault using the provided password.
+
+        This method attempts to unlock the application by deriving a key from the given password
+        and verifying its validity. If the password is correct, the application state is set to
+        UNLOCKED and necessary services are initialized. If the password is invalid or an error
+        occurs, the application remains in the LOCKED state and an error is logged.
+
+        Args:
+            password (str): The password used to unlock the vault.
+
+        Raises:
+            ValueError: If the provided password is invalid.
+            Exception: If any other error occurs during the unlocking process.
+        """
         if self.state != AppState.LOCKED:
             self.logger.warning("Application is already unlocked.")
             return
@@ -998,12 +1034,23 @@ class AtaraxAIOrchestrator:
         pass
 
     def lock(self):
+        """
+        Locks the application by invoking the security manager's lock mechanism, shutting down operations,
+        updating the application state to LOCKED, and logging the action.
+        """
         self.security_manager.lock()
         self.shutdown()
         self.state = AppState.LOCKED
         self.logger.info("Vault locked.")
 
     def _init_rag_manager(self) -> None:
+        """
+        Initializes the RAG (Retrieval-Augmented Generation) manager for the application.
+
+        This method creates an instance of `AtaraxAIRAGManager` using the current RAG configuration,
+        the application's data root path, and sets the core AI service to `None`. It assigns the
+        instance to `self.rag_manager` and logs a message indicating successful initialization.
+        """
         self.rag_manager = AtaraxAIRAGManager(
             rag_config_manager=self.config_manager.rag_config,
             app_data_root_path=self.directories.data,
@@ -1012,6 +1059,17 @@ class AtaraxAIOrchestrator:
         self.logger.info("RAG manager initialized successfully")
 
     def _init_prompt_engine(self) -> None:
+        """
+        Initializes the prompt engine and its related components.
+
+        This method performs the following actions:
+        - Ensures the prompts directory exists.
+        - Initializes the PromptManager with the prompts directory.
+        - Initializes the ContextManager with the current RAG configuration and RAG manager.
+        - Initializes the TaskManager.
+        - Initializes the ChainRunner with the task manager, context manager, prompt manager, chat context, and RAG manager.
+        - Logs the successful initialization of the prompt engine.
+        """
         prompts_dir = Path(self.app_config.prompts_directory)
         prompts_dir.mkdir(exist_ok=True)
 
@@ -1032,6 +1090,19 @@ class AtaraxAIOrchestrator:
         self.logger.info("Prompt engine initialized successfully")
 
     def _finalize_setup(self) -> None:
+        """
+        Finalizes the setup process by validating and initializing the RAG index, 
+        performing an initial scan or rebuilding the index as necessary, and 
+        starting file monitoring on the configured watched directories.
+
+        Steps:
+        1. Retrieves the list of directories to watch from the configuration manager.
+        2. Checks if the RAG index is valid:
+            - If invalid, rebuilds the index using the watched directories.
+            - If valid, performs an initial scan of the watched directories.
+        3. Starts monitoring the watched directories for file changes.
+        4. Logs the completion of the setup finalization process.
+        """
         watched_dirs = self.config_manager.get_watched_directories()
 
         is_valid = self.rag_manager.manifest.is_valid(self.rag_manager.rag_store)
@@ -1048,6 +1119,25 @@ class AtaraxAIOrchestrator:
     def run_task_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
+        """
+        Executes a sequence of tasks defined in a chain for a given user query.
+
+        Args:
+            chain_definition (List[Dict[str, Any]]): A list of dictionaries, each representing a task in the chain.
+            initial_user_query (str): The initial query provided by the user to start the chain.
+
+        Returns:
+            Any: The result of executing the task chain.
+
+        Raises:
+            ValidationError: If the initial user query is invalid or the chain definition is empty.
+            ServiceInitializationError: If the core AI service cannot be initialized.
+            Exception: If any error occurs during chain execution.
+
+        Logs:
+            - Information about the start and successful completion of the chain execution.
+            - Errors encountered during service initialization or chain execution.
+        """
         InputValidator.validate_string(initial_user_query, "Initial user query")
 
         if not chain_definition:
@@ -1079,6 +1169,20 @@ class AtaraxAIOrchestrator:
             raise
 
     def add_watch_directory(self, directory: str) -> None:
+        """
+        Adds a directory to the list of watched directories and starts monitoring it for file changes.
+
+        Args:
+            directory (str): The path to the directory to be watched.
+
+        Raises:
+            ValueError: If the provided directory path is invalid.
+
+        Side Effects:
+            - Updates the configuration with the new watched directory.
+            - Starts or updates file monitoring for all watched directories.
+            - Logs the addition of the new watch directory.
+        """
         InputValidator.validate_directory(directory, "Directory path")
 
         self.config_manager.add_watched_directory(directory)
@@ -1087,12 +1191,46 @@ class AtaraxAIOrchestrator:
         self.logger.info(f"Added watch directory: {directory}")
 
     def create_project(self, name: str, description: str) -> ProjectResponse:
+        """
+        Creates a new project with the given name and description.
+
+        Args:
+            name (str): The name of the project to create.
+            description (str): A brief description of the project.
+
+        Returns:
+            ProjectResponse: An object containing details about the newly created project.
+        """
         return self.chat_manager.create_project(name, description)
 
     def get_project(self, project_id: uuid.UUID) -> ProjectResponse:
+        """
+        Retrieve a project by its unique identifier.
+
+        Args:
+            project_id (uuid.UUID): The unique identifier of the project to retrieve.
+
+        Returns:
+            ProjectResponse: The response object containing project details.
+
+        Raises:
+            Any exceptions raised by chat_manager.get_project.
+        """
         return self.chat_manager.get_project(project_id)
 
     def get_project_summary(self, project_id: uuid.UUID) -> Dict[str, Any]:
+        """
+        Retrieves a summary of the specified project.
+
+        Args:
+            project_id (uuid.UUID): The unique identifier of the project.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the project's summary information.
+
+        Raises:
+            Exception: If an error occurs while retrieving the project summary.
+        """
         InputValidator.validate_uuid(project_id, "Project ID")
         try:
             return self.db_manager.get_project_summary(project_id)
@@ -1101,32 +1239,108 @@ class AtaraxAIOrchestrator:
             raise
 
     def list_projects(self) -> List[ProjectResponse]:
+        """
+        Retrieves a list of available projects.
+
+        Returns:
+            List[ProjectResponse]: A list containing project response objects representing the available projects.
+        """
         return self.chat_manager.list_projects()
 
     def delete_project(self, project_id: uuid.UUID) -> bool:
+        """
+        Deletes a project with the specified project ID.
+
+        Args:
+            project_id (uuid.UUID): The unique identifier of the project to delete.
+
+        Returns:
+            bool: True if the project was successfully deleted, False otherwise.
+        """
         return self.chat_manager.delete_project(project_id)
 
     def create_session(self, project_id: uuid.UUID, title: str) -> ChatSessionResponse:
+        """
+        Creates a new chat session for the specified project.
+
+        Args:
+            project_id (uuid.UUID): The unique identifier of the project for which the chat session is to be created.
+            title (str): The title of the new chat session.
+
+        Returns:
+            ChatSessionResponse: An object containing details about the newly created chat session.
+        """
         return self.chat_manager.create_session(project_id, title)
 
     def list_sessions(self, project_id: uuid.UUID) -> List[ChatSessionResponse]:
+        """
+        Retrieve a list of chat sessions associated with a given project.
+
+        Args:
+            project_id (uuid.UUID): The unique identifier of the project for which to list chat sessions.
+
+        Returns:
+            List[ChatSessionResponse]: A list of chat session response objects corresponding to the specified project.
+        """
         return self.chat_manager.list_sessions(project_id)
 
     def delete_session(self, session_id: uuid.UUID) -> bool:
+        """
+        Deletes a chat session with the specified session ID.
+
+        Args:
+            session_id (uuid.UUID): The unique identifier of the session to be deleted.
+
+        Returns:
+            bool: True if the session was successfully deleted, False otherwise.
+        """
         return self.chat_manager.delete_session(session_id)
 
     def add_message(
         self, session_id: uuid.UUID, role: str, content: str
     ) -> MessageResponse:
+        """
+        Adds a message to the chat session.
+
+        Args:
+            session_id (uuid.UUID): The unique identifier of the chat session.
+            role (str): The role of the message sender (e.g., 'user', 'assistant').
+            content (str): The content of the message to be added.
+
+        Returns:
+            MessageResponse: The response object containing details of the added message.
+        """
         return self.chat_manager.add_message(session_id, role, content)
 
     def get_messages_for_session(self, session_id: uuid.UUID) -> List[MessageResponse]:
+        """
+        Retrieve all messages associated with a given chat session.
+
+        Args:
+            session_id (uuid.UUID): The unique identifier of the chat session.
+
+        Returns:
+            List[MessageResponse]: A list of message responses for the specified session.
+        """
         return self.chat_manager.get_messages_for_session(session_id)
 
     def delete_message(self, message_id: uuid.UUID) -> bool:
+        """
+        Deletes a message with the specified message ID.
+
+        Args:
+            message_id (uuid.UUID): The unique identifier of the message to be deleted.
+
+        Returns:
+            bool: True if the message was successfully deleted, False otherwise.
+        """
         return self.chat_manager.delete_message(message_id)
 
     def shutdown(self) -> None:
+        """
+        Shuts down the AtaraxAI application by stopping file monitoring, closing the database connection,
+        and shutting down the core AI manager. Logs the shutdown process and handles any exceptions that occur.
+        """
         self.logger.info("Shutting down AtaraxAI...")
         try:
             self.rag_manager.stop_file_monitoring()

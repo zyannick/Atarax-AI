@@ -23,25 +23,78 @@ from ataraxai.app_logic.modules.rag.rag_updater import rag_update_worker
 
 class ResilientFileIndexer(FileSystemEventHandler):
     def __init__(self,  processing_queue: queue.Queue):
+        """
+        Initializes the class with a processing queue.
+
+        Args:
+            processing_queue (queue.Queue): A queue containing items to be processed, where each item is a dictionary with string keys and values of any type.
+        """
         self.processing_queue: queue.Queue[Dict[str, Any]] = processing_queue
 
     def on_created(self, event: Union[DirCreatedEvent, FileCreatedEvent]):
+        """
+        Handles file or directory creation events.
+
+        If the created event is for a file (not a directory), constructs a task dictionary
+        containing the event type and file path, and puts it into the processing queue.
+
+        Args:
+            event (Union[DirCreatedEvent, FileCreatedEvent]): The event object representing
+                the creation of a file or directory.
+
+        Returns:
+            None
+        """
         if not event.is_directory:
             task: Dict[str, Any] = {"event_type": "created", "file_path": event.src_path}
             self.processing_queue.put(task)
 
 
     def on_modified(self, event: Union[DirModifiedEvent, FileModifiedEvent]):
+        """
+        Handles file or directory modification events.
+
+        When a file (not a directory) is modified, this method creates a task dictionary
+        containing the event type and the file path, and puts it into the processing queue
+        for further handling.
+
+        Args:
+            event (Union[DirModifiedEvent, FileModifiedEvent]): The event object representing
+                the modification, which includes information about whether the event pertains
+                to a directory or a file, and the source path of the modified item.
+        """
         if not event.is_directory:
             task : Dict[str, Any] = {"event_type": "modified", "file_path": event.src_path}
             self.processing_queue.put(task)
 
     def on_deleted(self, event: Union[DirDeletedEvent, FileDeletedEvent]):
+        """
+        Handles file or directory deletion events.
+
+        If the deleted event corresponds to a file (not a directory), creates a task describing the deletion
+        and adds it to the processing queue for further handling.
+
+        Args:
+            event (Union[DirDeletedEvent, FileDeletedEvent]): The event object representing the deletion,
+                containing information about the deleted file or directory.
+        """
         if not event.is_directory:
             task : Dict[str, Any] = {"event_type": "deleted", "file_path": event.src_path}
             self.processing_queue.put(task)
 
     def on_moved(self, event: Union[DirMovedEvent, FileMovedEvent]):
+        """
+        Handles file or directory move events.
+
+        If the event corresponds to a file (not a directory), creates a task dictionary
+        containing the event type ('moved'), the source path, and the destination path.
+        The task is then added to the processing queue for further handling.
+
+        Args:
+            event (Union[DirMovedEvent, FileMovedEvent]): The move event object containing
+                information about the source and destination paths, and whether the event
+                pertains to a directory.
+        """
         if not event.is_directory:
             task : Dict[str, Any] = {
                 "event_type": "moved",

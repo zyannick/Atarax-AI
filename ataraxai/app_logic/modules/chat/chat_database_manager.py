@@ -334,7 +334,7 @@ class MessageService(BaseService):
         super().__init__(Message)
 
     def create_message(
-        self, session_id: uuid.UUID, role: str, content: bytes
+        self, session_id: uuid.UUID, role: str, content: str
     ) -> Message:
         try:
 
@@ -419,19 +419,19 @@ class MessageService(BaseService):
             logger.error(f"Failed to delete message: {e}")
             raise DatabaseError(f"Failed to delete message: {e}")
 
-    def search_messages(self, session_id: uuid.UUID, query: str) -> List[Message]:
-        try:
-            return list(
-                self.model.select()
-                .where(  # type: ignore
-                    (self.model.session == session_id)  # type: ignore
-                    & (self.model.content.contains(query))  # type: ignore
-                )
-                .order_by(self.model.timestamp.asc())  # type: ignore
-            )
-        except Exception as e:
-            logger.error(f"Failed to search messages: {e}")
-            raise DatabaseError(f"Failed to search messages: {e}")
+    # def search_messages(self, session_id: uuid.UUID, query: str) -> List[Message]:
+    #     try:
+    #         return list(
+    #             self.model.select()
+    #             .where(  # type: ignore
+    #                 (self.model.session == session_id)  # type: ignore
+    #                 & (self.model.content.contains(query))  # type: ignore
+    #             )
+    #             .order_by(self.model.timestamp.asc())  # type: ignore
+    #         )
+    #     except Exception as e:
+    #         logger.error(f"Failed to search messages: {e}")
+    #         raise DatabaseError(f"Failed to search messages: {e}")
 
 
 class ChatDatabaseManager:
@@ -504,10 +504,10 @@ class ChatDatabaseManager:
     def add_message(self, session_id: uuid.UUID, role: str, content: str) -> Message:
         if not content or not content.strip():
             raise ValidationError("Message content cannot be empty")
-        encrypted_content: bytes = self.security_manager.encrypt(
-            content.encode("utf-8")
-        )
-        return self.message_service.create_message(session_id, role, encrypted_content)
+        # encrypted_content: bytes = self.security_manager.encrypt(
+        #     content.encode("utf-8")
+        # )
+        return self.message_service.create_message(session_id, role, content)
 
     def get_message(self, message_id: uuid.UUID) -> Message:
         return self.message_service.get_message(message_id)
@@ -572,35 +572,35 @@ class ChatDatabaseManager:
             logger.error(f"Failed to get project summary: {e}")
             raise DatabaseError(f"Failed to get project summary: {e}")
 
-    def search_across_project(
-        self, project_id: uuid.UUID, query: str
-    ) -> Dict[str, List[Dict[str, Any]]]:
-        try:
-            sessions = self.get_sessions_for_project(project_id)
-            results: Dict[str, List[Dict[str, Any]]] = {"sessions": []}
+    # def search_across_project(
+    #     self, project_id: uuid.UUID, query: str
+    # ) -> Dict[str, List[Dict[str, Any]]]:
+    #     try:
+    #         sessions = self.get_sessions_for_project(project_id)
+    #         results: Dict[str, List[Dict[str, Any]]] = {"sessions": []}
 
-            for session in sessions:
-                messages = self.message_service.search_messages(session.id, query)  # type: ignore
-                if messages:
-                    session_results = {  # type: ignore
-                        "session_id": str(session.id),
-                        "session_title": session.title,
-                        "messages": [
-                            {
-                                "id": str(msg.id),
-                                "role": msg.role,
-                                "content": msg.content,
-                                "timestamp": msg.timestamp.isoformat(),  # type: ignore
-                            }
-                            for msg in messages
-                        ],
-                    }
-                    results["sessions"].append(session_results)
+    #         for session in sessions:
+    #             messages = self.message_service.search_messages(session.id, query)  # type: ignore
+    #             if messages:
+    #                 session_results = {  # type: ignore
+    #                     "session_id": str(session.id),
+    #                     "session_title": session.title,
+    #                     "messages": [
+    #                         {
+    #                             "id": str(msg.id),
+    #                             "role": msg.role,
+    #                             "content": msg.content,
+    #                             "timestamp": msg.timestamp.isoformat(),  # type: ignore
+    #                         }
+    #                         for msg in messages
+    #                     ],
+    #                 }
+    #                 results["sessions"].append(session_results)
 
-            return results
-        except Exception as e:
-            logger.error(f"Failed to search across project: {e}")
-            raise DatabaseError(f"Failed to search across project: {e}")
+    #         return results
+    #     except Exception as e:
+    #         logger.error(f"Failed to search across project: {e}")
+    #         raise DatabaseError(f"Failed to search across project: {e}")
 
     def close(self):
         try:
@@ -618,10 +618,12 @@ class ChatDatabaseManager:
 
 
 if __name__ == "__main__":
-    db_path = Path("chat_example.db")
 
+    
+    db_path = Path("chat_example.db")
+    security_manager = SecurityManager(salt_path="salt.txt", check_path="check.txt")
     try:
-        with ChatDatabaseManager(db_path) as chat_db:
+        with ChatDatabaseManager(db_path, security_manager) as chat_db:
             project = chat_db.create_project(
                 "AI Research", "Research project for AI development"
             )

@@ -16,6 +16,26 @@ class ChainRunner:
         chat_context: ChatContextManager,
         rag_manager: AtaraxAIRAGManager
     ):
+        """
+        Initializes the ChainRunner with required managers and services.
+
+        Args:
+            task_manager (TaskManager): Manages tasks within the chain.
+            context_manager (ContextManager): Handles context-related operations.
+            prompt_manager (PromptManager): Manages prompt templates and logic.
+            core_ai_service (Any): Core AI service used for processing (type ignored for flexibility).
+            chat_context (ChatContextManager): Manages chat-specific context and state.
+            rag_manager (AtaraxAIRAGManager): Handles retrieval-augmented generation (RAG) operations.
+
+        Attributes:
+            task_manager (TaskManager): Reference to the task manager.
+            context_manager (ContextManager): Reference to the context manager.
+            prompt_manager (PromptManager): Reference to the prompt manager.
+            core_ai_service (Any): Reference to the core AI service.
+            chat_context (ChatContextManager): Reference to the chat context manager.
+            rag_manager (AtaraxAIRAGManager): Reference to the RAG manager.
+            dependencies (Dict[str, Any]): Dictionary of dependencies for internal use.
+        """
         self.task_manager = task_manager
         self.context_manager = context_manager
         self.prompt_manager = prompt_manager
@@ -34,6 +54,24 @@ class ChainRunner:
     def run_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
+        """
+        Executes a sequence of tasks defined in a chain, passing outputs from previous steps as inputs to subsequent steps.
+
+        Args:
+            chain_definition (List[Dict[str, Any]]): 
+                A list of dictionaries, each representing a step in the chain. Each step must specify a 'task_id' and may specify 'inputs', 
+                where input values can reference outputs from previous steps using the format '{{step_n.key}}'.
+            initial_user_query (str): 
+                The initial user query to be used as context for the chain execution.
+
+        Returns:
+            Any: 
+                The output of the final executed task in the chain, or the result of error handling if an exception occurs.
+
+        Raises:
+            Exception: 
+                If a task raises an exception and does not handle it internally, the exception is caught, error handling is invoked, and execution stops.
+        """
         context = TaskContext(user_query=initial_user_query)
         step_outputs: Dict[str, Any] = {}
         final_result = None

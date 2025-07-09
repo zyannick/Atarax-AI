@@ -31,6 +31,17 @@ class CustomFormatter(logging.Formatter):
 class ArataxAILogger:
 
     def __init__(self, log_file: str = "ataraxai.log"):
+        """
+        Initializes the AtaraxaiLogger instance.
+
+        Sets up a logger with both file and console handlers:
+        - The file handler logs all messages at DEBUG level and above to the specified log file.
+        - The console handler logs messages at INFO level and above to the console, using a custom formatter.
+        - Log messages are formatted with timestamp, logger name, log level, and message.
+
+        Args:
+            log_file (str): Path to the log file. Defaults to "ataraxai.log".
+        """
         self.logger = logging.getLogger("AtaraxaiLogger")
         self.logger.setLevel(logging.DEBUG)
 

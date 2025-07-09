@@ -47,6 +47,4 @@ def test_add_chunks_without_embeddings_uses_embedder(rag_store):
         documents=texts,
         metadatas=metadatas,
     )
-
-
-
+    

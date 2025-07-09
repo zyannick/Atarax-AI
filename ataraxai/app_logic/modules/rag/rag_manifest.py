@@ -85,6 +85,19 @@ class RAGManifest:
         return str(file_path) in self.data
     
     def is_valid(self, rag_store: RAGStore) -> bool:
+        """
+        Validates that all chunk IDs listed in the manifest exist in the provided RAGStore.
+
+        Args:
+            rag_store (RAGStore): The RAGStore instance to validate chunk IDs against.
+
+        Returns:
+            bool: True if all chunk IDs in the manifest are present in the RAGStore, or if the manifest is empty; False otherwise.
+
+        Notes:
+            - If the manifest contains no data or no chunk IDs, the method returns True.
+            - Prints a message if the manifest contains no chunk IDs to validate.
+        """
         if not self.data:
             return True #
 

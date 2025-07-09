@@ -15,6 +15,22 @@ class RAGStore:
         collection_name: str,
         embedder: AtaraxAIEmbedder,
     ):
+        """
+        Initializes a RAGStore instance for managing a persistent ChromaDB collection with embedding support.
+
+        Args:
+            db_path_str (str): The file system path where the ChromaDB database will be stored.
+            collection_name (str): The name of the collection to load or create within the database.
+            embedder (AtaraxAIEmbedder): An instance of the embedding function to use for vectorizing data.
+
+        Raises:
+            ValueError: If no embedder instance is provided.
+
+        Side Effects:
+            - Creates the database directory if it does not exist.
+            - Loads or creates a ChromaDB collection with the specified name and embedding function.
+            - Prints a message indicating the collection status and item count.
+        """
         self.db_path = Path(db_path_str)
         self.db_path.mkdir(parents=True, exist_ok=True)
         self.collection_name = collection_name
@@ -41,7 +57,20 @@ class RAGStore:
         texts: List[str],
         metadatas: List[MetadataDict],
     ):
+        """
+        Adds a batch of text chunks along with their corresponding IDs and metadata to the collection.
 
+        Args:
+            ids (List[str]): A list of unique identifiers for each text chunk.
+            texts (List[str]): A list of text chunks to be added to the collection.
+            metadatas (List[MetadataDict]): A list of metadata dictionaries, each associated with a text chunk.
+
+        Raises:
+            ValueError: If the length of `metadatas` does not match the length of `texts`.
+
+        Side Effects:
+            Adds or updates the specified items in the collection and prints a summary of the operation.
+        """
         if len(metadatas) != len(texts):
             raise ValueError("Length of metadatas must match length of texts. {} vs {}".format(len(metadatas), len(texts)))
 

@@ -10,6 +10,13 @@ class BaseTask(ABC):
     prompt_template_name: Optional[str] = None
 
     def __init__(self):
+        """
+        Initializes the base task instance.
+
+        Ensures that concrete subclasses define both an 'id' and a 'description' attribute.
+        Raises:
+            NotImplementedError: If 'id' or 'description' is not defined in the subclass.
+        """
         self._initialized: bool = False
         if not hasattr(self, "id") or not self.id:
             raise NotImplementedError("Concrete tasks must define an 'id'")
@@ -17,6 +24,16 @@ class BaseTask(ABC):
             raise NotImplementedError("Concrete tasks must define a 'description'")
 
     def load_if_needed(self):
+        """
+        Lazily loads resources required for the task if they have not been initialized yet.
+
+        This method checks whether the task's resources have already been loaded. If not,
+        it performs the loading process by calling the internal `_load_resources` method,
+        marks the task as initialized, and prints status messages before and after loading.
+
+        Returns:
+            None
+        """
         if not self._initialized:
             print(f"Lazy loading resources for task: '{self.id}'...")
             self._load_resources()
@@ -29,6 +46,20 @@ class BaseTask(ABC):
         context: TaskContext,
         dependencies: Dict[str, Any],
     ) -> Any:
+        """
+        Executes the main logic of the task, handling input validation, preprocessing, execution, and postprocessing steps.
+
+        Args:
+            input_data (Dict[str, Any]): The input data required for the task.
+            context (TaskContext): The context object containing task-specific information.
+            dependencies (Dict[str, Any]): A dictionary of dependencies required for task execution.
+
+        Returns:
+            Any: The final processed output of the task.
+
+        Raises:
+            Exception: Any exception raised during the execution is handled by the handle_error method.
+        """
         try:
             self.load_if_needed()
             self.validate_inputs(input_data)

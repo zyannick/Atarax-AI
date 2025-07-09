@@ -7,6 +7,14 @@ import tempfile
 
 class VideoParser(DocumentParser):
     def __init__(self, whisper_transcribe, core_ai_service, transcription_params):
+        """
+        Initializes the VideoParser with the given transcription and AI service components.
+
+        Args:
+            whisper_transcribe: The transcription engine or function used for processing audio/video files.
+            core_ai_service: The core AI service instance used for further processing or analysis.
+            transcription_params: Parameters or configuration settings for the transcription process.
+        """
         self.core_ai_service = core_ai_service
         self.transcription_params = transcription_params
         self.whisper_transcribe = whisper_transcribe

@@ -26,6 +26,23 @@ class SmartChunker:
         separators: List[str] | None = None,
         keep_separator: bool = True,
     ):
+        """
+        Initializes the SmartChunker with a tokenizer and a recursive character text splitter.
+
+        Args:
+            model_name_for_tiktoken (str): Name of the model to use for tiktoken encoding. Defaults to "gpt-3.5-turbo".
+            chunk_size_tokens (int): The maximum number of tokens per chunk. Defaults to 400.
+            chunk_overlap_tokens (int): The number of tokens to overlap between chunks. Must be less than chunk_size_tokens. Defaults to 50.
+            separators (List[str] | None): Optional list of separator strings to use when splitting text. Defaults to None.
+            keep_separator (bool): Whether to keep the separator at the end of each chunk. Defaults to True.
+
+        Raises:
+            ValueError: If chunk_overlap_tokens is greater than or equal to chunk_size_tokens.
+
+        Notes:
+            - If the specified model is not found in tiktoken, defaults to "cl100k_base" encoding.
+            - Uses LangChain's RecursiveCharacterTextSplitter for chunking text.
+        """
         try:
             self._tokenizer = tiktoken.encoding_for_model(model_name_for_tiktoken)
         except KeyError:
@@ -58,7 +75,17 @@ class SmartChunker:
 
     def ingest_file(self, file_path: Path) -> List[DocumentChunk]:
         """
-        Ingests a single file and returns a list of DocumentChunk objects.
+        Ingests a file, parses its content into document chunks, and applies smart chunking.
+
+        Args:
+            file_path (Path): The path to the file to be ingested.
+
+        Returns:
+            List[DocumentChunk]: A list of smart-chunked DocumentChunk objects extracted from the file.
+                                 Returns an empty list if the file is invalid, unsupported, or an error occurs.
+
+        Side Effects:
+            Prints status and error messages to the console.
         """
         if not file_path.is_file():
             print(f"[!] {file_path} is not a valid file.")
@@ -79,6 +106,20 @@ class SmartChunker:
             return []
 
     def ingest_directory(self, directory: Path) -> List[DocumentChunk]:
+        """
+        Ingests all files from the specified directory, recursively parsing and chunking their contents.
+
+        Args:
+            directory (Path): The root directory to search for files.
+
+        Returns:
+            List[DocumentChunk]: A list of processed and chunked document objects extracted from all files.
+
+        Notes:
+            - Only files with extensions present in EXT_PARSER_MAP are processed.
+            - Each file is parsed using its corresponding parser, then further chunked using the `chunk` method.
+            - Files that cannot be processed are skipped, and an error message is printed.
+        """
         all_chunks: List[DocumentChunk] = []
 
         for path in directory.rglob("*"):
@@ -99,7 +140,21 @@ class SmartChunker:
         self, document_content: str, source_path: str, base_metadata: Dict[str, Any]
     ) -> List[DocumentChunk]:
         """
-        Chunks a single document's content string using the initialized LangChain text splitter.
+        Splits the content of a single document into smaller chunks using the configured text splitter,
+        and attaches relevant metadata to each chunk.
+
+        Args:
+            document_content (str): The full text content of the document to be chunked.
+            source_path (str): The original source path or identifier of the document.
+            base_metadata (Dict[str, Any]): Base metadata to be included with each chunk.
+
+        Returns:
+            List[DocumentChunk]: A list of DocumentChunk objects, each containing a chunk of the original
+            document content along with associated metadata, including the chunk's index within the document.
+
+        Notes:
+            - If the document content is empty or contains only whitespace, an empty list is returned.
+            - Each chunk's metadata includes the original source, base metadata, and its index in the document.
         """
         if not document_content or not document_content.strip():
             return []
@@ -133,8 +188,17 @@ class SmartChunker:
 
     def chunk(self, documents_to_chunk: List[DocumentChunk]) -> List[DocumentChunk]:
         """
-        Takes a list of DocumentChunk objects (where each 'content' field is a full document text)
-        and returns a new list of DocumentChunk objects where content has been chunked.
+        Chunks a list of DocumentChunk objects using the smart chunking strategy.
+
+        Args:
+            documents_to_chunk (List[DocumentChunk]): A list of DocumentChunk instances to be chunked.
+
+        Returns:
+            List[DocumentChunk]: A list containing the resulting DocumentChunk objects after chunking.
+
+        Notes:
+            - If an item in documents_to_chunk is not an instance of DocumentChunk, it will be skipped with a warning.
+            - Each DocumentChunk is processed by the _chunk_single_document_content method, which may split it into multiple chunks.
         """
         all_resulting_chunks: List[DocumentChunk] = []
         for original_doc_chunk in documents_to_chunk:

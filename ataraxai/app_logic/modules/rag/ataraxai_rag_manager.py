@@ -31,6 +31,35 @@ class AtaraxAIRAGManager:
         app_data_root_path: Path,
         core_ai_service: Any,
     ):
+        """
+        Initializes the AtaraxAIRAGManager instance.
+
+        Args:
+            rag_config_manager (RAGConfigManager): Manager for RAG configuration settings.
+            app_data_root_path (Path): Root path for application data storage.
+            core_ai_service (Any): Core AI service instance used by the manager.
+
+        Attributes:
+            app_data_root_path (Path): Root directory for storing RAG-related data.
+            rag_config_manager (RAGConfigManager): Configuration manager for RAG settings.
+            core_ai_service (Any): Reference to the core AI service.
+            logger (logging.Logger): Logger for the manager.
+            manifest_file_path (Path): Path to the RAG manifest JSON file.
+            embedder (AtaraxAIEmbedder): Embedder instance for text embeddings.
+            rag_store (RAGStore): RAGStore instance for managing knowledge storage.
+            manifest (RAGManifest): Manifest manager for RAG documents.
+            rag_use_reranking (bool): Whether to use reranking in retrieval.
+            n_result (int): Number of results to retrieve initially.
+            n_result_final (int): Number of final results after reranking/filtering.
+            use_hyde (bool): Whether to use the HyDE technique.
+            processing_queue (queue.Queue): Queue for processing tasks.
+            file_observer: Observer for file changes (currently None).
+            _cross_encoder: Cross-encoder model instance (lazy initialization).
+            _cross_encoder_initialized (bool): Flag indicating if cross-encoder is initialized.
+
+        Logs:
+            Logs successful initialization of the AtaraxAIRAGManager.
+        """
         self.app_data_root_path = app_data_root_path
         self.rag_config_manager = rag_config_manager
         self.core_ai_service = core_ai_service
@@ -72,6 +101,16 @@ class AtaraxAIRAGManager:
         self.logger.info("AtaraxAIRAGManager initialized successfully.")
 
     def check_manifest_validity(self) -> bool:
+        """
+        Checks the validity of the manifest against the RAG store.
+
+        Returns:
+            bool: True if the manifest is valid, False otherwise.
+
+        Logs:
+            - Info message indicating whether the manifest is valid or invalid.
+            - Error message if an exception occurs during the validity check.
+        """
         try:
             is_valid = self.manifest.is_valid(self.rag_store)
             self.logger.info(
@@ -83,6 +122,18 @@ class AtaraxAIRAGManager:
             return False
 
     def rebuild_index(self, directories_to_scan: Optional[List[str]]) -> bool:
+        """
+        Rebuilds the RAG (Retrieval-Augmented Generation) index from scratch using the specified directories.
+
+        This method deletes the existing RAG index collection, creates a new one with the configured embedding function,
+        clears the manifest, and performs an initial scan of the provided directories to repopulate the index.
+
+        Args:
+            directories_to_scan (Optional[List[str]]): List of directory paths to scan and index. If None or empty, the rebuild is aborted.
+
+        Returns:
+            bool: True if the index was rebuilt successfully, False otherwise.
+        """
         self.logger.info("Rebuilding RAG index from scratch...")
         if not directories_to_scan:
             self.logger.warning(
@@ -106,6 +157,21 @@ class AtaraxAIRAGManager:
             return False
 
     def perform_initial_scan(self, directories_to_scan: Optional[List[str]]) -> int:
+        """
+        Scans the specified directories for files not present in the manifest and queues them for processing.
+
+        Args:
+            directories_to_scan (Optional[List[str]]): A list of directory paths to scan. If None or empty, no scanning is performed.
+
+        Returns:
+            int: The number of new files found and queued for processing.
+
+        Logs:
+            - Info when starting and completing the scan.
+            - Warning if a directory does not exist.
+            - Debug for each file queued for processing.
+            - Error if an exception occurs during scanning.
+        """
         if not directories_to_scan:
             self.logger.info("No directories to scan.")
             return 0
@@ -139,6 +205,25 @@ class AtaraxAIRAGManager:
         return files_found
 
     def start_file_monitoring(self, watched_directories: Optional[List[str]]) -> bool:
+        """
+        Starts monitoring the specified directories for file changes and initializes the RAG update worker thread.
+
+        Args:
+            watched_directories (Optional[List[str]]): List of directory paths to monitor for file changes.
+
+        Returns:
+            bool: True if file monitoring started successfully, False otherwise.
+
+        Side Effects:
+            - Starts or restarts a background thread for processing RAG updates.
+            - Initializes or restarts a file observer to monitor the specified directories.
+            - Logs informational and error messages.
+
+        Notes:
+            - If no directories are specified, logs a warning and returns False.
+            - If a file observer or worker thread is already running, they are stopped and restarted as needed.
+            - Any exceptions during initialization are logged and result in a return value of False.
+        """
         if not watched_directories:
             self.logger.warning("No directories specified for monitoring.")
             return False
@@ -180,6 +265,13 @@ class AtaraxAIRAGManager:
             return False
 
     def stop_file_monitoring(self) -> None:
+        """
+        Stops the file monitoring process if it is currently active.
+
+        This method checks if the file observer is running. If so, it stops and joins the observer thread,
+        logging the outcome. If no file monitoring is active, it logs that information. Any exceptions
+        encountered during the process are caught and logged as errors.
+        """
         try:
             if self.file_observer and self.file_observer.is_alive():
                 self.file_observer.stop()
@@ -212,7 +304,15 @@ class AtaraxAIRAGManager:
 
     @property
     def cross_encoder(self) -> Optional[CrossEncoder]:
-        """Lazy initialization of cross-encoder for re-ranking."""
+        """
+        Lazily initializes and returns a CrossEncoder instance for re-ranking, if enabled.
+
+        Returns:
+            Optional[CrossEncoder]: The initialized CrossEncoder instance if re-ranking is enabled and initialization succeeds; otherwise, None.
+
+        Raises:
+            Logs any exceptions encountered during CrossEncoder initialization.
+        """
         if not self._cross_encoder_initialized:
             self._cross_encoder_initialized = True
             if self.rag_use_reranking and self.core_ai_service:
@@ -234,6 +334,19 @@ class AtaraxAIRAGManager:
 
     @lru_cache(maxsize=128)
     def _generate_hypothetical_document(self, query_text: str) -> str:
+        """
+        Generates a hypothetical document that provides a clear and direct answer to the given query text.
+
+        This method constructs a prompt using the provided query and requests a completion from the core AI service.
+        If the generation is successful, the hypothetical document is returned. If an error occurs during generation,
+        the original query text is returned as a fallback.
+
+        Args:
+            query_text (str): The question or query for which a hypothetical answer document should be generated.
+
+        Returns:
+            str: The generated hypothetical document or the original query text if an error occurs.
+        """
         self.logger.debug("Generating hypothetical document for HyDE...")
         prompt = f"""Please write a short paragraph that provides a clear and direct answer to the following question:
                     Question: {query_text}
@@ -248,6 +361,22 @@ class AtaraxAIRAGManager:
             return query_text
 
     def _rerank_documents(self, query_text: str, documents: List[str]) -> List[str]:
+        """
+        Re-rank a list of documents based on their relevance to a given query using a cross-encoder model.
+
+        Args:
+            query_text (str): The query string to compare against the documents.
+            documents (List[str]): A list of document strings to be re-ranked.
+
+        Returns:
+            List[str]: The list of documents re-ordered by relevance to the query. If the cross-encoder
+                model is not loaded or an error occurs, returns the documents in their original order.
+
+        Logs:
+            - Warning if the cross-encoder model is not loaded.
+            - Error if an exception occurs during re-ranking.
+            - Debug message indicating the number of documents re-ranked.
+        """
         if not self.cross_encoder:
             self.logger.warning(
                 "Re-ranking was requested, but the cross-encoder model is not loaded. "
@@ -282,6 +411,22 @@ class AtaraxAIRAGManager:
     def query_knowledge(
         self, query_text: str, filter_metadata: Optional[Dict[Any, Any]] = None
     ) -> List[str]:
+        """
+        Queries the knowledge base using the provided query text and optional metadata filters.
+
+        Depending on the retrieval strategy, either a simple or advanced query method is used.
+        Logs the query and handles exceptions gracefully.
+
+        Args:
+            query_text (str): The text query to search in the knowledge base.
+            filter_metadata (Optional[Dict[Any, Any]]): Optional dictionary of metadata to filter the search.
+
+        Returns:
+            List[str]: A list of strings representing the retrieved knowledge entries. Returns an empty list if an error occurs.
+
+        Raises:
+            ValueError: If the query_text is empty or only whitespace.
+        """
         if not query_text or not query_text.strip():
             raise ValueError("Query text cannot be empty")
 
@@ -297,11 +442,27 @@ class AtaraxAIRAGManager:
             return []
 
     def _should_use_advanced_retrieval(self) -> bool:
+        """
+        Determines whether advanced retrieval techniques should be used.
+
+        Returns:
+            bool: True if either the HyDE method or reranking is enabled; False otherwise.
+        """
         return self.use_hyde or self.rag_use_reranking
 
     def _simple_query(
         self, query_text: str, filter_metadata: Optional[Dict[Any, Any]]
     ) -> List[str]:
+        """
+        Executes a simple query against the RAG store and returns a list of document strings.
+
+        Args:
+            query_text (str): The text query to search for relevant documents.
+            filter_metadata (Optional[Dict[Any, Any]]): Optional metadata filters to apply to the query.
+
+        Returns:
+            List[str]: A list of document strings matching the query. Returns an empty list if no documents are found.
+        """
         results = self.rag_store.query(
             query_text=query_text,
             n_results=self.n_result,
@@ -319,6 +480,22 @@ class AtaraxAIRAGManager:
     def _advanced_query(
         self, query_text: str, filter_metadata: Optional[Dict[Any, Any]]
     ) -> List[str]:
+        """
+        Executes an advanced query against the RAG (Retrieval-Augmented Generation) store, optionally using hypothetical document generation (HyDE) and reranking.
+
+        Args:
+            query_text (str): The input query string to search for relevant documents.
+            filter_metadata (Optional[Dict[Any, Any]]): Optional metadata filters to apply to the search.
+
+        Returns:
+            List[str]: A list of relevant document strings retrieved and optionally reranked based on the query.
+
+        Notes:
+            - If HyDE is enabled (`self.use_hyde`), a hypothetical document is generated from the query to improve retrieval.
+            - If reranking is enabled (`self.rag_use_reranking`), the initially retrieved documents are reranked for relevance.
+            - The number of final results is limited by `self.n_result_final`.
+            - Logs debug information about the retrieval process.
+        """
         search_query = query_text
 
         if self.use_hyde:
@@ -350,6 +527,22 @@ class AtaraxAIRAGManager:
         return result
 
     def get_stats(self) -> Dict[str, Any]:
+        """
+        Retrieve various statistics and status information about the RAG manager.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the following keys:
+                - "total_documents" (int): The total number of documents in the RAG store collection.
+                - "manifest_files" (int): The number of files in the manifest, or 0 if unavailable.
+                - "use_hyde" (bool): Whether the HYDE feature is enabled.
+                - "use_reranking" (bool): Whether reranking is enabled.
+                - "n_result" (int): The number of results to return.
+                - "n_result_final" (int): The final number of results after processing.
+                - "monitoring_active" (bool): Whether the file observer monitoring is active.
+                - "worker_thread_active" (bool): Whether the worker thread is currently active.
+
+        If an error occurs, logs the error and returns an empty dictionary.
+        """
         try:
             collection_count = self.rag_store.collection.count()
             manifest_files = (
