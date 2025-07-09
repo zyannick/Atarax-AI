@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any
 from contextlib import contextmanager
+from ataraxai.app_logic.utils.security_manager import SecurityManager
 import logging
 from peewee import (
     SqliteDatabase,
@@ -14,7 +15,7 @@ from peewee import (
     ForeignKeyField,
     IntegrityError,
     DoesNotExist,
-    Select
+    Select,
 )
 
 
@@ -34,20 +35,20 @@ class Project(BaseModel):
     name = CharField(unique=True)  # Made name unique
     description = TextField(null=True)
     created_at = DateTimeField(default=datetime.now)
-    updated_at = DateTimeField(default=datetime.now)  # Added updated_at
-    
+    updated_at = DateTimeField(default=datetime.now)
+
     def get_id(self) -> uuid.UUID:
         return uuid.UUID(str(self.id))
-    
+
     def get_name(self) -> str:
         return str(self.name)
-    
+
     def get_description(self) -> Optional[str]:
         return str(self.description) if self.description else None
 
-    def save(self, *args, **kwargs) -> int: # type: ignore
+    def save(self, *args, **kwargs) -> int:  # type: ignore
         self.updated_at = datetime.now()  # type: ignore
-        return super().save(*args, **kwargs) # type: ignore
+        return super().save(*args, **kwargs)  # type: ignore
 
     def __str__(self):
         return f"Project(id={self.id}, name='{self.name}')"
@@ -59,40 +60,40 @@ class ChatSession(BaseModel):
     title = CharField()
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)
-    
+
     def get_id(self) -> uuid.UUID:
         return uuid.UUID(str(self.id))
-    
+
     def get_title(self) -> str:
         return str(self.title)
-    
-    def get_project_id(self) -> uuid.UUID:
-        return uuid.UUID(str(self.project.get_id())) # type: ignore
 
-    def save(self, *args, **kwargs): # type: ignore
+    def get_project_id(self) -> uuid.UUID:
+        return uuid.UUID(str(self.project.get_id()))  # type: ignore
+
+    def save(self, *args, **kwargs):  # type: ignore
         self.updated_at = datetime.now()
-        return super().save(*args, **kwargs) # type: ignore
+        return super().save(*args, **kwargs)  # type: ignore
 
     def __str__(self):
-        return f"ChatSession(id={self.id}, title='{self.title}', project_id={self.project.id})" # type: ignore
+        return f"ChatSession(id={self.id}, title='{self.title}', project_id={self.project.id})"  # type: ignore
 
 
 class Message(BaseModel):
     id = UUIDField(primary_key=True)
     session = ForeignKeyField(ChatSession, backref="messages", on_delete="CASCADE")
-    role = CharField()  
+    role = CharField()
     content = TextField()
     timestamp = DateTimeField(default=datetime.now)
 
     def __str__(self):
-        content_preview = self.content[:50] + "..." if len(self.content) > 50 else self.content # type: ignore
+        content_preview = self.content[:50] + "..." if len(self.content) > 50 else self.content  # type: ignore
         return f"Message(id={self.id}, role='{self.role}', content='{content_preview}')"
 
     def get_id(self) -> uuid.UUID:
         return uuid.UUID(str(self.id))
 
     def get_session_id(self) -> uuid.UUID:
-        return uuid.UUID(str(self.session.get_id())) # type: ignore
+        return uuid.UUID(str(self.session.get_id()))  # type: ignore
 
     def get_role(self) -> str:
         return str(self.role)
@@ -101,7 +102,8 @@ class Message(BaseModel):
         return str(self.content)
 
     def get_timestamp(self) -> datetime:
-        return self.timestamp # type: ignore
+        return self.timestamp  # type: ignore
+
 
 class DatabaseError(Exception):
     pass
@@ -116,12 +118,14 @@ class ValidationError(DatabaseError):
 
 
 class BaseService:
-    
+
     def __init__(self, model_class: type[Project] | type[ChatSession] | type[Message]):
         self.model = model_class
-    
+
     def _handle_does_not_exist(self, operation: str, identifier: Any) -> None:
-        raise NotFoundError(f"{self.model.__name__} {operation} failed: not found with identifier {identifier}")
+        raise NotFoundError(
+            f"{self.model.__name__} {operation} failed: not found with identifier {identifier}"
+        )
 
 
 class ProjectService(BaseService):
@@ -132,11 +136,11 @@ class ProjectService(BaseService):
         try:
             if not name or not name.strip():
                 raise ValidationError("Project name cannot be empty")
-            
-            return self.model.create( # type: ignore
-                id=uuid.uuid4(), 
-                name=name.strip(), 
-                description=description.strip() if description else None
+
+            return self.model.create(  # type: ignore
+                id=uuid.uuid4(),
+                name=name.strip(),
+                description=description.strip() if description else None,
             )
         except IntegrityError:
             raise ValidationError(f"Project with name '{name}' already exists")
@@ -146,42 +150,52 @@ class ProjectService(BaseService):
 
     def get_project(self, project_id: uuid.UUID) -> Project:
         try:
-            return self.model.get(self.model.id == project_id) # type: ignore
+            return self.model.get(self.model.id == project_id)  # type: ignore
         except DoesNotExist:
             self._handle_does_not_exist("get", project_id)
-            raise NotFoundError(f"Project get failed: not found with identifier {project_id}")
+            raise NotFoundError(
+                f"Project get failed: not found with identifier {project_id}"
+            )
 
     def get_project_by_name(self, name: str) -> Project:
         try:
-            return self.model.get(self.model.name == name) # type: ignore
+            return self.model.get(self.model.name == name)  # type: ignore
         except DoesNotExist:
             self._handle_does_not_exist("get", f"name='{name}'")
-            raise NotFoundError(f"Project get by name failed: not found with name '{name}'")
+            raise NotFoundError(
+                f"Project get by name failed: not found with name '{name}'"
+            )
 
     def get_projects(self, limit: Optional[int] = None) -> List[Project]:
         try:
-            query: Select = self.model.select().order_by(self.model.created_at.desc()) # type: ignore
+            query: Select = self.model.select().order_by(self.model.created_at.desc())  # type: ignore
             if limit:
-                query = query.limit(limit) # type: ignore
-            return list(query) # type: ignore
+                query = query.limit(limit)  # type: ignore
+            return list(query)  # type: ignore
         except Exception as e:
             logger.error(f"Failed to get projects: {e}")
             raise DatabaseError(f"Failed to get projects: {e}")
 
-    def update_project(self, project_id: uuid.UUID, name: Optional[str] = None, 
-                      description: Optional[str] = None) -> Project:
+    def update_project(
+        self,
+        project_id: uuid.UUID,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Project:
         try:
             project = self.get_project(project_id)
-            
+
             if name is not None:
                 if not name.strip():
                     raise ValidationError("Project name cannot be empty")
-                setattr(project, 'name', name.strip())
-            
+                setattr(project, "name", name.strip())
+
             if description is not None:
-                setattr(project, 'description', description.strip() if description else None)
-            
-            project.save() # type: ignore
+                setattr(
+                    project, "description", description.strip() if description else None
+                )
+
+            project.save()  # type: ignore
             return project
         except NotFoundError:
             raise
@@ -193,13 +207,13 @@ class ProjectService(BaseService):
 
     def delete_project(self, project_id: uuid.UUID) -> bool:
         try:
-            with db.atomic(): # type: ignore
+            with db.atomic():  # type: ignore
                 project = self.get_project(project_id)
-                sessions: Select = ChatSession.select().where(ChatSession.project == project_id) # type: ignore
-                for session in sessions: # type: ignore
-                    Message.delete().where(Message.session == session.id).execute() # type: ignore
-                ChatSession.delete().where(ChatSession.project == project_id).execute() # type: ignore
-                project.delete_instance() # type: ignore
+                sessions: Select = ChatSession.select().where(ChatSession.project == project_id)  # type: ignore
+                for session in sessions:  # type: ignore
+                    Message.delete().where(Message.session == session.id).execute()  # type: ignore
+                ChatSession.delete().where(ChatSession.project == project_id).execute()  # type: ignore
+                project.delete_instance()  # type: ignore
                 return True
         except NotFoundError:
             raise
@@ -210,10 +224,12 @@ class ProjectService(BaseService):
     def search_projects(self, query: str) -> List[Project]:
         try:
             return list(
-                self.model.select().where( # type: ignore
-                    (self.model.name.contains(query)) | # type: ignore
-                    (self.model.description.contains(query)) # type: ignore
-                ).order_by(self.model.created_at.desc()) # type: ignore
+                self.model.select()
+                .where(  # type: ignore
+                    (self.model.name.contains(query))  # type: ignore
+                    | (self.model.description.contains(query))  # type: ignore
+                )
+                .order_by(self.model.created_at.desc())  # type: ignore
             )
         except Exception as e:
             logger.error(f"Failed to search projects: {e}")
@@ -228,13 +244,11 @@ class ChatSessionService(BaseService):
         try:
             if not title or not title.strip():
                 raise ValidationError("Session title cannot be empty")
-            
-            project = Project.get(Project.id == project_id) # type: ignore
-            
-            return self.model.create( # type: ignore
-                id=uuid.uuid4(), 
-                project=project, 
-                title=title.strip()
+
+            project = Project.get(Project.id == project_id)  # type: ignore
+
+            return self.model.create(  # type: ignore
+                id=uuid.uuid4(), project=project, title=title.strip()
             )
         except DoesNotExist:
             raise NotFoundError(f"Project not found with id {project_id}")
@@ -244,20 +258,26 @@ class ChatSessionService(BaseService):
 
     def get_session(self, session_id: uuid.UUID) -> ChatSession:
         try:
-            return self.model.get(self.model.id == session_id) # type: ignore
+            return self.model.get(self.model.id == session_id)  # type: ignore
         except DoesNotExist:
             self._handle_does_not_exist("get", session_id)
-            raise NotFoundError(f"Session get failed: not found with identifier {session_id}")
+            raise NotFoundError(
+                f"Session get failed: not found with identifier {session_id}"
+            )
 
-    def get_sessions_for_project(self, project_id: uuid.UUID, limit: Optional[int] = None) -> List[ChatSession]:
+    def get_sessions_for_project(
+        self, project_id: uuid.UUID, limit: Optional[int] = None
+    ) -> List[ChatSession]:
         try:
-            query = (self.model.select() # type: ignore
-                    .where(self.model.project == project_id) # type: ignore
-                    .order_by(self.model.created_at.desc())) # type: ignore
-            
+            query = (
+                self.model.select()  # type: ignore
+                .where(self.model.project == project_id)  # type: ignore
+                .order_by(self.model.created_at.desc())
+            )  # type: ignore
+
             if limit:
-                query = query.limit(limit) # type: ignore
-            
+                query = query.limit(limit)  # type: ignore
+
             return list(query)
         except Exception as e:
             logger.error(f"Failed to get sessions for project: {e}")
@@ -267,10 +287,10 @@ class ChatSessionService(BaseService):
         try:
             if not title or not title.strip():
                 raise ValidationError("Session title cannot be empty")
-            
+
             session = self.get_session(session_id)
             setattr(session, "title", title.strip())
-            session.save() # type: ignore
+            session.save()  # type: ignore
             return session
         except NotFoundError:
             raise
@@ -280,10 +300,10 @@ class ChatSessionService(BaseService):
 
     def delete_session(self, session_id: uuid.UUID) -> bool:
         try:
-            with db.atomic(): # type: ignore
+            with db.atomic():  # type: ignore
                 session = self.get_session(session_id)
-                Message.delete().where(Message.session == session_id).execute() # type: ignore
-                session.delete_instance() # type: ignore
+                Message.delete().where(Message.session == session_id).execute()  # type: ignore
+                session.delete_instance()  # type: ignore
                 return True
         except NotFoundError:
             raise
@@ -294,13 +314,13 @@ class ChatSessionService(BaseService):
     def get_session_stats(self, session_id: uuid.UUID) -> Dict[str, Any]:
         try:
             session = self.get_session(session_id)
-            message_count : int = Message.select().where(Message.session == session_id).count() # type: ignore
+            message_count: int = Message.select().where(Message.session == session_id).count()  # type: ignore
             return {
                 "session_id": session_id,
                 "title": session.title,
                 "message_count": message_count,
                 "created_at": session.created_at,
-                "updated_at": session.updated_at
+                "updated_at": session.updated_at,
             }
         except NotFoundError:
             raise
@@ -313,21 +333,18 @@ class MessageService(BaseService):
     def __init__(self):
         super().__init__(Message)
 
-    def create_message(self, session_id: uuid.UUID, role: str, content: str) -> Message:
+    def create_message(
+        self, session_id: uuid.UUID, role: str, content: bytes
+    ) -> Message:
         try:
-            if not content or not content.strip():
-                raise ValidationError("Message content cannot be empty")
-            
-            if role not in ['user', 'assistant', 'system']:
+
+            if role not in ["user", "assistant", "system"]:
                 raise ValidationError("Role must be 'user', 'assistant', or 'system'")
 
-            session : ChatSession = ChatSession.get(ChatSession.id == session_id) # type: ignore
+            session: ChatSession = ChatSession.get(ChatSession.id == session_id)  # type: ignore
 
-            return self.model.create( # type: ignore
-                id=uuid.uuid4(), 
-                session=session, 
-                role=role, 
-                content=content.strip()
+            return self.model.create(  # type: ignore
+                id=uuid.uuid4(), session=session, role=role, content=content
             )
         except DoesNotExist:
             raise NotFoundError(f"Session not found with id {session_id}")
@@ -337,41 +354,53 @@ class MessageService(BaseService):
 
     def get_message(self, message_id: uuid.UUID) -> Message:
         try:
-            return self.model.get(self.model.id == message_id) # type: ignore
+            return self.model.get(self.model.id == message_id)  # type: ignore
         except DoesNotExist:
             self._handle_does_not_exist("get", message_id)
-            raise NotFoundError(f"Message get failed: not found with identifier {message_id}")
+            raise NotFoundError(
+                f"Message get failed: not found with identifier {message_id}"
+            )
 
-    def get_messages_for_session(self, session_id: uuid.UUID, limit: Optional[int] = None) -> List[Message]:
+    def get_messages_for_session(
+        self, session_id: uuid.UUID, limit: Optional[int] = None
+    ) -> List[Message]:
         try:
-            query = (self.model.select() # type: ignore
-                    .where(self.model.session == session_id) # type: ignore
-                    .order_by(self.model.timestamp.asc())) # type: ignore
-            
+            query = (
+                self.model.select()  # type: ignore
+                .where(self.model.session == session_id)  # type: ignore
+                .order_by(self.model.timestamp.asc())
+            )  # type: ignore
+
             if limit:
-                query = query.limit(limit) # type: ignore
-            
-            return list(query) # type: ignore
+                query = query.limit(limit)  # type: ignore
+
+            return list(query)  # type: ignore
         except Exception as e:
             logger.error(f"Failed to get messages for session: {e}")
             raise DatabaseError(f"Failed to get messages for session: {e}")
 
-    def update_message(self, message_id: uuid.UUID, role: Optional[str] = None, 
-                      content: Optional[str] = None) -> Message:
+    def update_message(
+        self,
+        message_id: uuid.UUID,
+        role: Optional[str] = None,
+        content: Optional[str] = None,
+    ) -> Message:
         try:
             message = self.get_message(message_id)
-            
+
             if role is not None:
-                if role not in ['user', 'assistant', 'system']:
-                    raise ValidationError("Role must be 'user', 'assistant', or 'system'")
-                setattr(message, 'role', role)
-            
+                if role not in ["user", "assistant", "system"]:
+                    raise ValidationError(
+                        "Role must be 'user', 'assistant', or 'system'"
+                    )
+                setattr(message, "role", role)
+
             if content is not None:
                 if not content.strip():
                     raise ValidationError("Message content cannot be empty")
-                setattr(message, 'content', content.strip())
-            
-            message.save() # type: ignore
+                setattr(message, "content", content.strip())
+
+            message.save()  # type: ignore
             return message
         except NotFoundError:
             raise
@@ -382,7 +411,7 @@ class MessageService(BaseService):
     def delete_message(self, message_id: uuid.UUID) -> bool:
         try:
             message = self.get_message(message_id)
-            message.delete_instance() # type: ignore
+            message.delete_instance()  # type: ignore
             return True
         except NotFoundError:
             raise
@@ -393,10 +422,12 @@ class MessageService(BaseService):
     def search_messages(self, session_id: uuid.UUID, query: str) -> List[Message]:
         try:
             return list(
-                self.model.select().where( # type: ignore
-                    (self.model.session == session_id) &  # type: ignore
-                    (self.model.content.contains(query))  # type: ignore
-                ).order_by(self.model.timestamp.asc()) # type: ignore
+                self.model.select()
+                .where(  # type: ignore
+                    (self.model.session == session_id)  # type: ignore
+                    & (self.model.content.contains(query))  # type: ignore
+                )
+                .order_by(self.model.timestamp.asc())  # type: ignore
             )
         except Exception as e:
             logger.error(f"Failed to search messages: {e}")
@@ -404,20 +435,21 @@ class MessageService(BaseService):
 
 
 class ChatDatabaseManager:
-    
-    def __init__(self, db_path: Path):
+
+    def __init__(self, db_path: Path, security_manager: SecurityManager):
         self.db_path = db_path
+        self.security_manager = security_manager
         self._initialize_database()
-        
+
         self.project_service = ProjectService()
         self.session_service = ChatSessionService()
         self.message_service = MessageService()
 
     def _initialize_database(self):
         try:
-            db.init(str(self.db_path)) # type: ignore
+            db.init(str(self.db_path))  # type: ignore
             db.connect()
-            db.create_tables([Project, ChatSession, Message], safe=True) # type: ignore
+            db.create_tables([Project, ChatSession, Message], safe=True)  # type: ignore
             logger.info(f"Database initialized at {self.db_path}")
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
@@ -426,7 +458,7 @@ class ChatDatabaseManager:
     @contextmanager
     def transaction(self):
         try:
-            with db.atomic(): # type: ignore
+            with db.atomic():  # type: ignore
                 yield
         except Exception as e:
             logger.error(f"Transaction failed: {e}")
@@ -441,8 +473,12 @@ class ChatDatabaseManager:
     def list_projects(self, limit: Optional[int] = None) -> List[Project]:
         return self.project_service.get_projects(limit)
 
-    def update_project(self, project_id: uuid.UUID, name: Optional[str] = None, 
-                      description: Optional[str] = None) -> Project:
+    def update_project(
+        self,
+        project_id: uuid.UUID,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> Project:
         return self.project_service.update_project(project_id, name, description)
 
     def delete_project(self, project_id: uuid.UUID) -> bool:
@@ -454,7 +490,9 @@ class ChatDatabaseManager:
     def get_session(self, session_id: uuid.UUID) -> ChatSession:
         return self.session_service.get_session(session_id)
 
-    def get_sessions_for_project(self, project_id: uuid.UUID, limit: Optional[int] = None) -> List[ChatSession]:
+    def get_sessions_for_project(
+        self, project_id: uuid.UUID, limit: Optional[int] = None
+    ) -> List[ChatSession]:
         return self.session_service.get_sessions_for_project(project_id, limit)
 
     def update_session(self, session_id: uuid.UUID, title: str) -> ChatSession:
@@ -464,22 +502,35 @@ class ChatDatabaseManager:
         return self.session_service.delete_session(session_id)
 
     def add_message(self, session_id: uuid.UUID, role: str, content: str) -> Message:
-        return self.message_service.create_message(session_id, role, content)
+        if not content or not content.strip():
+            raise ValidationError("Message content cannot be empty")
+        encrypted_content: bytes = self.security_manager.encrypt(
+            content.encode("utf-8")
+        )
+        return self.message_service.create_message(session_id, role, encrypted_content)
 
     def get_message(self, message_id: uuid.UUID) -> Message:
         return self.message_service.get_message(message_id)
 
-    def get_messages_for_session(self, session_id: uuid.UUID, limit: Optional[int] = None) -> List[Message]:
+    def get_messages_for_session(
+        self, session_id: uuid.UUID, limit: Optional[int] = None
+    ) -> List[Message]:
         return self.message_service.get_messages_for_session(session_id, limit)
 
-    def update_message(self, message_id: uuid.UUID, role: Optional[str] = None, 
-                      content: Optional[str] = None) -> Message:
+    def update_message(
+        self,
+        message_id: uuid.UUID,
+        role: Optional[str] = None,
+        content: Optional[str] = None,
+    ) -> Message:
         return self.message_service.update_message(message_id, role, content)
 
     def delete_message(self, message_id: uuid.UUID) -> bool:
         return self.message_service.delete_message(message_id)
 
-    def get_conversation_history(self, session_id: uuid.UUID, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_conversation_history(
+        self, session_id: uuid.UUID, limit: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
         try:
             messages = self.get_messages_for_session(session_id, limit)
             return [
@@ -487,7 +538,7 @@ class ChatDatabaseManager:
                     "id": str(msg.id),
                     "role": msg.role,
                     "content": msg.content,
-                    "timestamp": msg.timestamp.isoformat() # type: ignore
+                    "timestamp": msg.timestamp.isoformat(),  # type: ignore
                 }
                 for msg in messages
             ]
@@ -499,37 +550,39 @@ class ChatDatabaseManager:
         try:
             project = self.get_project(project_id)
             sessions = self.get_sessions_for_project(project_id)
-            
+
             total_messages = 0
             for session in sessions:
-                total_messages += Message.select().where(Message.session == session.id).count() # type: ignore
-            
+                total_messages += Message.select().where(Message.session == session.id).count()  # type: ignore
+
             return {
                 "project": {
                     "id": str(project.id),
                     "name": project.name,
                     "description": project.description,
-                    "created_at": project.created_at.isoformat(), # type: ignore
-                    "updated_at": project.updated_at.isoformat() # type: ignore
+                    "created_at": project.created_at.isoformat(),  # type: ignore
+                    "updated_at": project.updated_at.isoformat(),  # type: ignore
                 },
                 "stats": {
                     "session_count": len(sessions),
-                    "message_count": total_messages
-                }
+                    "message_count": total_messages,
+                },
             }
         except Exception as e:
             logger.error(f"Failed to get project summary: {e}")
             raise DatabaseError(f"Failed to get project summary: {e}")
 
-    def search_across_project(self, project_id: uuid.UUID, query: str) -> Dict[str, List[Dict[str, Any]]]:
+    def search_across_project(
+        self, project_id: uuid.UUID, query: str
+    ) -> Dict[str, List[Dict[str, Any]]]:
         try:
             sessions = self.get_sessions_for_project(project_id)
-            results : Dict[str, List[Dict[str, Any]]] = {"sessions": []}
-            
+            results: Dict[str, List[Dict[str, Any]]] = {"sessions": []}
+
             for session in sessions:
-                messages = self.message_service.search_messages(session.id, query) # type: ignore
+                messages = self.message_service.search_messages(session.id, query)  # type: ignore
                 if messages:
-                    session_results = { # type: ignore
+                    session_results = {  # type: ignore
                         "session_id": str(session.id),
                         "session_title": session.title,
                         "messages": [
@@ -537,13 +590,13 @@ class ChatDatabaseManager:
                                 "id": str(msg.id),
                                 "role": msg.role,
                                 "content": msg.content,
-                                "timestamp": msg.timestamp.isoformat() # type: ignore
+                                "timestamp": msg.timestamp.isoformat(),  # type: ignore
                             }
                             for msg in messages
-                        ]
+                        ],
                     }
                     results["sessions"].append(session_results)
-            
+
             return results
         except Exception as e:
             logger.error(f"Failed to search across project: {e}")
@@ -560,30 +613,36 @@ class ChatDatabaseManager:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb): # type: ignore
+    def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore
         self.close()
 
 
 if __name__ == "__main__":
     db_path = Path("chat_example.db")
-    
+
     try:
         with ChatDatabaseManager(db_path) as chat_db:
-            project = chat_db.create_project("AI Research", "Research project for AI development")
+            project = chat_db.create_project(
+                "AI Research", "Research project for AI development"
+            )
             print(f"Created project: {project}")
-            
+
             session = chat_db.create_session(project.get_id(), "Initial Discussion")
             print(f"Created session: {session}")
-            
-            msg1 = chat_db.add_message(session.get_id(), "user", "Hello, how can you help me?")
-            msg2 = chat_db.add_message(session.get_id(), "assistant", "I can help you with various tasks!")
+
+            msg1 = chat_db.add_message(
+                session.get_id(), "user", "Hello, how can you help me?"
+            )
+            msg2 = chat_db.add_message(
+                session.get_id(), "assistant", "I can help you with various tasks!"
+            )
 
             history = chat_db.get_conversation_history(session.get_id())
             print(f"Conversation history: {history}")
 
             summary = chat_db.get_project_summary(project.get_id())
             print(f"Project summary: {summary}")
-            
+
     except (DatabaseError, NotFoundError, ValidationError) as e:
         print(f"Database operation failed: {e}")
     except Exception as e:

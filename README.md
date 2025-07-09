@@ -37,7 +37,6 @@ Create a production-ready AI assistant that:
 - **System integration** for calendar, files, and task management
 
 ### Technical Highlights
-- **Quantized model support** (4-bit/5-bit) for efficient inference
 - **Adaptive context management** with sliding window techniques
 - **Modular prompt engineering** framework
 - **Real-time performance monitoring** and optimization
@@ -47,8 +46,8 @@ Create a production-ready AI assistant that:
 - **End-to-end encryption** - All user data encrypted with AES-256-GCM
 - **Local key management** - Keys derived from user password, never stored
 - **Secure deletion** - Cryptographic erasure of sensitive data
-- **Memory protection** - Sensitive data cleared from RAM after use
-- **Audit logging** - All security events logged and encrypted
+<!-- - **Memory protection** - Sensitive data cleared from RAM after use
+- **Audit logging** - All security events logged and encrypted -->
 
 
 ## Planning

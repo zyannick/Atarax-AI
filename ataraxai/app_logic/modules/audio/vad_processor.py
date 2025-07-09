@@ -5,10 +5,16 @@ import numpy as np
 class VADProcessor:
     def __init__(self, sample_rate=16000, mode=2, frame_duration_ms=30, fallback=True):
         """
-        :param sample_rate: Hz, only 8000, 16000, 32000, or 48000 are valid for webrtcvad.
-        :param mode: Aggressiveness mode (0-3). Higher = more filtering (less false positives).
-        :param frame_duration_ms: 10, 20, or 30ms.
-        :param fallback: If True, enables energy-based fallback detection.
+        Initializes the VAD (Voice Activity Detection) processor.
+
+        Args:
+            sample_rate (int, optional): The audio sample rate in Hz. Must be one of [8000, 16000, 32000, 48000]. Defaults to 16000.
+            mode (int, optional): The aggressiveness mode of the VAD. Higher values are more aggressive in filtering out non-speech. Defaults to 2.
+            frame_duration_ms (int, optional): The frame duration in milliseconds. Must be one of [10, 20, 30]. Defaults to 30.
+            fallback (bool, optional): Whether to enable fallback mechanism if VAD fails. Defaults to True.
+
+        Raises:
+            AssertionError: If sample_rate or frame_duration_ms are not in the allowed values.
         """
         assert sample_rate in [8000, 16000, 32000, 48000]
         assert frame_duration_ms in [10, 20, 30]
@@ -21,6 +27,19 @@ class VADProcessor:
         self.energy_threshold = None
 
     def is_speech(self, frame_bytes):
+        """
+        Determines whether the given audio frame contains speech.
+
+        Args:
+            frame_bytes (bytes): The audio frame data in bytes.
+
+        Returns:
+            bool: True if speech is detected in the frame, False otherwise.
+
+        Notes:
+            - Uses the primary VAD (Voice Activity Detection) engine to detect speech.
+            - If the primary VAD raises an exception and a fallback is enabled, uses an energy-based method as a fallback.
+        """
         try:
             if self.vad.is_speech(frame_bytes, self.sample_rate):
                 return True
@@ -33,6 +52,18 @@ class VADProcessor:
         return False
 
     def _is_energy_high(self, frame_bytes):
+        """
+        Determines whether the root mean square (RMS) energy of an audio frame exceeds a dynamic threshold.
+
+        The threshold is initialized based on the first frame's energy and is then updated adaptively
+        using a weighted average of the previous threshold and the current frame's energy.
+
+        Args:
+            frame_bytes (bytes): The audio frame data in bytes, expected to be 16-bit PCM.
+
+        Returns:
+            bool: True if the RMS energy of the frame is higher than the current energy threshold, False otherwise.
+        """
         frame_np = np.frombuffer(frame_bytes, dtype=np.int16)
         rms_energy = np.sqrt(np.mean(np.square(frame_np)))
 

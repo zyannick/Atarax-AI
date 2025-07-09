@@ -3,6 +3,8 @@ from types import TracebackType
 from typing import Any, Dict, List, Optional, Tuple, Type
 from dataclasses import dataclass
 from enum import Enum
+from ataraxai.app_logic.utils.security_manager import SecurityManager
+
 import uuid
 
 from ataraxai import __version__, core_ai_py  # type: ignore
@@ -34,9 +36,9 @@ from prometheus_client import Counter
 
 
 CHAINS_EXECUTED_COUNTER = Counter(
-    'ataraxai_chains_executed_total',
-    'Total number of task chains executed',
-    ['chain_name']  
+    "ataraxai_chains_executed_total",
+    "Total number of task chains executed",
+    ["chain_name"],
 )
 
 APP_NAME = "AtaraxAI"
@@ -50,8 +52,15 @@ class ServiceStatus(Enum):
     FAILED = "failed"
 
 
+class AppState(Enum):
+    LOCKED = "locked"
+    UNLOCKED = "unlocked"
+    FIRST_LAUNCH = "first_launch"
+
+
 class AtaraxAIError(Exception):
     pass
+
 
 class CoreAIServiceError(AtaraxAIError):
     pass
@@ -74,6 +83,13 @@ class AppDirectories:
 
     @classmethod
     def create_default(cls) -> "AppDirectories":
+        """
+        Creates an instance of AppDirectories with default paths for config, data, cache, and logs
+        using the user's operating system conventions. The directories are created if they do not exist.
+
+        Returns:
+            AppDirectories: An instance with initialized and created directory paths.
+        """
         dirs = cls(
             config=Path(user_config_dir(appname=APP_NAME, appauthor=APP_AUTHOR)),
             data=Path(user_data_dir(appname=APP_NAME, appauthor=APP_AUTHOR)),
@@ -84,6 +100,16 @@ class AppDirectories:
         return dirs
 
     def create_directories(self) -> None:
+        """
+        Creates the necessary directories for configuration, data, cache, and logs.
+
+        This method iterates over the predefined directory paths (self.config, self.data, self.cache, self.logs)
+        and ensures that each directory exists by creating it if it does not already exist. Parent directories
+        are also created as needed.
+
+        Returns:
+            None
+        """
         for directory in [self.config, self.data, self.cache, self.logs]:
             directory.mkdir(parents=True, exist_ok=True)
 
@@ -95,6 +121,15 @@ class AppConfig:
     setup_marker_filename: str = ".ataraxai_app_{version}_setup_complete"
 
     def get_setup_marker_filename(self, version: str) -> str:
+        """
+        Generate the setup marker filename for a specific version.
+
+        Args:
+            version (str): The version string to include in the filename.
+
+        Returns:
+            str: The formatted setup marker filename for the given version.
+        """
         return self.setup_marker_filename.format(version=version)
 
 
@@ -102,11 +137,31 @@ class InputValidator:
 
     @staticmethod
     def validate_uuid(uuid_value: Optional[uuid.UUID], param_name: str) -> None:
+        """
+        Validates that the provided UUID value is not empty.
+
+        Args:
+            uuid_value (Optional[uuid.UUID]): The UUID value to validate.
+            param_name (str): The name of the parameter being validated, used in the error message.
+
+        Raises:
+            ValidationError: If the uuid_value is None or empty.
+        """
         if not uuid_value:
             raise ValidationError(f"{param_name} cannot be empty.")
 
     @staticmethod
     def validate_string(string_value: Optional[str], param_name: str) -> None:
+        """
+        Validates that the provided string is not None, empty, or only whitespace.
+
+        Args:
+            string_value (Optional[str]): The string value to validate.
+            param_name (str): The name of the parameter being validated, used in the error message.
+
+        Raises:
+            ValidationError: If the string_value is None, empty, or contains only whitespace.
+        """
         if not string_value or not string_value.strip():
             raise ValidationError(f"{param_name} cannot be empty.")
 
@@ -114,6 +169,17 @@ class InputValidator:
     def validate_path(
         path_value: Optional[str], param_name: str, must_exist: bool = True
     ) -> None:
+        """
+        Validates a file or directory path.
+
+        Args:
+            path_value (Optional[str]): The path to validate.
+            param_name (str): The name of the parameter (used in error messages).
+            must_exist (bool, optional): If True, the path must exist. Defaults to True.
+
+        Raises:
+            ValidationError: If the path is empty or, when must_exist is True, does not exist.
+        """
         if not path_value:
             raise ValidationError(f"{param_name} cannot be empty.")
 
@@ -123,6 +189,16 @@ class InputValidator:
 
     @staticmethod
     def validate_directory(directory_path: Optional[str], param_name: str) -> None:
+        """
+        Validates that the provided directory path is a non-empty string and points to an existing directory.
+
+        Args:
+            directory_path (Optional[str]): The path to the directory to validate.
+            param_name (str): The name of the parameter being validated, used in error messages.
+
+        Raises:
+            ValidationError: If the directory_path is empty or does not point to a valid directory.
+        """
         if not directory_path:
             raise ValidationError(f"{param_name} cannot be empty.")
 
@@ -136,11 +212,28 @@ class InputValidator:
 class ConfigurationManager:
 
     def __init__(self, config_dir: Path, logger: ArataxAILogger):
+        """
+        Initializes the orchestrator with the specified configuration directory and logger.
+
+        Args:
+            config_dir (Path): The directory containing configuration files.
+            logger (ArataxAILogger): Logger instance for logging orchestrator activities.
+        """
         self.config_dir = config_dir
         self.logger = logger
         self._init_config_managers()
 
     def _init_config_managers(self) -> None:
+        """
+        Initializes configuration manager instances for preferences, Llama, Whisper, and RAG components.
+
+        Attempts to create and assign configuration manager objects using the provided configuration directory.
+        Logs a success message upon successful initialization. If any exception occurs during initialization,
+        logs the error and raises a ServiceInitializationError with details.
+
+        Raises:
+            ServiceInitializationError: If any configuration manager fails to initialize.
+        """
         try:
             self.preferences = PreferencesManager(config_path=self.config_dir)
             self.llama_config = LlamaConfigManager(config_path=self.config_dir)
@@ -154,10 +247,25 @@ class ConfigurationManager:
             )
 
     def get_watched_directories(self) -> Optional[List[str]]:
+        """
+        Retrieves the list of directories being watched for changes as specified in the RAG configuration.
+
+        Returns:
+            Optional[List[str]]: A list of directory paths being watched, or None if not specified in the configuration.
+        """
         config = self.rag_config.get_config()
         return getattr(config, "rag_watched_directories", None)
 
     def add_watched_directory(self, directory: str) -> None:
+        """
+        Adds a directory to the list of watched directories if it is not already present.
+
+        Args:
+            directory (str): The path of the directory to add to the watched list.
+
+        Side Effects:
+            Updates the "rag_watched_directories" configuration with the new directory if it was not already being watched.
+        """
         watched_dirs = self.get_watched_directories()
         if watched_dirs is None:
             watched_dirs = []
@@ -169,27 +277,60 @@ class ConfigurationManager:
 class CoreAIServiceManager:
 
     def __init__(self, config_manager: ConfigurationManager, logger: ArataxAILogger):
+        """
+        Initializes the orchestrator with the provided configuration manager and logger.
+
+        Args:
+            config_manager (ConfigurationManager): The configuration manager instance to handle configuration settings.
+            logger (ArataxAILogger): The logger instance for logging orchestrator activities.
+
+        Attributes:
+            service (Optional[Any]): The service instance managed by the orchestrator, initialized as None.
+            status (ServiceStatus): The current status of the service, initialized as NOT_INITIALIZED.
+        """
         self.config_manager = config_manager
         self.logger = logger
         self.service: Optional[Any] = None
         self.status = ServiceStatus.NOT_INITIALIZED
-    
+
     def get_service(self) -> Any:
+        """
+        Retrieves the core AI service instance, initializing it if necessary.
+        If the service has not been initialized, this method will initialize it.
+        If the previous initialization attempt failed, raises a ServiceInitializationError.
+        Returns:S
+            Any: The initialized core AI service instance.
+        Raises:
+            ServiceInitializationError: If the service failed to initialize previously.
+        """
         if self.status == ServiceStatus.NOT_INITIALIZED:
             self.initialize()
         elif self.status == ServiceStatus.FAILED:
-            raise ServiceInitializationError("Core AI service initialization previously failed")
-        
+            raise ServiceInitializationError(
+                "Core AI service initialization previously failed"
+            )
+
         return self.service
-    
+
     def initialize(self) -> None:
+        """
+        Initializes the core AI services if they are not already initialized.
+        This method performs the following steps:
+            1. Checks if the services are already initialized and logs a message if so.
+            2. Sets the status to INITIALIZING and logs the initialization process.
+            3. Validates model paths and initializes required services.
+            4. Updates the status to INITIALIZED upon successful completion and logs success.
+            5. Handles exceptions by setting the status to FAILED, logging the error, and raising a ServiceInitializationError.
+        Raises:
+            ServiceInitializationError: If initialization of core AI services fails.
+        """
         if self.status == ServiceStatus.INITIALIZED:
             self.logger.info("Core AI services already initialized")
             return
-        
+
         self.status = ServiceStatus.INITIALIZING
         self.logger.info("Initializing Core AI services...")
-        
+
         try:
             self._validate_model_paths()
             self._initialize_services()
@@ -198,16 +339,39 @@ class CoreAIServiceManager:
         except Exception as e:
             self.status = ServiceStatus.FAILED
             self.logger.error(f"Failed to initialize core AI services: {e}")
-            raise ServiceInitializationError(f"Core AI service initialization failed: {e}")
-    
+            raise ServiceInitializationError(
+                f"Core AI service initialization failed: {e}"
+            )
+
     def is_configured(self) -> bool:
+        """
+        Checks if the current configuration is valid by validating model paths.
+
+        Returns:
+            bool: True if the model paths are valid and configuration is correct, False otherwise.
+        """
         try:
             self._validate_model_paths()
             return True
         except ValidationError:
             return False
-    
+
     def get_configuration_status(self) -> Dict[str, Any]:
+        """
+        Retrieves the current configuration and initialization status for Llama and Whisper models.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing:
+                - "llama_configured" (bool): Whether the Llama model is configured.
+                - "whisper_configured" (bool): Whether the Whisper model is configured.
+                - "llama_model_path" (Optional[str]): Path to the Llama model, if configured.
+                - "whisper_model_path" (Optional[str]): Path to the Whisper model, if configured.
+                - "llama_path_exists" (bool): Whether the Llama model path exists on disk.
+                - "whisper_path_exists" (bool): Whether the Whisper model path exists on disk.
+                - "initialization_status" (Any): The current initialization status value.
+
+        Logs warnings if configuration retrieval fails for either model.
+        """
         status: Dict[str, Any] = {
             "llama_configured": False,
             "whisper_configured": False,
@@ -215,9 +379,9 @@ class CoreAIServiceManager:
             "whisper_model_path": None,
             "llama_path_exists": False,
             "whisper_path_exists": False,
-            "initialization_status": self.status.value
+            "initialization_status": self.status.value,
         }
-        
+
         try:
             llama_params = self.config_manager.llama_config.get_llama_cpp_params()
             status["llama_model_path"] = llama_params.model_path
@@ -226,7 +390,7 @@ class CoreAIServiceManager:
                 status["llama_path_exists"] = Path(llama_params.model_path).exists()
         except Exception as e:
             self.logger.warning(f"Could not get Llama configuration: {e}")
-        
+
         try:
             whisper_params = self.config_manager.whisper_config.get_whisper_params()
             status["whisper_model_path"] = whisper_params.model
@@ -235,10 +399,16 @@ class CoreAIServiceManager:
                 status["whisper_path_exists"] = Path(whisper_params.model).exists()
         except Exception as e:
             self.logger.warning(f"Could not get Whisper configuration: {e}")
-        
+
         return status
-    
+
     def _validate_model_paths(self) -> None:
+        """
+        Validates the existence and configuration of model paths for Llama and Whisper models.
+
+        Raises:
+            ValidationError: If the Llama or Whisper model path is not configured or does not exist.
+        """
         llama_params = self.config_manager.llama_config.get_llama_cpp_params()
         whisper_params = self.config_manager.whisper_config.get_whisper_params()
 
@@ -246,18 +416,33 @@ class CoreAIServiceManager:
             raise ValidationError("Llama model path not configured")
 
         if not Path(llama_params.model_path).exists():
-            raise ValidationError(f"Llama model path does not exist: {llama_params.model_path}")
+            raise ValidationError(
+                f"Llama model path does not exist: {llama_params.model_path}"
+            )
 
         if not whisper_params.model:
             raise ValidationError("Whisper model path not configured")
-        
+
         if not Path(whisper_params.model).exists():
-            raise ValidationError(f"Whisper model path does not exist: {whisper_params.model}")
-    
+            raise ValidationError(
+                f"Whisper model path does not exist: {whisper_params.model}"
+            )
+
     def _initialize_services(self) -> None:
+        """
+        Initializes core AI services by retrieving and converting configuration parameters.
+
+        This method performs the following steps:
+            1. Retrieves Llama and Whisper model parameters from the configuration manager.
+            2. Converts these parameters into the required formats for model and generation/transcription.
+            3. Creates and assigns the core AI service instance using the processed parameters.
+
+        Returns:
+            None
+        """
         llama_params = self.config_manager.llama_config.get_llama_cpp_params()
         whisper_params = self.config_manager.whisper_config.get_whisper_params()
-        
+
         (
             llama_model_params_cc,
             llama_generation_params_cc,
@@ -266,42 +451,73 @@ class CoreAIServiceManager:
         ) = self._convert_params(llama_params, whisper_params)
 
         self.service = self._create_core_ai_service(
-            llama_model_params_cc, 
-            whisper_model_params_cc
+            llama_model_params_cc, whisper_model_params_cc
         )
 
-    def _convert_params(self, llama_params: LlamaModelParams, whisper_params: WhisperModelParams) -> Tuple[Any, Any, Any, Any]:
-        llama_model_params_cc : Any = core_ai_py.LlamaModelParams.from_dict(  # type: ignore
+    def _convert_params(
+        self, llama_params: LlamaModelParams, whisper_params: WhisperModelParams
+    ) -> Tuple[Any, Any, Any, Any]:
+        """
+        Converts Llama and Whisper model parameter objects into their corresponding core_ai_py representations.
+
+        Args:
+            llama_params (LlamaModelParams): The Llama model parameters to convert.
+            whisper_params (WhisperModelParams): The Whisper model parameters to convert.
+
+        Returns:
+            Tuple[Any, Any, Any, Any]: A tuple containing:
+                - Converted Llama model parameters (core_ai_py.LlamaModelParams)
+                - Converted Llama generation parameters (core_ai_py.GenerationParams)
+                - Converted Whisper model parameters (core_ai_py.WhisperModelParams)
+                - Converted Whisper transcription parameters (core_ai_py.WhisperGenerationParams)
+        """
+        llama_model_params_cc: Any = core_ai_py.LlamaModelParams.from_dict(  # type: ignore
             llama_params.model_dump()
         )
 
-        llama_generation_params_cc : Any = core_ai_py.GenerationParams.from_dict( # type: ignore
+        llama_generation_params_cc: Any = core_ai_py.GenerationParams.from_dict(  # type: ignore
             self.config_manager.llama_config.get_generation_params().model_dump()
         )
 
-        whisper_model_params_cc : Any = core_ai_py.WhisperModelParams.from_dict( # type: ignore
+        whisper_model_params_cc: Any = core_ai_py.WhisperModelParams.from_dict(  # type: ignore
             whisper_params.model_dump()
         )
 
-        whisper_transcription_params_cc : Any = core_ai_py.WhisperGenerationParams.from_dict( # type: ignore
+        whisper_transcription_params_cc: Any = core_ai_py.WhisperGenerationParams.from_dict(  # type: ignore
             self.config_manager.whisper_config.get_transcription_params().model_dump()
         )
-        
+
         return (
             llama_model_params_cc,
             llama_generation_params_cc,
             whisper_model_params_cc,
             whisper_transcription_params_cc,
-        ) # type: ignore
-    
+        )  # type: ignore
+
     def _create_core_ai_service(self, llama_params: Any, whisper_params: Any) -> Any:
-        service = core_ai_py.CoreAIService() # type: ignore
-        service.initialize_llama_model(llama_params) # type: ignore
-        service.initialize_whisper_model(whisper_params) # type: ignore
-        return service # type: ignore
-    
+        """
+        Initializes and returns a CoreAIService instance with specified model parameters.
+
+        Args:
+            llama_params (Any): Parameters for initializing the Llama model.
+            whisper_params (Any): Parameters for initializing the Whisper model.
+
+        Returns:
+            Any: An instance of CoreAIService with the Llama and Whisper models initialized.
+        """
+        service = core_ai_py.CoreAIService()  # type: ignore
+        service.initialize_llama_model(llama_params)  # type: ignore
+        service.initialize_whisper_model(whisper_params)  # type: ignore
+        return service  # type: ignore
+
     def shutdown(self) -> None:
-        """Shutdown core AI services"""
+        """
+        Shuts down the core AI services managed by this orchestrator.
+
+        If a service is currently running, attempts to shut it down gracefully.
+        Logs the outcome of the shutdown process, including any errors encountered.
+        Resets the service reference and updates the service status to NOT_INITIALIZED.
+        """
         if self.service:
             try:
                 # self.service.shutdown()
@@ -311,22 +527,50 @@ class CoreAIServiceManager:
             finally:
                 self.service = None
                 self.status = ServiceStatus.NOT_INITIALIZED
-    
+
     @property
     def is_initialized(self) -> bool:
-        """Check if services are initialized"""
-        return self.status == ServiceStatus.INITIALIZED
+        """
+        Checks if the service has been initialized.
 
+        Returns:
+            bool: True if the service status is INITIALIZED, False otherwise.
+        """
+        return self.status == ServiceStatus.INITIALIZED
 
 
 class ChatManager:
 
     def __init__(self, db_manager: ChatDatabaseManager, logger: ArataxAILogger):
+        """
+        Initializes the orchestrator with the provided database manager, logger, and an input validator.
+
+        Args:
+            db_manager (ChatDatabaseManager): Instance responsible for managing chat database operations.
+            logger (ArataxAILogger): Logger instance for recording application events and errors.
+        """
         self.db_manager = db_manager
         self.logger = logger
         self.validator = InputValidator()
 
     def create_project(self, name: str, description: str) -> ProjectResponse:
+        """
+        Creates a new project with the specified name and description.
+
+        Validates the project name, attempts to create the project in the database,
+        logs the operation, and returns a ProjectResponse object. If an error occurs
+        during project creation, logs the error and re-raises the exception.
+
+        Args:
+            name (str): The name of the project to create.
+            description (str): A description of the project.
+
+        Returns:
+            ProjectResponse: The response object containing the created project's details.
+
+        Raises:
+            Exception: If project creation fails for any reason.
+        """
         self.validator.validate_string(name, "Project name")
         try:
             project = self.db_manager.create_project(name=name, description=description)
@@ -337,6 +581,18 @@ class ChatManager:
             raise
 
     def get_project(self, project_id: uuid.UUID) -> ProjectResponse:
+        """
+        Retrieve a project by its unique identifier.
+
+        Args:
+            project_id (uuid.UUID): The unique identifier of the project to retrieve.
+
+        Returns:
+            ProjectResponse: The response model containing the project's details.
+
+        Raises:
+            Exception: If the project cannot be retrieved or an error occurs during the process.
+        """
         self.validator.validate_uuid(project_id, "Project ID")
         try:
             project = self.db_manager.get_project(project_id)
@@ -346,6 +602,15 @@ class ChatManager:
             raise
 
     def list_projects(self) -> List[ProjectResponse]:
+        """
+        Retrieves a list of all projects from the database.
+
+        Returns:
+            List[ProjectResponse]: A list of validated ProjectResponse objects representing the projects.
+
+        Raises:
+            Exception: If an error occurs while retrieving the projects, the exception is logged and re-raised.
+        """
         try:
             projects = self.db_manager.list_projects()
             return [ProjectResponse.model_validate(project) for project in projects]
@@ -354,6 +619,22 @@ class ChatManager:
             raise
 
     def delete_project(self, project_id: uuid.UUID) -> bool:
+        """
+        Deletes a project from the database by its UUID.
+
+        Args:
+            project_id (uuid.UUID): The unique identifier of the project to delete.
+
+        Returns:
+            bool: True if the project was successfully deleted, False otherwise.
+
+        Raises:
+            Exception: If an error occurs during the deletion process.
+
+        Logs:
+            - Info: When a project is successfully deleted.
+            - Error: If the deletion fails.
+        """
         self.validator.validate_uuid(project_id, "Project ID")
         try:
             result = self.db_manager.delete_project(project_id)
@@ -365,6 +646,19 @@ class ChatManager:
             raise
 
     def create_session(self, project_id: uuid.UUID, title: str) -> ChatSessionResponse:
+        """
+        Creates a new chat session for the specified project.
+
+        Args:
+            project_id (uuid.UUID): The unique identifier of the project for which the session is being created.
+            title (str): The title of the new chat session.
+
+        Returns:
+            ChatSessionResponse: The response object containing details of the created chat session.
+
+        Raises:
+            Exception: If session creation fails due to a database or validation error.
+        """
         self.validator.validate_uuid(project_id, "Project ID")
         self.validator.validate_string(title, "Session title")
         try:
@@ -376,6 +670,21 @@ class ChatManager:
             raise
 
     def list_sessions(self, project_id: uuid.UUID) -> List[ChatSessionResponse]:
+        """
+        Retrieve a list of chat sessions associated with a given project.
+
+        Args:
+            project_id (uuid.UUID): The unique identifier of the project for which to list chat sessions.
+
+        Returns:
+            List[ChatSessionResponse]: A list of chat session response objects corresponding to the specified project.
+
+        Raises:
+            Exception: If an error occurs while retrieving the sessions from the database.
+
+        Logs:
+            Logs an error message if session retrieval fails.
+        """
         self.validator.validate_uuid(project_id, "Project ID")
         try:
             sessions = self.db_manager.get_sessions_for_project(project_id)
@@ -385,6 +694,22 @@ class ChatManager:
             raise
 
     def delete_session(self, session_id: uuid.UUID) -> bool:
+        """
+        Deletes a session with the specified session ID.
+
+        Args:
+            session_id (uuid.UUID): The unique identifier of the session to delete.
+
+        Returns:
+            bool: True if the session was successfully deleted, False otherwise.
+
+        Raises:
+            Exception: If an error occurs during the deletion process.
+
+        Logs:
+            - Info: When a session is successfully deleted.
+            - Error: If deletion fails, logs the exception details.
+        """
         self.validator.validate_uuid(session_id, "Session ID")
         try:
             result = self.db_manager.delete_session(session_id)
@@ -398,6 +723,24 @@ class ChatManager:
     def add_message(
         self, session_id: uuid.UUID, role: str, content: str
     ) -> MessageResponse:
+        """
+        Adds a new message to the specified session.
+
+        Validates the session ID and message content before attempting to add the message
+        to the database. If successful, returns a validated MessageResponse object.
+        Logs and re-raises any exceptions encountered during the process.
+
+        Args:
+            session_id (uuid.UUID): The unique identifier of the session to which the message will be added.
+            role (str): The role of the message sender (e.g., 'user', 'assistant').
+            content (str): The content of the message.
+
+        Returns:
+            MessageResponse: The response object containing the added message details.
+
+        Raises:
+            Exception: If adding the message to the database fails.
+        """
         self.validator.validate_uuid(session_id, "Session ID")
         self.validator.validate_string(content, "Message content")
         try:
@@ -410,6 +753,21 @@ class ChatManager:
             raise
 
     def get_messages_for_session(self, session_id: uuid.UUID) -> List[MessageResponse]:
+        """
+        Retrieves all messages associated with a given session ID.
+
+        Args:
+            session_id (uuid.UUID): The unique identifier of the session.
+
+        Returns:
+            List[MessageResponse]: A list of MessageResponse objects corresponding to the session.
+
+        Raises:
+            Exception: If there is an error retrieving messages from the database.
+
+        Logs:
+            An error message if message retrieval fails.
+        """
         self.validator.validate_uuid(session_id, "Session ID")
         try:
             messages = self.db_manager.get_messages_for_session(session_id)
@@ -419,6 +777,22 @@ class ChatManager:
             raise
 
     def delete_message(self, message_id: uuid.UUID) -> bool:
+        """
+        Deletes a message with the specified UUID from the database.
+
+        Args:
+            message_id (uuid.UUID): The unique identifier of the message to delete.
+
+        Returns:
+            bool: True if the message was successfully deleted, False otherwise.
+
+        Raises:
+            Exception: If an error occurs during the deletion process.
+
+        Logs:
+            - Info: When a message is successfully deleted.
+            - Error: If deletion fails, logs the exception.
+        """
         self.validator.validate_uuid(message_id, "Message ID")
         try:
             result = self.db_manager.delete_message(message_id)
@@ -435,18 +809,44 @@ class SetupManager:
     def __init__(
         self, directories: AppDirectories, config: AppConfig, logger: ArataxAILogger
     ):
+        """
+        Initializes the orchestrator with application directories, configuration, and logger.
+
+        Args:
+            directories (AppDirectories): Object containing paths to application directories.
+            config (AppConfig): Application configuration object.
+            logger (ArataxAILogger): Logger instance for logging application events.
+        """
         self.directories = directories
         self.config = config
         self.logger = logger
         self.version = __version__
-        self._marker_file = self.directories.config / self.config.get_setup_marker_filename(
-            self.version
+        self._marker_file = (
+            self.directories.config
+            / self.config.get_setup_marker_filename(self.version)
         )
 
     def is_first_launch(self) -> bool:
+        """
+        Checks if this is the first launch by verifying the existence of a marker file.
+
+        Returns:
+            bool: True if the marker file does not exist (indicating first launch), False otherwise.
+        """
         return not self._marker_file.exists()
 
     def perform_first_launch_setup(self) -> None:
+        """
+        Performs the initial setup required during the application's first launch.
+
+        This method checks if the application is being launched for the first time.
+        If so, it executes the necessary setup steps and creates a marker to indicate
+        that the setup has been completed. If the setup has already been performed,
+        it skips the process. Logs the progress and any errors encountered.
+
+        Raises:
+            Exception: If any error occurs during the setup process.
+        """
         if not self.is_first_launch():
             self.logger.info("Skipping first launch setup - already completed")
             return
@@ -460,15 +860,54 @@ class SetupManager:
             raise
 
     def _create_setup_marker(self) -> None:
+        """
+        Creates a marker file to indicate that the setup process has been completed.
+
+        This method attempts to create the marker file specified by `self._marker_file`.
+        If the file already exists, a FileExistsError will be raised due to `exist_ok=False`.
+        """
         self._marker_file.touch(exist_ok=False)
 
 
 class AtaraxAIOrchestrator:
 
     def __init__(self, app_config: Optional[AppConfig] = None):
+        """
+        Initializes the orchestrator with application configuration, logging, directory structure, and core managers.
+
+        Args:
+            app_config (Optional[AppConfig]): Optional application configuration. If not provided, a default AppConfig is used.
+
+        Attributes:
+            app_config (AppConfig): The application configuration instance.
+            logger (logging.Logger): Logger instance for the application.
+            directories (AppDirectories): Handles application directory paths.
+            security_manager (SecurityManager): Manages security-related operations, such as salt and check files.
+            state (AppState): The current state of the application (e.g., FIRST_LAUNCH or LOCKED).
+            setup_manager (SetupManager): Handles setup procedures for the application.
+            config_manager (ConfigurationManager): Manages configuration files and settings.
+            core_ai_manager (CoreAIServiceManager): Manages core AI services.
+
+        Raises:
+            Any exceptions raised by underlying manager initializations or file operations.
+
+        Side Effects:
+            Initializes application state and managers, creates directories and files as needed, and sets up logging.
+        """
         self.app_config = app_config or AppConfig()
         self.logger = self._init_logger()
         self.directories = AppDirectories.create_default()
+
+        salt_file = self.directories.data / "vault.salt"
+        check_file = self.directories.data / "vault.check"
+        self.security_manager = SecurityManager(
+            salt_path=str(salt_file), check_path=str(check_file)
+        )
+
+        if not Path(salt_file).exists():
+            self.state = AppState.FIRST_LAUNCH
+        else:
+            self.state = AppState.LOCKED
 
         self.setup_manager = SetupManager(
             self.directories, self.app_config, self.logger
@@ -479,29 +918,42 @@ class AtaraxAIOrchestrator:
         self._initialize_application()
 
     def _init_logger(self) -> ArataxAILogger:
+        """
+        Initializes and returns an instance of the ArataxAILogger.
+
+        Returns:
+            ArataxAILogger: A new logger instance for AtaraxAI operations.
+        """
         return ArataxAILogger()
 
     def _initialize_application(self) -> None:
         try:
             self.logger.info(f"Starting AtaraxAI v{__version__}")
-            
+
             if self.setup_manager.is_first_launch():
                 self.setup_manager.perform_first_launch_setup()
-            
+
             self._init_database()
             self._init_rag_manager()
             self._init_prompt_engine()
-            
+
             config_status = self.core_ai_manager.get_configuration_status()
-            if config_status["llama_configured"] and config_status["whisper_configured"]:
-                self.logger.info("AI services are properly configured and ready for use")
+            if (
+                config_status["llama_configured"]
+                and config_status["whisper_configured"]
+            ):
+                self.logger.info(
+                    "AI services are properly configured and ready for use"
+                )
             else:
-                self.logger.warning("AI services are not fully configured - some features may be unavailable")
-            
+                self.logger.warning(
+                    "AI services are not fully configured - some features may be unavailable"
+                )
+
             self._finalize_setup()
-            
+
             self.logger.info("AtaraxAI initialization completed successfully")
-            
+
         except Exception as e:
             self.logger.error(f"Failed to initialize AtaraxAI: {e}")
             raise
@@ -512,6 +964,44 @@ class AtaraxAIOrchestrator:
         self.chat_context = ChatContextManager(db_manager=self.db_manager)
         self.chat_manager = ChatManager(self.db_manager, self.logger)
         self.logger.info("Database initialized successfully")
+
+    def set_master_password(self, password: str):
+        if self.state != AppState.FIRST_LAUNCH:
+            raise RuntimeError("Cannot set master password on an existing vault.")
+
+        self.security_manager.derive_key(password)
+        self.security_manager.create_vault_check()
+        self.state = AppState.UNLOCKED
+        self._initialize_unlocked_services()
+
+    def unlock(self, password: str):
+        if self.state != AppState.LOCKED:
+            self.logger.warning("Application is already unlocked.")
+            return
+
+        try:
+            self.security_manager.derive_key(password)
+
+            if not self.security_manager.verify_password():
+                self.security_manager.lock()
+                raise ValueError("Invalid password.")
+
+            self.state = AppState.UNLOCKED
+            self._initialize_unlocked_services()
+            self.logger.info("Vault unlocked successfully.")
+        except Exception as e:
+            self.state = AppState.LOCKED
+            self.logger.error(f"Failed to unlock vault: {e}")
+            raise
+
+    def _initialize_unlocked_services(self):
+        pass
+
+    def lock(self):
+        self.security_manager.lock()
+        self.shutdown()
+        self.state = AppState.LOCKED
+        self.logger.info("Vault locked.")
 
     def _init_rag_manager(self) -> None:
         self.rag_manager = AtaraxAIRAGManager(
@@ -559,29 +1049,28 @@ class AtaraxAIOrchestrator:
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
         InputValidator.validate_string(initial_user_query, "Initial user query")
-        
+
         if not chain_definition:
             raise ValidationError("Chain definition cannot be empty")
-        
+
         try:
             core_ai_service = self.core_ai_manager.get_service()
         except ServiceInitializationError as e:
             self.logger.error(f"Cannot run task chain: {e}")
             raise
-        
+
         if self.chain_runner.core_ai_service is None:
             self.chain_runner.core_ai_service = core_ai_service
 
         if self.rag_manager.core_ai_service is None:  # type: ignore
             self.rag_manager.core_ai_service = core_ai_service
-        
+
         self.logger.info(f"Executing chain for query: '{initial_user_query}'")
         try:
             chain_name = chain_definition[0].get("task_id", "unknown")
             CHAINS_EXECUTED_COUNTER.labels(chain_name=chain_name).inc()
             result = self.chain_runner.run_chain(
-                chain_definition=chain_definition, 
-                initial_user_query=initial_user_query
+                chain_definition=chain_definition, initial_user_query=initial_user_query
             )
             self.logger.info("Chain execution completed successfully")
             return result
