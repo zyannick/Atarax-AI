@@ -16,10 +16,30 @@ struct WhisperModelParams
     std::string language = "en";
 
     WhisperModelParams() = default;
+    /**
+     * @brief Constructs a WhisperModelParams object with the specified parameters.
+     *
+     * @param model       Path or identifier of the Whisper model to use.
+     * @param language    Language code (e.g., "en", "fr") for transcription or translation.
+     * @param use_gpu     Whether to use GPU acceleration (default: true).
+     * @param flash_attn  Enable Flash Attention optimization if supported (default: false).
+     * @param audio_ctx   Audio context size or window (default: 0 for automatic).
+     * @param n_threads   Number of threads to use for processing (default: minimum of 4 or hardware concurrency).
+     */
     WhisperModelParams(const std::string &model, const std::string &language, bool use_gpu = true, bool flash_attn = false,
                        int32_t audio_ctx = 0, int32_t n_threads = std::min(4, (int32_t)std::thread::hardware_concurrency()))
         : model(model), language(language), use_gpu(use_gpu), flash_attn(flash_attn), audio_ctx(audio_ctx), n_threads(n_threads) {}
 
+    /**
+     * @brief Equality operator for WhisperModelParams.
+     *
+     * Compares this instance with another WhisperModelParams object to determine if all
+     * configuration parameters are equal. The comparison includes the number of threads,
+     * GPU usage flag, flash attention flag, audio context size, model identifier, and language.
+     *
+     * @param other The WhisperModelParams instance to compare against.
+     * @return true if all parameters are equal; false otherwise.
+     */
     bool operator==(const WhisperModelParams &other) const
     {
         return n_threads == other.n_threads &&
@@ -30,11 +50,35 @@ struct WhisperModelParams
                language == other.language;
     }
 
+    /**
+     * @brief Inequality operator for WhisperModelParams.
+     *
+     * Compares this instance with another WhisperModelParams object for inequality.
+     * Returns true if the two objects are not equal, as determined by the equality operator.
+     *
+     * @param other The WhisperModelParams object to compare with.
+     * @return true if the objects are not equal, false otherwise.
+     */
     bool operator!=(const WhisperModelParams &other) const
     {
         return !(*this == other);
     }
 
+    /**
+     * @brief Computes a combined hash value for the object's parameters.
+     *
+     * This function generates a hash by combining the hash values of the member variables:
+     * - model (std::string)
+     * - language (std::string)
+     * - use_gpu (bool)
+     * - flash_attn (bool)
+     * - audio_ctx (int32_t)
+     * - n_threads (int32_t)
+     *
+     * The resulting hash can be used for storing objects in hash-based containers.
+     *
+     * @return std::size_t The combined hash value of the object's parameters.
+     */
     std::size_t hash() const
     {
         return std::hash<std::string>()(model) ^
@@ -45,6 +89,12 @@ struct WhisperModelParams
                std::hash<int32_t>()(n_threads);
     }
 
+    /**
+     * @brief Converts the WhisperModelParams object to a human-readable string representation.
+     *
+     * @return A string describing the current model parameters, including model name, language,
+     *         GPU usage, flash attention status, audio context size, and number of threads.
+     */
     std::string to_string() const
     {
         return "WhisperModelParams(model='" + model +

@@ -121,6 +121,18 @@ LlamaInterface &LlamaInterface::operator=(LlamaInterface &&other) noexcept
     return *this;
 }
 
+/**
+ * @brief Loads a Llama model with the specified parameters.
+ *
+ * This function attempts to load a Llama model from the file path specified in the given
+ * LlamaModelParams. It first unloads any currently loaded model. It validates the input
+ * parameters, sets up model and context parameters, and initializes the model and context.
+ * If any step fails, it logs an error message and returns false.
+ *
+ * @param params The parameters for loading the model, including model path, context size,
+ *               and GPU layer configuration.
+ * @return true if the model was loaded successfully; false otherwise.
+ */
 bool LlamaInterface::load_model(const LlamaModelParams &params)
 {
     if (model_)
@@ -189,6 +201,13 @@ bool LlamaInterface::load_model(const LlamaModelParams &params)
     return true;
 }
 
+/**
+ * @brief Unloads the currently loaded Llama model and releases associated resources.
+ *
+ * This function frees the context and model objects if they are loaded,
+ * sets their pointers to nullptr, and resets the vocabulary pointer.
+ * It also logs a message indicating that the model has been unloaded.
+ */
 void LlamaInterface::unload_model()
 {
     if (ctx_)
@@ -205,11 +224,33 @@ void LlamaInterface::unload_model()
     std::cerr << "LlamaInterface: Model unloaded." << std::endl;
 }
 
+/**
+ * @brief Checks if the Llama model and its required components are loaded.
+ *
+ * This function verifies that the model, context, and vocabulary pointers are all non-null,
+ * indicating that the model and its dependencies have been successfully loaded and initialized.
+ *
+ * @return true if the model, context, and vocabulary are loaded; false otherwise.
+ */
 bool LlamaInterface::is_model_loaded() const
 {
     return model_ != nullptr && ctx_ != nullptr && vocab_ != nullptr;
 }
 
+/**
+ * @brief Tokenizes the given text using the loaded Llama model vocabulary.
+ *
+ * This function converts the input string into a sequence of llama_token values,
+ * optionally adding a beginning-of-sequence (BOS) token and handling special tokens.
+ * It first checks if the model is loaded, then estimates the required buffer size
+ * for tokenization. If the initial buffer is insufficient, it resizes and retries.
+ *
+ * @param text The input string to tokenize.
+ * @param add_bos If true, prepends a BOS token to the output.
+ * @param special If true, enables special token handling during tokenization.
+ * @return std::vector<llama_token> The sequence of tokens representing the input text.
+ *         Returns an empty vector if the model is not loaded or tokenization fails.
+ */
 std::vector<llama_token> LlamaInterface::tokenize(const std::string &text, bool add_bos, bool special) const
 {
     if (!is_model_loaded())
@@ -245,6 +286,17 @@ std::vector<llama_token> LlamaInterface::tokenize(const std::string &text, bool 
     return result;
 }
 
+/**
+ * @brief Converts a token ID to its corresponding string representation.
+ *
+ * This function takes an integer token ID and returns the detokenized string
+ * using the loaded vocabulary. If the model is not loaded, it returns an empty string.
+ * If the conversion fails, it logs an error and returns "[Error]".
+ *
+ * @param token The token ID to be detokenized.
+ * @return The string representation of the token, or "[Error]" if conversion fails,
+ *         or an empty string if the model is not loaded.
+ */
 std::string LlamaInterface::detokenize_token(int32_t token) const
 {
     if (!is_model_loaded())
@@ -265,6 +317,16 @@ std::string LlamaInterface::detokenize_token(int32_t token) const
     return std::string(buf, n);
 }
 
+/**
+ * @brief Converts a sequence of token IDs into a string by detokenizing each token.
+ *
+ * This function takes a vector of integer token IDs and reconstructs the original
+ * string by detokenizing each token using the detokenize_token method. If the input
+ * vector is empty, an empty string is returned.
+ *
+ * @param tokens A vector of integer token IDs to be detokenized.
+ * @return The detokenized string corresponding to the input token sequence.
+ */
 std::string LlamaInterface::detokenize_sequence(const std::vector<int32_t> &tokens) const
 {
     if (tokens.empty())
@@ -280,6 +342,18 @@ std::string LlamaInterface::detokenize_sequence(const std::vector<int32_t> &toke
     return result;
 }
 
+/**
+ * @brief Creates and configures a llama_sampler instance based on the provided generation parameters.
+ *
+ * This function initializes a new llama_sampler chain and sequentially adds various sampling strategies
+ * to it, such as penalties for repetition, minimum probability threshold, top-k and top-p sampling,
+ * temperature scaling, and distribution initialization. The configuration is determined by the values
+ * in the provided GenerationParams structure.
+ *
+ * @param params The generation parameters specifying sampler configuration, including penalties,
+ *               top-k, top-p, temperature, and other relevant settings.
+ * @return A pointer to the configured llama_sampler instance.
+ */
 llama_sampler *LlamaInterface::create_sampler(const GenerationParams &params)
 {
     llama_sampler *smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
@@ -302,6 +376,18 @@ llama_sampler *LlamaInterface::create_sampler(const GenerationParams &params)
     return smpl;
 }
 
+/**
+ * @brief Generates a text completion based on the provided prompt and generation parameters.
+ *
+ * This function uses the currently loaded Llama model to generate a completion for the given prompt text.
+ * It handles model loading checks, prompt tokenization, context management, and sampling according to the specified
+ * generation parameters. The function supports stopping generation based on a maximum number of tokens or custom stop sequences.
+ *
+ * @param prompt_text The input prompt for which to generate a completion.
+ * @param gen_params  The parameters controlling text generation (e.g., number of tokens, stop sequences).
+ * @return The generated completion as a string. Returns an error message string if the model is not loaded,
+ *         the prompt is empty, the context size is exceeded, or an exception occurs during generation.
+ */
 std::string LlamaInterface::generate_completion(const std::string &prompt_text, const GenerationParams &gen_params)
 {
     if (!is_model_loaded())

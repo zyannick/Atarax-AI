@@ -115,6 +115,18 @@ void WhisperInterface::static_new_segment_callback(struct whisper_context * /*w_
     }
 }
 
+/**
+ * @brief Static callback function to report progress during Whisper operations.
+ *
+ * This function is intended to be used as a progress callback for the Whisper library.
+ * It retrieves the WhisperInterface instance from the provided user_data pointer and,
+ * if a progress callback is set, invokes it with the current progress value.
+ *
+ * @param w_ctx Pointer to the whisper_context (unused).
+ * @param state Pointer to the whisper_state (unused).
+ * @param progress The current progress value, typically as a percentage.
+ * @param user_data Pointer to user data, expected to be a WhisperInterface instance.
+ */
 void WhisperInterface::static_progress_callback(struct whisper_context * /*w_ctx*/, struct whisper_state * /*state*/, int progress, void *user_data)
 {
     if (user_data)
@@ -185,7 +197,6 @@ std::string WhisperInterface::transcribe_pcm(const std::vector<float> &pcm_f32_d
         wparams.temperature_inc = transcription_params.no_fallback ? 0.0f : wparams.temperature_inc;
         wparams.duration_ms = 1000.0f * pcm_f32_data.size() / 16000.0f;
 
-
         wparams.prompt_tokens = transcription_params.no_context ? nullptr : prompt_tokens.data();
         wparams.prompt_n_tokens = transcription_params.no_context ? 0 : prompt_tokens.size();
 
@@ -201,8 +212,6 @@ std::string WhisperInterface::transcribe_pcm(const std::vector<float> &pcm_f32_d
         std::string result;
         result.append("<whisper>");
         std::ofstream fout;
-
-        
 
         if (transcription_params.fname_out.length() > 0)
         {
