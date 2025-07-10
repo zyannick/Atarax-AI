@@ -50,7 +50,37 @@ Create a production-ready AI assistant that:
 - **Audit logging** - All security events logged and encrypted -->
 
 
+## Usage
 
+### Standard user
+
+Package coming soon
+
+### Power user 
+
+#### Without Docker
+
+In order to run the code on your computer, you can clone this repository, then you need to manually install:
+
+##### Backend
+
+```
+.\install.sh 
+```
+
+You can add some options:
+- ```--use-conda``` : if you want to use you preferred environnement
+- ```--clean``` : if you want to clean your previous installations
+- ```--clean-ccache``` : if you want to clean ccache that is use to accelerated the c++ compilation. 
+- ```--use-cuda``` : if you want to build llama.cpp and whisper.cpp with cuda supports
+- ```--only-cpp``` : if you want to build and install only the c++ part of the backend
+- ```--cuda-arch``` : if you want to precise your cuda architecture
+
+#### Frontend
+
+
+
+#### With Docker
 
 
 

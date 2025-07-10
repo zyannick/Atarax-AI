@@ -31,7 +31,7 @@ for arg in "$@"; do
     --only-cpp)
         ONLY_CPP=1
         SETUP_ARGS+=" --only-cpp"
-        echo "[+] Only building C++ components, skipping Python bindings."
+        echo "[+] Only building C++ components."
         ;;
     --use-conda)
         USE_CONDA=1
