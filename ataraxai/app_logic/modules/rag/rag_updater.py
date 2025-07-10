@@ -249,7 +249,7 @@ def rag_update_worker(
     )
 
     while True:
-        print("RAG Update Worker: Waiting for tasks...")
+        # print("RAG Update Worker: Waiting for tasks...")
         try:
             task: Dict[str, Any] = processing_queue.get(timeout=1)
             if task is None:
