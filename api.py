@@ -39,7 +39,7 @@ async def create_new_project(
     description: str = Form(..., description="A brief description of the project."),
 ):
     try:
-        project = orchestrator.db_manager.create_project(
+        project = orchestrator.create_project(
             name=name, description=description
         )
 
@@ -56,7 +56,7 @@ async def delete_project(project_id: uuid.UUID):
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    orchestrator.db_manager.delete_project(project_id)
+    orchestrator.delete_project(project_id)
     return CreateProjectResponse(
         project_id=project.id, name=project.name, description=project.description
     )
@@ -64,7 +64,7 @@ async def delete_project(project_id: uuid.UUID):
 
 @app.get("/v1/projects/{project_id}", response_model=CreateProjectResponse)
 async def get_project(project_id: uuid.UUID):
-    project = orchestrator.db_manager.get_project(project_id)
+    project = orchestrator.get_project(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     return CreateProjectResponse(
@@ -74,7 +74,7 @@ async def get_project(project_id: uuid.UUID):
 
 @app.get("/v1/projects", response_model=List[CreateProjectResponse])
 async def list_projects():
-    projects = orchestrator.db_manager.list_projects()
+    projects = orchestrator.list_projects()
     return [
         CreateProjectResponse(
             project_id=project.id, name=project.name, description=project.description
@@ -87,7 +87,7 @@ async def list_projects():
     "/v1/projects/{project_id}/sessions", response_model=List[CreateSessionResponse]
 )
 async def list_sessions(project_id: uuid.UUID):
-    sessions = orchestrator.db_manager.list_sessions(project_id)
+    sessions = orchestrator.list_sessions(project_id)
     return [
         CreateSessionResponse(
             session_id=session.id, title=session.title, project_id=session.project.id
@@ -104,7 +104,7 @@ async def create_new_session(
     title: str = Form(..., description="The initial title for the new chat session."),
 ):
     try:
-        session = orchestrator.db_manager.create_session(
+        session = orchestrator.create_session(
             project_id=project_id, title=title
         )
         return CreateSessionResponse(
@@ -116,11 +116,11 @@ async def create_new_session(
 
 @app.delete("/v1/sessions/{session_id}", response_model=CreateSessionResponse)
 async def delete_session(session_id: uuid.UUID):
-    session = orchestrator.db_manager.get_session(session_id)
+    session = orchestrator.get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    orchestrator.db_manager.delete_session(session_id)
+    orchestrator.delete_session(session_id)
     return CreateSessionResponse(
         session_id=session.id, title=session.title, project_id=session.project.id
     )

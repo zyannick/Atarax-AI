@@ -16,6 +16,7 @@ from ataraxai.app_logic.utils.llama_config_manager import LlamaConfigManager
 from ataraxai.app_logic.utils.rag_config_manager import RAGConfigManager
 from ataraxai.app_logic.utils.whisper_config_manager import WhisperConfigManager
 from platformdirs import user_config_dir, user_data_dir, user_cache_dir, user_log_dir
+from uuid import UUID
 
 from ataraxai.app_logic.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.app_logic.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
@@ -136,7 +137,7 @@ class AppConfig:
 class InputValidator:
 
     @staticmethod
-    def validate_uuid(uuid_value: Optional[uuid.UUID], param_name: str) -> None:
+    def validate_uuid(uuid_value: Optional[uuid.UUID], param_name: str, version : int = 4) -> None:
         """
         Validates that the provided UUID value is not empty.
 
@@ -147,8 +148,11 @@ class InputValidator:
         Raises:
             ValidationError: If the uuid_value is None or empty.
         """
-        if not uuid_value:
-            raise ValidationError(f"{param_name} cannot be empty.")
+        try:
+            uuid_obj = UUID(uuid_value, version=version)
+        except ValueError:
+            raise ValidationError(f"{param_name} is not a valid UUID: {uuid_value}")
+
 
     @staticmethod
     def validate_string(string_value: Optional[str], param_name: str) -> None:
@@ -669,6 +673,30 @@ class ChatManager:
             self.logger.error(f"Failed to create session {title}: {e}")
             raise
 
+    def get_session(self, session_id: uuid.UUID) -> ChatSessionResponse:
+        """
+        Retrieves a chat session by its unique identifier.
+
+        Args:
+            session_id (uuid.UUID): The unique identifier of the chat session to retrieve.
+
+        Returns:
+            ChatSessionResponse: The response model containing the session's details.
+
+        Raises:
+            Exception: If the session cannot be retrieved or an error occurs during the process.
+
+        Logs:
+            Logs an error message if session retrieval fails.
+        """
+        self.validator.validate_uuid(session_id, "Session ID")
+        try:
+            session = self.db_manager.get_session(session_id)
+            return ChatSessionResponse.model_validate(session)
+        except Exception as e:
+            self.logger.error(f"Failed to get session {session_id}: {e}")
+            raise
+
     def list_sessions(self, project_id: uuid.UUID) -> List[ChatSessionResponse]:
         """
         Retrieve a list of chat sessions associated with a given project.
@@ -750,6 +778,30 @@ class ChatManager:
             return MessageResponse.model_validate(message)
         except Exception as e:
             self.logger.error(f"Failed to add message to session {session_id}: {e}")
+            raise
+
+    def get_message(self, message_id: uuid.UUID) -> MessageResponse:
+        """
+        Retrieves a message by its unique identifier.
+
+        Args:
+            message_id (uuid.UUID): The unique identifier of the message to retrieve.
+
+        Returns:
+            MessageResponse: The response model containing the message's details.
+
+        Raises:
+            Exception: If the message cannot be retrieved or an error occurs during the process.
+
+        Logs:
+            Logs an error message if message retrieval fails.
+        """
+        self.validator.validate_uuid(message_id, "Message ID")
+        try:
+            message = self.db_manager.get_message(message_id)
+            return MessageResponse.model_validate(message)
+        except Exception as e:
+            self.logger.error(f"Failed to get message {message_id}: {e}")
             raise
 
     def get_messages_for_session(self, session_id: uuid.UUID) -> List[MessageResponse]:
@@ -1201,7 +1253,9 @@ class AtaraxAIOrchestrator:
         Returns:
             ProjectResponse: An object containing details about the newly created project.
         """
-        return self.chat_manager.create_project(name, description)
+        project = self.chat_manager.create_project(name, description)
+        self.logger.info(f"Project created: {name}")
+        return project
 
     def get_project(self, project_id: uuid.UUID) -> ProjectResponse:
         """
@@ -1216,7 +1270,12 @@ class AtaraxAIOrchestrator:
         Raises:
             Any exceptions raised by chat_manager.get_project.
         """
-        return self.chat_manager.get_project(project_id)
+        project =  self.chat_manager.get_project(project_id)
+        if project:
+            self.logger.info(f"Retrieved project: {project_id}")
+        else:
+            self.logger.warning(f"Project not found: {project_id}")
+        return project
 
     def get_project_summary(self, project_id: uuid.UUID) -> Dict[str, Any]:
         """
@@ -1245,7 +1304,9 @@ class AtaraxAIOrchestrator:
         Returns:
             List[ProjectResponse]: A list containing project response objects representing the available projects.
         """
-        return self.chat_manager.list_projects()
+        list_projects =  self.chat_manager.list_projects()
+        self.logger.info(f"Retrieved {len(list_projects)} projects")
+        return list_projects
 
     def delete_project(self, project_id: uuid.UUID) -> bool:
         """
@@ -1257,6 +1318,11 @@ class AtaraxAIOrchestrator:
         Returns:
             bool: True if the project was successfully deleted, False otherwise.
         """
+        InputValidator.validate_uuid(project_id, "Project ID")
+        self.logger.info(f"Deleting project: {project_id}")
+        if not self.chat_manager.get_project(project_id):
+            self.logger.warning(f"Project {project_id} not found, cannot delete.")
+            return False
         return self.chat_manager.delete_project(project_id)
 
     def create_session(self, project_id: uuid.UUID, title: str) -> ChatSessionResponse:
@@ -1270,6 +1336,12 @@ class AtaraxAIOrchestrator:
         Returns:
             ChatSessionResponse: An object containing details about the newly created chat session.
         """
+        InputValidator.validate_uuid(project_id, "Project ID")
+        InputValidator.validate_string(title, "Session title")
+        self.logger.info(f"Creating session '{title}' for project {project_id}")
+        if not self.chat_manager.get_project(project_id):
+            self.logger.warning(f"Project {project_id} not found, cannot create session.")
+            raise ValueError(f"Project {project_id} does not exist.")
         return self.chat_manager.create_session(project_id, title)
 
     def list_sessions(self, project_id: uuid.UUID) -> List[ChatSessionResponse]:
@@ -1282,7 +1354,11 @@ class AtaraxAIOrchestrator:
         Returns:
             List[ChatSessionResponse]: A list of chat session response objects corresponding to the specified project.
         """
-        return self.chat_manager.list_sessions(project_id)
+        InputValidator.validate_uuid(project_id, "Project ID")
+        self.logger.info(f"Listing sessions for project {project_id}")
+        sessions = self.chat_manager.list_sessions(project_id)
+        self.logger.info(f"Retrieved {len(sessions)} sessions for project {project_id}")
+        return sessions
 
     def delete_session(self, session_id: uuid.UUID) -> bool:
         """
@@ -1294,7 +1370,33 @@ class AtaraxAIOrchestrator:
         Returns:
             bool: True if the session was successfully deleted, False otherwise.
         """
+        InputValidator.validate_uuid(session_id, "Session ID")
+        self.logger.info(f"Deleting session: {session_id}")
+        if not self.get_session(session_id):
+            self.logger.warning(f"Session {session_id} not found, cannot delete.")
+            return False
         return self.chat_manager.delete_session(session_id)
+    
+    def get_session(self, session_id: uuid.UUID) -> ChatSessionResponse:
+        """
+        Retrieve a chat session by its unique identifier.
+
+        Args:
+            session_id (uuid.UUID): The unique identifier of the chat session to retrieve.
+
+        Returns:
+            ChatSessionResponse: The response object containing details of the requested chat session.
+
+        Raises:
+            Exception: If the session cannot be retrieved or an error occurs during the process.
+        """
+        InputValidator.validate_uuid(session_id, "Session ID")
+        self.logger.info(f"Retrieving session: {session_id}")
+        session = self.chat_manager.get_session(session_id)
+        if not session:
+            self.logger.warning(f"Session {session_id} not found.")
+            raise ValueError(f"Session {session_id} does not exist.")
+        return session
 
     def add_message(
         self, session_id: uuid.UUID, role: str, content: str
@@ -1310,6 +1412,15 @@ class AtaraxAIOrchestrator:
         Returns:
             MessageResponse: The response object containing details of the added message.
         """
+        InputValidator.validate_uuid(session_id, "Session ID")
+        InputValidator.validate_string(content, "Message content")
+        self.logger.info(f"Adding message to session {session_id} with role '{role}'")
+        if not self.get_session(session_id):
+            self.logger.warning(f"Session {session_id} not found, cannot add message.")
+            raise ValueError(f"Session {session_id} does not exist.")
+        if role not in ["user", "assistant"]:
+            self.logger.error(f"Invalid role '{role}' for message in session {session_id}")
+            raise ValueError(f"Invalid role '{role}' for message.")
         return self.chat_manager.add_message(session_id, role, content)
 
     def get_messages_for_session(self, session_id: uuid.UUID) -> List[MessageResponse]:
@@ -1322,6 +1433,11 @@ class AtaraxAIOrchestrator:
         Returns:
             List[MessageResponse]: A list of message responses for the specified session.
         """
+        InputValidator.validate_uuid(session_id, "Session ID")
+        self.logger.info(f"Retrieving messages for session {session_id}")
+        if not self.get_session(session_id):
+            self.logger.warning(f"Session {session_id} not found, cannot retrieve messages.")
+            raise ValueError(f"Session {session_id} does not exist.")
         return self.chat_manager.get_messages_for_session(session_id)
 
     def delete_message(self, message_id: uuid.UUID) -> bool:
@@ -1334,6 +1450,12 @@ class AtaraxAIOrchestrator:
         Returns:
             bool: True if the message was successfully deleted, False otherwise.
         """
+        InputValidator.validate_uuid(message_id, "Message ID")
+        self.logger.info(f"Deleting message: {message_id}")
+        message = self.chat_manager.get_message(message_id)
+        if not message:
+            self.logger.warning(f"Message {message_id} not found, cannot delete.")
+            return False
         return self.chat_manager.delete_message(message_id)
 
     def shutdown(self) -> None:

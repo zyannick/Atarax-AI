@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use tauri::{Manager, State};
+use tauri::{State};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
@@ -149,7 +149,6 @@ async fn create_project(
     projects.insert(project.project_id.clone(), project.clone());
     
     Ok(project)
-    Err(String::from("Failed to create project"))
 }
 
 #[tauri::command]
