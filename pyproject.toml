@@ -45,7 +45,8 @@ dependencies = [
     "soundfile",
     "pytesseract",
     "python-multipart",
-    "cryptography"
+    "cryptography",
+    "ragas"
 ]
 
 [project.optional-dependencies]

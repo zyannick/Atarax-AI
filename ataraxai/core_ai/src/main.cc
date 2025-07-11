@@ -3,8 +3,8 @@
 #include <iostream>
 #include <string>
 #include <cstring>
-#include <filesystem> 
-#include <system_error> 
+#include <filesystem>
+#include <system_error>
 #include "llama.h"
 
 #include <iostream>
@@ -16,7 +16,6 @@
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
-
 
 int main(int argc, char **argv)
 {
@@ -41,30 +40,19 @@ int main(int argc, char **argv)
 
     std::cout << "Full path: " << model_jsons_path << std::endl;
 
-    CPUInfoCollection cpu_info_collection = CPUInfoCollection();
-    GPUInfoCollection gpu_info_collection = GPUInfoCollection();
+    LlamaBenchmarker benchmarker(model_jsons_path);
 
-    std::cout << "Collecting CPU information..." << std::endl;
-    std::cout << "-------------------------------------------------------------------------------------------------" << std::endl;
+    BenchmarkParams params;
+    params.n_gpu_layers = 32;
+    params.repetitions = 10;
+    params.warmup = true;
+    params.parallel = false;
 
-    for (const auto &cpu : cpu_info_collection.cpus)
-    {
-        std::cout << cpu << std::endl;
-    }
+    benchmarker.setBenchmarkParams(params);
 
-    std::cout << "Collecting GPU information..." << std::endl;
-    std::cout << "-------------------------------------------------------------------------------------------------" << std::endl;
+    auto results = benchmarker.benchmarkAllModels(params);
 
-    for (const auto &gpu : gpu_info_collection.gpus)
-    {
-        std::cout << gpu << std::endl;
-    }
-
-    std::cout << "--------------------------------------------------------------------------------------------------" << std::endl;
-
-    std::cout << "Start benchmarking models..." << std::endl;
-    ModelBenchmarker model_benchmarker = ModelBenchmarker(model_jsons_path);
-    model_benchmarker.benchmark_models(8, 256);
+    benchmarker.exportResults(results, "benchmark_results.json");
 
     return 0;
 }

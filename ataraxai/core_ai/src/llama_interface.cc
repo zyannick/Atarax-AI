@@ -264,7 +264,6 @@ std::vector<llama_token> LlamaInterface::tokenize(const std::string &text, bool 
         return add_bos ? std::vector<int32_t>{llama_vocab_bos(vocab_)} : std::vector<int32_t>{};
     }
 
-    // Better size estimation
     int n_tokens_estimated = static_cast<int>(text.length() * 1.5) + (add_bos ? 1 : 0) + 64;
     std::vector<llama_token> result(n_tokens_estimated);
 

@@ -2,6 +2,7 @@
 #include <pybind11/stl.h>
 
 #include "core_ai/core_ai_service.hh"
+#include "core_ai/model_benchmarker.hh"
 
 namespace py = pybind11;
 
@@ -304,6 +305,72 @@ PYBIND11_MODULE(core_ai_py, m)
               py::arg("pcm_f32_data"), py::arg("whisper_model_params"))
          .def("transcribe_audio_file", &CoreAIService::transcribe_audio_file, "Transcribe an audio file using Whisper",
               py::arg("audio_file_path"), py::arg("whisper_model_params"));
-     //     .def("convert_audio_file_to_pcm_f32", &CoreAIService::convert_audio_file_to_pcm_f32, "Convert an audio file to PCM f32 format",
-     //          py::arg("audio_file_path"));
+
+     py::class_<QuantizedModelInfo>(m, "QuantizedModelInfo", "Information about a quantized model.")
+         .def(py::init<>())
+         .def_readwrite("modelId", &QuantizedModelInfo::modelId, "Unique identifier for the model.")
+         .def_readwrite("fileName", &QuantizedModelInfo::fileName, "File name of the quantized model.")
+         .def_readwrite("lastModified", &QuantizedModelInfo::lastModified, "Last modified timestamp of the model file.")
+         .def_readwrite("quantization", &QuantizedModelInfo::quantization, "Quantization type (e.g., 'Q4_0', 'Q8_0').")
+         .def_readwrite("fileSize", &QuantizedModelInfo::fileSize, "Size of the model file in bytes.")
+         .def_static("from_dict", [](const py::dict &d)
+                     {
+             QuantizedModelInfo info;
+             if (d.contains("modelId")) {
+                 info.modelId = d["modelId"].cast<std::string>();
+             }
+             if (d.contains("fileName")) {
+                 info.fileName = d["fileName"].cast<std::string>();
+             }
+             if (d.contains("lastModified")) {
+                 info.lastModified = d["lastModified"].cast<std::string>();
+             }
+             if (d.contains("quantization")) {
+                 info.quantization = d["quantization"].cast<std::string>();
+             }
+             if (d.contains("fileSize")) {
+                 info.fileSize = d["fileSize"].cast<size_t>();
+             }
+             return info; })
+         .def("is_valid", &QuantizedModelInfo::isValid, "Check if the model info is valid (non-empty modelId and fileName).")
+         .def("__str__", [](const QuantizedModelInfo &info)
+              { return info.to_string(); })
+         .def("__hash__", [](const QuantizedModelInfo &info)
+              { return info.hash(); })
+         .def("__repr__", [](const QuantizedModelInfo &info)
+              { return info.to_string(); })
+         .def("__eq__", [](const QuantizedModelInfo &a, const QuantizedModelInfo &b)
+              { return a == b; })
+         .def("__ne__", [](const QuantizedModelInfo &a, const QuantizedModelInfo &b)
+              { return a != b; });
+
+     py::class_<BenchmarkMetrics>(m, "BenchmarkMetrics", "Metrics collected during model benchmarking.")
+         .def(py::init<>())
+         .def_readwrite("loadTime", &BenchmarkMetrics::loadTime, "Time taken to load the model in milliseconds.")
+         .def_readwrite("generationTime", &BenchmarkMetrics::generationTime, "Time taken to generate text in milliseconds.")
+         .def_readwrite("totalTime", &BenchmarkMetrics::totalTime, "Total time for the benchmark in milliseconds.")
+         .def_readwrite("tokensGenerated", &BenchmarkMetrics::tokensGenerated, "Number of tokens generated during the benchmark.")
+         .def_readwrite("tokensPerSecond", &BenchmarkMetrics::tokensPerSecond, "Tokens generated per second during the benchmark.")
+         .def_readwrite("memoryUsage", &BenchmarkMetrics::memoryUsage, "Memory usage during the benchmark in MB.")
+         .def_readwrite("success", &BenchmarkMetrics::success, "Whether the benchmark was successful.")
+         .def_readwrite("errorMessage", &BenchmarkMetrics::errorMessage, "Error message if the benchmark failed.");
+
+     py::class_<BenchmarkResult>(m, "BenchmarkResult", "Result of a model benchmark.")
+         .def(py::init<const std::string &>(), "Constructor with model ID")
+         .def_readwrite("modelId", &BenchmarkResult::modelId, "ID of the model being benchmarked.")
+         .def_readwrite("metrics", &BenchmarkResult::metrics, "Metrics collected during the benchmark.")
+         .def_readwrite("generatedText", &BenchmarkResult::generatedText, "Text generated during the benchmark.")
+         .def_readwrite("promptUsed", &BenchmarkResult::promptUsed, "Prompt used for the benchmark.")
+         .def("calculate_statistics", &BenchmarkResult::calculateStatistics, "Calculate statistical summaries from the benchmark metrics.")
+         .def("__eq__", [](const BenchmarkResult &a, const BenchmarkResult &b)
+              { return a.modelId == b.modelId && a.metrics == b.metrics; })
+         .def("__ne__", [](const BenchmarkResult &a, const BenchmarkResult &b)
+              { return !(a == b); });
+
+     py::class_<LlamaBenchmarker>(m, "LlamaBenchmarker", "Benchmarks LLM models for performance and metrics.")
+         .def(py::init<>(), "Default constructor")
+         .def("benchmark_single_model", &LlamaBenchmarker::benchmarkSingleModel, "Benchmark a single LLM model",
+              py::arg("model_info"), py::arg("params"))
+         .def("benchmark_all_models", &LlamaBenchmarker::benchmarkAllModels, "Benchmark all loaded LLM models",
+              py::arg("params"));
 };
