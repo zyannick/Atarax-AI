@@ -17,12 +17,33 @@
 using namespace std::chrono;
 using json = nlohmann::json;
 
+/**
+ * @brief Computes the average value of the elements in a vector.
+ *
+ * This function calculates the arithmetic mean of the elements in the given vector.
+ * If the vector is empty, it returns a default-constructed value of type T (typically zero).
+ *
+ * @tparam T The type of the elements in the vector. Must support addition, division, and default construction.
+ * @param v The vector of elements to average.
+ * @return The average value of the elements in the vector, or T(0) if the vector is empty.
+ */
 template <typename T>
 T avg(const std::vector<T>& v) {
     if (v.empty()) return T(0);
     return std::accumulate(v.begin(), v.end(), T(0)) / v.size();
 }
 
+/**
+ * @brief Calculates the sample standard deviation of a vector of values.
+ *
+ * This function computes the standard deviation using the sample formula (dividing by N-1),
+ * where N is the number of elements in the input vector. If the vector contains one or zero elements,
+ * the function returns zero.
+ *
+ * @tparam T Numeric type of the vector elements.
+ * @param v The input vector containing values to compute the standard deviation for.
+ * @return The sample standard deviation of the input vector.
+ */
 template <typename T>
 T stdev(const std::vector<T>& v) {
     if (v.size() <= 1) return T(0);
@@ -66,6 +87,13 @@ struct BenchmarkResult
 
     BenchmarkResult(const std::string &id) : modelId(id) {}
     
+    /**
+     * @brief Calculates and updates statistical metrics for model benchmarking.
+     *
+     * This method computes the average generation time and average tokens per second
+     * from their respective historical data vectors, if they are not empty, and updates
+     * the corresponding metric fields.
+     */
     void calculateStatistics() {
         if (!metrics.generationTimes.empty()) {
             metrics.generationTime = avg(metrics.generationTimes);
@@ -100,6 +128,14 @@ private:
     BenchmarkParams default_params;
 
 public:
+    /**
+     * @brief Constructs a LlamaBenchmarker object.
+     *
+     * Initializes the default prompts for benchmarking. Attempts to retrieve the
+     * ATARAXIA_PATH environment variable to set the base path for model files.
+     * If the environment variable is not set, a warning is printed and model paths
+     * must be provided as absolute paths.
+     */
     LlamaBenchmarker()
     {
         initializeDefaultPrompts();
@@ -111,11 +147,26 @@ public:
         }
     }
 
+    /**
+     * @brief Constructs a LlamaBenchmarker and loads model paths from a JSON file.
+     *
+     * This constructor initializes the LlamaBenchmarker by first calling the default constructor,
+     * then loading model paths from the specified JSON file.
+     *
+     * @param json_file The path to the JSON file containing model paths.
+     */
     explicit LlamaBenchmarker(const std::string &json_file) : LlamaBenchmarker()
     {
         loadModelPathsFromJson(json_file);
     }
 
+    /**
+     * @brief Initializes the benchmark_prompts vector with a set of default prompts.
+     *
+     * This method populates the benchmark_prompts container with a predefined list of
+     * questions and tasks. These prompts are intended to be used for benchmarking or
+     * evaluating the performance and capabilities of AI models.
+     */
     void initializeDefaultPrompts()
     {
         benchmark_prompts = {
@@ -128,6 +179,18 @@ public:
         };
     }
 
+    /**
+     * @brief Loads quantized model information from a JSON file.
+     *
+     * This function reads the specified JSON file, parses its contents, and populates
+     * the `quantized_models` container with valid `QuantizedModelInfo` objects extracted
+     * from the file. Each entry in the JSON is expected to contain fields such as
+     * "modelID", "fileName", "lastModified", "quantization", and "fileSize".
+     * Only valid models (as determined by `QuantizedModelInfo::isValid()`) are added.
+     *
+     * @param json_file The path to the JSON file containing model information.
+     * @return true if the models were loaded successfully; false otherwise.
+     */
     bool loadModelPathsFromJson(const std::string &json_file)
     {
         try {
@@ -160,6 +223,19 @@ public:
         }
     }
 
+    /**
+     * @brief Benchmarks a single quantized model using specified parameters.
+     *
+     * This function loads a quantized model, optionally performs a warmup generation,
+     * and then runs multiple prompt generations to measure performance metrics such as
+     * load time, generation time, and tokens per second. The results, including statistics
+     * and any errors encountered, are returned in a BenchmarkResult object.
+     *
+     * @param model_info Information about the quantized model to benchmark, including model ID and file name.
+     * @param params Benchmarking parameters, such as number of GPU layers, number of generations,
+     *        temperature, top_k, top_p, number of repetitions, and whether to perform a warmup.
+     * @return BenchmarkResult containing performance metrics, generated text, and success status.
+     */
     BenchmarkResult benchmarkSingleModel(const QuantizedModelInfo &model_info, const BenchmarkParams &params)
     {
         BenchmarkResult result(model_info.modelId);
@@ -226,6 +302,19 @@ public:
         return result;
     }
 
+    /**
+     * @brief Benchmarks all quantized models using the specified parameters.
+     *
+     * This function iterates over all quantized models and benchmarks each one using the provided
+     * BenchmarkParams. If parallel execution is enabled and there is more than one model, the
+     * benchmarking is performed concurrently using std::async. Otherwise, benchmarking is done
+     * sequentially. The results for each model are printed, and a summary of all results is displayed
+     * at the end.
+     *
+     * @param params The parameters to use for benchmarking, including GPU layers, repetitions, and
+     *               whether to run in parallel.
+     * @return std::vector<BenchmarkResult> A vector containing the benchmarking results for all models.
+     */
     std::vector<BenchmarkResult> benchmarkAllModels(const BenchmarkParams &params)
     {
         std::vector<BenchmarkResult> results;
@@ -235,7 +324,6 @@ public:
         std::cout << std::string(80, '=') << std::endl;
 
         if (params.parallel && quantized_models.size() > 1) {
-            // Parallel execution
             std::vector<std::future<BenchmarkResult>> futures;
             for (const auto &model_info : quantized_models) {
                 futures.push_back(std::async(std::launch::async, 
@@ -264,6 +352,17 @@ public:
         return results;
     }
 
+    /**
+     * @brief Prints the benchmark results for a model execution.
+     *
+     * This function outputs detailed benchmark metrics to the standard output,
+     * including load time, generation time (with optional standard deviation),
+     * approximate token generation speed (with optional standard deviation),
+     * and the total number of tokens generated. If the benchmark failed,
+     * it prints the error message instead.
+     *
+     * @param result The BenchmarkResult structure containing all relevant metrics and status.
+     */
     void printBenchmarkResult(const BenchmarkResult &result)
     {
         if (!result.metrics.success) {
@@ -291,6 +390,16 @@ public:
         std::cout << "  • Tokens generated: " << result.metrics.tokensGenerated << std::endl;
     }
 
+    /**
+     * @brief Prints a summary of benchmark results to the standard output.
+     *
+     * This function outputs a formatted summary including:
+     * - A header section.
+     * - The fastest model among the provided benchmark results (based on tokens per second, considering only successful runs).
+     * - The overall success rate of the benchmarks.
+     *
+     * @param results A vector of BenchmarkResult objects containing the results to summarize.
+     */
     void printSummary(const std::vector<BenchmarkResult> &results)
     {
         std::cout << "\n" << std::string(80, '=') << std::endl;
@@ -314,6 +423,16 @@ public:
                   << " (" << (100.0 * successful / results.size()) << "%)" << std::endl;
     }
 
+    /**
+     * @brief Exports benchmark results to a JSON file.
+     *
+     * This function serializes the provided benchmark results and associated parameters
+     * into a JSON structure and writes it to the specified file. The output includes
+     * a timestamp, benchmark parameters, and detailed metrics for each result.
+     *
+     * @param results   A vector of BenchmarkResult objects containing the results to export.
+     * @param filename  The path to the file where the JSON output will be written.
+     */
     void exportResults(const std::vector<BenchmarkResult> &results, const std::string &filename)
     {
         json output;
@@ -363,30 +482,80 @@ public:
         std::cout << "Results exported to: " << filename << std::endl;
     }
 
+    /**
+     * @brief Sets the default benchmark parameters.
+     *
+     * This method updates the internal benchmark parameters with the provided values.
+     *
+     * @param params The BenchmarkParams object containing the new benchmark settings.
+     */
     void setBenchmarkParams(const BenchmarkParams &params) {
         default_params = params;
     }
 
+    /**
+     * @brief Sets the benchmark prompts to be used for model evaluation.
+     *
+     * This function assigns the provided list of prompts to the internal
+     * benchmark prompts storage. These prompts are used during benchmarking
+     * to evaluate the model's performance.
+     *
+     * @param prompts A vector of strings containing the prompts for benchmarking.
+     */
     void setBenchmarkPrompts(const std::vector<std::string> &prompts) {
         benchmark_prompts = prompts;
     }
 
+    /**
+     * @brief Retrieves the default benchmark parameters.
+     *
+     * This function returns the default set of parameters used for benchmarking models.
+     *
+     * @return BenchmarkParams The default benchmark parameters.
+     */
     BenchmarkParams getDefaultParams() const {
         return default_params;
     }
 
+    /**
+     * @brief Adds a quantized model to the list of benchmarked models.
+     *
+     * This function appends the provided QuantizedModelInfo object to the internal
+     * collection of quantized models for benchmarking purposes.
+     *
+     * @param model The QuantizedModelInfo instance representing the model to add.
+     */
     void addModel(const QuantizedModelInfo &model) {
         quantized_models.push_back(model);
     }
 
+    /**
+     * @brief Removes all quantized models from the collection.
+     *
+     * This function clears the internal container holding the quantized models,
+     * effectively removing all currently stored models and resetting the collection to an empty state.
+     */
     void clearModels() {
         quantized_models.clear();
     }
 
+    /**
+     * @brief Returns the number of quantized models.
+     *
+     * @return The total count of quantized models currently stored.
+     */
     size_t getModelCount() const {
         return quantized_models.size();
     }
 
+    /**
+     * @brief Retrieves the list of model IDs from the quantized models.
+     *
+     * Iterates through the collection of quantized models and extracts their unique
+     * identifiers, returning them as a vector of strings.
+     *
+     * @return std::vector<std::string> A vector containing the IDs of all quantized models.
+     */
     std::vector<std::string> getModelIds() const {
         std::vector<std::string> ids;
         for (const auto &model : quantized_models) {
