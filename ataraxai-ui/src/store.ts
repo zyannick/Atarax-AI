@@ -65,11 +65,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   createProject: async (name: string) => {
+    console.log("Attempting to create project with name:", name); // <-- ADD THIS LINE
     set({ isLoading: true, error: null });
     try {
-      await invoke('create_project', { name, description: "New project" });
+      await invoke('create_project', { name, description: "New project" }); 
       await get().fetchProjects();
     } catch (e) {
+      console.error("Error in createProject:", e); // <-- Also good to have
       set({ error: `Failed to create project: ${e}` });
     } finally {
       set({ isLoading: false });

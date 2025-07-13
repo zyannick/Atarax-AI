@@ -16,12 +16,12 @@ authors = [
 dependencies = [
     "numpy",
     "requests",
-    "icalendar==5.0.4",
+    "icalendar==6.3.1",
     "beautifulsoup4==4.13.4",
     "chromadb==1.0.12",
     "watchdog==6.0.0",
     "platformdirs==4.3.8",
-    "sentence_transformers==4.1.0",
+    "sentence_transformers==5.0.0",
     "langchain==0.3.25",
     "langchain-text-splitters==0.3.8",
     "python-pptx==1.0.2",
@@ -46,7 +46,9 @@ dependencies = [
     "pytesseract",
     "python-multipart",
     "cryptography",
-    "ragas"
+    "ragas",
+    "uvicorn[standard]",
+    "fastapi"
 ]
 
 [project.optional-dependencies]

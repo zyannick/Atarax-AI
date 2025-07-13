@@ -12,7 +12,7 @@
 #include <future>
 
 #include "core_ai/llama_interface.hh"
-#include "json.hpp"
+#include "core_ai/json.hpp"
 
 using namespace std::chrono;
 using json = nlohmann::json;
@@ -61,6 +61,28 @@ struct QuantizedModelInfo
     size_t fileSize = 0;  
 
     bool isValid() const { return !modelId.empty() && !fileName.empty(); }
+
+    bool operator==(const QuantizedModelInfo &other) const {
+        return modelId == other.modelId && fileName == other.fileName &&
+               lastModified == other.lastModified && quantization == other.quantization &&
+               fileSize == other.fileSize;
+    }
+
+    bool operator!=(const QuantizedModelInfo &other) const {
+        return !(*this == other);
+    }
+
+    size_t hash() const {
+        return std::hash<std::string>()(modelId) ^ std::hash<std::string>()(fileName) ^
+               std::hash<std::string>()(lastModified) ^ std::hash<std::string>()(quantization) ^
+               std::hash<size_t>()(fileSize);
+    }
+
+    std::string to_string() const {
+        return "QuantizedModelInfo(modelId=" + modelId + ", fileName=" + fileName +
+               ", lastModified=" + lastModified + ", quantization=" + quantization +
+               ", fileSize=" + std::to_string(fileSize) + ")";
+    }
 };
 
 struct BenchmarkMetrics
@@ -76,6 +98,37 @@ struct BenchmarkMetrics
     
     std::vector<double> generationTimes;
     std::vector<double> tokensPerSecondHistory;
+
+    bool operator==(const BenchmarkMetrics &other) const {
+        return loadTime == other.loadTime && generationTime == other.generationTime &&
+               totalTime == other.totalTime && tokensGenerated == other.tokensGenerated &&
+               tokensPerSecond == other.tokensPerSecond && memoryUsage == other.memoryUsage &&
+               success == other.success && errorMessage == other.errorMessage &&
+               generationTimes == other.generationTimes && tokensPerSecondHistory == other.tokensPerSecondHistory;
+    }
+
+    bool operator!=(const BenchmarkMetrics &other) const {
+        return !(*this == other);
+    }
+
+    size_t hash() const {
+        return std::hash<double>()(loadTime) ^ std::hash<double>()(generationTime) ^
+               std::hash<double>()(totalTime) ^ std::hash<int>()(tokensGenerated) ^
+               std::hash<double>()(tokensPerSecond) ^ std::hash<double>()(memoryUsage) ^
+               std::hash<bool>()(success) ^ std::hash<std::string>()(errorMessage);
+    }
+
+    std::string to_string() const {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2);
+        oss << "BenchmarkMetrics(loadTime=" << loadTime << "ms, generationTime=" << generationTime
+            << "ms, totalTime=" << totalTime << "ms, tokensGenerated=" << tokensGenerated
+            << ", tokensPerSecond=" << tokensPerSecond << ", memoryUsage=" << memoryUsage
+            << "MB, success=" << std::boolalpha << success << ", errorMessage='" << errorMessage
+            << "', generationTimes.size()=" << generationTimes.size()
+            << ", tokensPerSecondHistory.size()=" << tokensPerSecondHistory.size() << ")";
+        return oss.str();
+    }
 };
 
 struct BenchmarkResult

@@ -56,6 +56,12 @@ pub enum ErrorKind {
     Internal,
 }
 
+#[derive(Serialize)]
+struct CreateProjectPayload<'a> {
+    name: &'a str,
+    description: Option<&'a str>,
+}
+
 impl std::fmt::Display for AppError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {}", self.kind_str(), self.message)
@@ -139,16 +145,44 @@ async fn create_project(
     validate_string(&name, "Project name", 1)
         .map_err(|e| e.to_string())?;
 
-    let project = Project {
-        project_id: generate_id(),
-        name: name.trim().to_string(),
-        description: description.map(|d| d.trim().to_string()),
+    println!("Sending request to create project with name: {}", name);
+
+    let payload = CreateProjectPayload {
+        name: &name,
+        description: description.as_deref(),
     };
 
-    let mut projects = state.projects.write().await;
-    projects.insert(project.project_id.clone(), project.clone());
-    
-    Ok(project)
+    let response = state
+        .http_client
+        .post(&format!("{}/projects", state.api_base_url))
+        .json(&payload) 
+        .send()
+        .await
+        .map_err(|e| format!("Network error: {}", e))?;
+
+    if response.status().is_success() {
+        let created_project = response
+            .json::<Project>()
+            .await
+            .map_err(|e| format!("Failed to parse API response: {}", e))?;
+
+        println!("API returned project: {:?}", created_project);
+
+
+        {
+            let mut projects = state.projects.write().await;
+            projects.insert(created_project.project_id.clone(), created_project.clone());
+        }
+
+        Ok(created_project)
+    } else {
+        let status = response.status();
+        let error_text = response
+            .text()
+            .await
+            .unwrap_or_else(|_| "Unknown API error".to_string());
+        Err(format!("API Error ({}): {}", status, error_text))
+    }
 }
 
 #[tauri::command]

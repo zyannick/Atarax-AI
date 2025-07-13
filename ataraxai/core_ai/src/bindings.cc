@@ -361,11 +361,7 @@ PYBIND11_MODULE(core_ai_py, m)
          .def_readwrite("metrics", &BenchmarkResult::metrics, "Metrics collected during the benchmark.")
          .def_readwrite("generatedText", &BenchmarkResult::generatedText, "Text generated during the benchmark.")
          .def_readwrite("promptUsed", &BenchmarkResult::promptUsed, "Prompt used for the benchmark.")
-         .def("calculate_statistics", &BenchmarkResult::calculateStatistics, "Calculate statistical summaries from the benchmark metrics.")
-         .def("__eq__", [](const BenchmarkResult &a, const BenchmarkResult &b)
-              { return a.modelId == b.modelId && a.metrics == b.metrics; })
-         .def("__ne__", [](const BenchmarkResult &a, const BenchmarkResult &b)
-              { return !(a == b); });
+         .def("calculate_statistics", &BenchmarkResult::calculateStatistics, "Calculate statistical summaries from the benchmark metrics.");
 
      py::class_<LlamaBenchmarker>(m, "LlamaBenchmarker", "Benchmarks LLM models for performance and metrics.")
          .def(py::init<>(), "Default constructor")

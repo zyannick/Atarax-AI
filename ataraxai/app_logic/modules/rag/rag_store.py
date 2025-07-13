@@ -1,7 +1,7 @@
 import chromadb
 from pathlib import Path
 from typing import Optional, Any
-
+from chromadb.config import Settings
 from ataraxai.app_logic.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
 from typing import Dict, List, Union, Mapping
 
@@ -39,7 +39,7 @@ class RAGStore:
             raise ValueError("An embedder instance must be provided to RAGStore.")
         self.embedder = embedder
 
-        self.client = chromadb.PersistentClient(path=str(self.db_path))
+        self.client = chromadb.PersistentClient(path=str(self.db_path), settings=Settings(anonymized_telemetry=False))
 
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name,

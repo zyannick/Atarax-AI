@@ -7,6 +7,21 @@ from ataraxai.app_logic.ataraxai_orchestrator import AtaraxAIOrchestrator
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 
 
+class CreateProjectRequest(BaseModel):
+    name: str
+    description: str | None = None
+
+
+class CreateSessionRequest(BaseModel):
+    project_id: uuid.UUID
+    title: str = Field(..., description="The initial title for the new chat session.")
+
+
+class ChatMessageRequest(BaseModel):
+    session_id: uuid.UUID
+    user_query: str = Field(..., description="The user's message to the AI.")
+
+
 class ChatMessageResponse(BaseModel):
     assistant_response: str = Field(..., description="The AI's generated response.")
     session_id: uuid.UUID = Field(..., description="The ID of the chat session.")
@@ -34,13 +49,10 @@ orchestrator = AtaraxAIOrchestrator()
 
 
 @app.post("/v1/projects", response_model=CreateProjectResponse)
-async def create_new_project(
-    name: str = Form(..., description="The name of the new project."),
-    description: str = Form(..., description="A brief description of the project."),
-):
+async def create_new_project(project_data: CreateProjectRequest):
     try:
         project = orchestrator.create_project(
-            name=name, description=description
+            name=project_data.name, description=project_data.description
         )
 
         return CreateProjectResponse(
@@ -98,21 +110,17 @@ async def list_sessions(project_id: uuid.UUID):
 
 @app.post("/v1/sessions", response_model=CreateSessionResponse)
 async def create_new_session(
-    project_id: uuid.UUID = Form(
-        ..., description="The ID of the project this session belongs to."
-    ),
-    title: str = Form(..., description="The initial title for the new chat session."),
-):
+    session_data: CreateSessionRequest):
     try:
         session = orchestrator.create_session(
-            project_id=project_id, title=title
+            project_id=session_data.project_id, title=session_data.title
         )
+
         return CreateSessionResponse(
             session_id=session.id, title=session.title, project_id=session.project.id
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
 @app.delete("/v1/sessions/{session_id}", response_model=CreateSessionResponse)
 async def delete_session(session_id: uuid.UUID):
@@ -127,28 +135,25 @@ async def delete_session(session_id: uuid.UUID):
 
 
 @app.post("/v1/sessions/{session_id}/messages", response_model=ChatMessageResponse)
-async def send_chat_message(
-    session_id: uuid.UUID,
-    user_query: str = Form(..., description="The user's message to the AI."),
+async def create_chat_message(
+    session_id: uuid.UUID, message_data: ChatMessageRequest, background_tasks: BackgroundTasks
 ):
-    try:
-        chat_chain = [
-            {
-                "task_id": "standard_chat",
-                "inputs": {"user_query": user_query, "session_id": session_id},
-            }
-        ]
+    session = orchestrator.get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
 
-        final_result = orchestrator.run_task_chain(
-            chain_definition=chat_chain, initial_user_query=user_query
+    try:
+        response = orchestrator.create_chat_message(
+            session_id=session_id, user_query=message_data.user_query
         )
+        background_tasks.add_task(orchestrator.process_chat_message, response)
 
         return ChatMessageResponse(
-            assistant_response=final_result, session_id=session_id
+            assistant_response=response.assistant_response, 
+            session_id=response.session_id
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-
 
 @app.on_event("shutdown")
 def shutdown_event():
