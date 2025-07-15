@@ -1,4 +1,4 @@
-#include "core_ai/whisper_interface.hh"
+#include "hegemonikon/whisper_interface.hh"
 #include "whisper.h"
 #include <stdexcept>
 #include <iostream>
@@ -12,12 +12,25 @@
 static std::once_flag backend_whisper_init_flag;
 static std::atomic<bool> backend_whisper_initialized{false};
 
+/**
+ * @brief Constructs a new WhisperInterface object.
+ *
+ * Initializes the WhisperInterface instance and sets the internal context pointer to nullptr.
+ * Outputs a message to std::cerr indicating that the WhisperInterface has been created and
+ * reminding the user to ensure that the whisper backend is initialized if required.
+ */
 WhisperInterface::WhisperInterface() : ctx_(nullptr)
 {
 
     std::cerr << "WhisperInterface created. Ensure whisper backend (if any specific) is initialized if needed." << std::endl;
 }
 
+/**
+ * @brief Destructor for the WhisperInterface class.
+ *
+ * This destructor ensures that any resources or models loaded by the
+ * WhisperInterface are properly released by calling the unload_model() method.
+ */
 WhisperInterface::~WhisperInterface()
 {
     unload_model();

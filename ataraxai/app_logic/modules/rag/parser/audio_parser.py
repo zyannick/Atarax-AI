@@ -10,7 +10,7 @@ from ataraxai.app_logic.modules.rag.parser.document_base_parser import (
     DocumentChunk,
     DocumentParser,
 )
-from ataraxai import core_ai_py  # type: ignore [attr-defined]
+from ataraxai import hegemonikon_py  # type: ignore [attr-defined]
 from typing import Dict, Any
 from ataraxai.app_logic.utils.config_schemas.whisper_config_schema import (
     WhisperModelParams,
@@ -22,8 +22,8 @@ class AudioParser(DocumentParser):
     def __init__(
         self,
         whisper_transcribe: bool,
-        core_ai_service: core_ai_py.CoreAIService,  # type: ignore
-        transcription_params: core_ai_py.WhisperGenerationParams,  # type: ignore
+        core_ai_service: hegemonikon_py.CoreAIService,  # type: ignore
+        transcription_params: hegemonikon_py.WhisperGenerationParams,  # type: ignore
         chunk_duration_seconds: int = 30,
         overlap_seconds: int = 5,
         max_file_size_mb: int = 100,
@@ -33,8 +33,8 @@ class AudioParser(DocumentParser):
 
         Args:
             whisper_transcribe (bool): Whether to enable audio transcription using Whisper.
-            core_ai_service (core_ai_py.CoreAIService): The core AI service instance for processing audio.
-            transcription_params (core_ai_py.WhisperGenerationParams): Parameters for Whisper transcription.
+            core_ai_service (hegemonikon_py.CoreAIService): The core AI service instance for processing audio.
+            transcription_params (hegemonikon_py.WhisperGenerationParams): Parameters for Whisper transcription.
             chunk_duration_seconds (int, optional): Duration (in seconds) of each audio chunk. Defaults to 30.
             overlap_seconds (int, optional): Overlap duration (in seconds) between audio chunks. Defaults to 5.
             max_file_size_mb (int, optional): Maximum allowed file size (in megabytes) for processing. Defaults to 100.
@@ -320,7 +320,7 @@ class AudioParser(DocumentParser):
 
 
 if __name__ == "__main__":
-    whisper_params = core_ai_py.WhisperModelParams.from_dict(  # type: ignore
+    whisper_params = hegemonikon_py.WhisperModelParams.from_dict(  # type: ignore
         WhisperModelParams(
             model=str("data/last_models/models/whisper/ggml-base.bin"),
             use_gpu=False,
@@ -329,11 +329,11 @@ if __name__ == "__main__":
         ).model_dump( ) # type: ignore
     )
 
-    whisper_generation_params = core_ai_py.WhisperGenerationParams.from_dict(  # type: ignore
+    whisper_generation_params = hegemonikon_py.WhisperGenerationParams.from_dict(  # type: ignore
         WhisperTranscriptionParams().model_dump()
     )
 
-    core_ai_service = core_ai_py.CoreAIService()  # type: ignore
+    core_ai_service = hegemonikon_py.CoreAIService()  # type: ignore
     core_ai_service.initialize_whisper_model(whisper_params)  # type: ignore
 
     parser = AudioParser(

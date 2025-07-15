@@ -1,4 +1,4 @@
-#include "core_ai/core_ai_service.hh"
+#include "hegemonikon/core_ai_service.hh"
 
 #include <iostream>
 #include <memory>
@@ -6,7 +6,7 @@
 #include <vector>
 
 #define MINIAUDIO_IMPLEMENTATION
-#include "core_ai/miniaudio.h"
+#include "hegemonikon/miniaudio.h"
 
 /**
  * @brief Constructs a CoreAIService object and initializes member variables.

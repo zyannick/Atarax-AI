@@ -210,7 +210,7 @@ def make_core_ai_manager(
     mock_config_manager.whisper_config = mock_whisper_config
 
     monkeypatch.setattr(
-        "ataraxai.app_logic.ataraxai_orchestrator.core_ai_py", mock.Mock()
+        "ataraxai.app_logic.ataraxai_orchestrator.hegemonikon_py", mock.Mock()
     )
     monkeypatch.setattr(
         "ataraxai.app_logic.ataraxai_orchestrator.Path.exists",

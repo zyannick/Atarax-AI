@@ -89,11 +89,11 @@ exclude = [
     ".venv",
     "build",
     "dist",
-    "ataraxai/core_ai/third_party",
+    "ataraxai/hegemonikon/third_party",
 ]
 
 [tool.mypy]
-exclude = '(?x)(ataraxai/core_ai/third_party/|build/|dist/|\.venv/)'
+exclude = '(?x)(ataraxai/hegemonikon/third_party/|build/|dist/|\.venv/)'
 [[tool.mypy.overrides]]
 module = [
     "fitz",

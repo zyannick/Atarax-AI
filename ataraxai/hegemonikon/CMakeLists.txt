@@ -24,8 +24,6 @@ else()
 endif()
 
 
-# find_package(Boost REQUIRED COMPONENTS process filesystem system)
-# message(STATUS "Boost version: ${Boost_VERSION_STRING}")
 
 get_filename_component(PROJECT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../" ABSOLUTE)
 set(THIRD_PARTY_INSTALL_DIR "${PROJECT_ROOT}/build/third_party_install")
@@ -106,16 +104,16 @@ endif()
 set(LLAMA_INCLUDE_DIR   "${LLAMA_INSTALL_PREFIX}/include")
 set(WHISPER_INCLUDE_DIR "${WHISPER_INSTALL_PREFIX}/include")
 
-add_library(core_ai_logic STATIC
+add_library(hegemonikon STATIC
     src/core_ai_service.cc
     src/llama_interface.cc
     src/whisper_interface.cc
 )
 
-set_target_properties(core_ai_logic PROPERTIES POSITION_INDEPENDENT_CODE ON)
+set_target_properties(hegemonikon PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 
-target_link_libraries(core_ai_logic PRIVATE
+target_link_libraries(hegemonikon PRIVATE
     "${LLAMA_LIBRARY_FILE}"
     "${GGML_LIBRARY_FILE}"
     "${GGML_BASE_LIBRARY_FILE}"
@@ -127,7 +125,7 @@ target_link_libraries(core_ai_logic PRIVATE
     m
 )
 
-target_include_directories(core_ai_logic PUBLIC 
+target_include_directories(hegemonikon PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"      
     ${LLAMA_INCLUDE_DIR}            
     "${LLAMA_INCLUDE_DIR}/ggml/include"
@@ -138,11 +136,11 @@ target_include_directories(core_ai_logic PUBLIC
 )
 
 
-pybind11_add_module(core_ai_py SHARED
+pybind11_add_module(hegemonikon_py SHARED
     src/bindings.cc
 )
-target_link_libraries(core_ai_py PRIVATE
-    core_ai_logic     
+target_link_libraries(hegemonikon_py PRIVATE
+    hegemonikon     
     pybind11::module   
     pthread
     dl
@@ -164,7 +162,7 @@ if (BUILD_TESTING)
     )
     FetchContent_MakeAvailable(Catch2)
 
-    add_executable(core_ai_tests
+    add_executable(hegemonikon_tests
         tests/test_core_ai_service.cc
         tests/test_llama_integration.cc
         tests/test_whisper_integration.cc
@@ -173,13 +171,13 @@ if (BUILD_TESTING)
     set(DOWNLOADED_LLAMA_MODEL_PATH "${CMAKE_SOURCE_DIR}/test_assets/tinyllama.gguf")
     set(DOWNLOADED_WHISPER_MODEL_PATH "${CMAKE_SOURCE_DIR}/test_assets/ggml-tiny.en.bin")
 
-    target_compile_definitions(core_ai_tests PRIVATE 
+    target_compile_definitions(hegemonikon_tests PRIVATE 
         "TEST_LLAMA_MODEL_PATH=\"${DOWNLOADED_LLAMA_MODEL_PATH}\""
         "TEST_WHISPER_MODEL_PATH=\"${DOWNLOADED_WHISPER_MODEL_PATH}\""
     )
 
 
-    target_include_directories(core_ai_tests PRIVATE
+    target_include_directories(hegemonikon_tests PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
         ${LLAMA_INCLUDE_DIR}
@@ -187,8 +185,8 @@ if (BUILD_TESTING)
         ${WHISPER_INCLUDE_DIR}
     )
 
-    target_link_libraries(core_ai_tests PRIVATE 
-        core_ai_logic
+    target_link_libraries(hegemonikon_tests PRIVATE 
+        hegemonikon
         Catch2::Catch2
         Catch2::Catch2WithMain
         pthread
@@ -205,7 +203,7 @@ if(ATARAXAI_USE_CUDA)
     find_package(CUDAToolkit REQUIRED)
     message(STATUS "Found CUDA Toolkit Version: ${CUDAToolkit_VERSION}")
 
-    target_link_libraries(core_ai_py PRIVATE
+    target_link_libraries(hegemonikon_py PRIVATE
         "${GGML_GPU_LIBRARY_FILE}"
         CUDA::cudart
         CUDA::cuda_driver
@@ -216,9 +214,9 @@ else()
     message(STATUS "CUDA support is DISABLED for AtaraxAI.")
 endif()
 
-target_include_directories(core_ai_py PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(hegemonikon_py PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 
-install(TARGETS core_ai_py
+install(TARGETS hegemonikon_py
         LIBRARY DESTINATION ataraxai
         RUNTIME DESTINATION ataraxai)

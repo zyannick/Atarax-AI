@@ -11,8 +11,8 @@
 #include <thread>
 #include <future>
 
-#include "core_ai/llama_interface.hh"
-#include "core_ai/json.hpp"
+#include "hegemonikon/llama_interface.hh"
+#include "hegemonikon/json.hpp"
 
 using namespace std::chrono;
 using json = nlohmann::json;

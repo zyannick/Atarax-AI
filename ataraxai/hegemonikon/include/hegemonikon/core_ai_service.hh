@@ -44,11 +44,27 @@ public:
 
     static void free_global_backends();
 
+    /**
+     * @brief Sets the Llama interface for this service.
+     *
+     * Transfers ownership of the provided LlamaInterface instance to this service,
+     * replacing any previously set interface.
+     *
+     * @param llama_interface A unique pointer to a LlamaInterface instance.
+     */
     void set_llama_interface(std::unique_ptr<LlamaInterface> llama_interface)
     {
         llama_interface_ = std::move(llama_interface);
     }
 
+    /**
+     * @brief Sets the Whisper interface for the service.
+     *
+     * Transfers ownership of the provided WhisperInterface instance to this service.
+     * This method replaces any previously set WhisperInterface.
+     *
+     * @param whisper_interface A unique pointer to a WhisperInterface implementation.
+     */
     void set_whisper_interface(std::unique_ptr<WhisperInterface> whisper_interface)
     {
         whisper_interface_ = std::move(whisper_interface);

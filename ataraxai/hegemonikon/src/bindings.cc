@@ -1,12 +1,12 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "core_ai/core_ai_service.hh"
-#include "core_ai/model_benchmarker.hh"
+#include "hegemonikon/core_ai_service.hh"
+#include "hegemonikon/model_benchmarker.hh"
 
 namespace py = pybind11;
 
-PYBIND11_MODULE(core_ai_py, m)
+PYBIND11_MODULE(hegemonikon_py, m)
 {
      m.doc() = "Python bindings for the AtaraxAI Core AI C++ engine. Provides access to LLM, STT, and other AI functionalities.";
 

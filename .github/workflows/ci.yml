@@ -61,10 +61,10 @@ jobs:
           grep "BUILD_TESTING" build/CMakeCache.txt
       
           echo "--- Content of CTest Configuration ---"
-          cat build/ataraxai/core_ai/CTestTestfile.cmake
-      
+          cat build/ataraxai/hegemonikon/CTestTestfile.cmake
+
           echo "--- Running CTest ---"
-          cd build/ataraxai/core_ai/
+          cd build/ataraxai/hegemonikon/
           ctest --output-on-failure --verbose
 
       - name: Upload build artifact for the next job

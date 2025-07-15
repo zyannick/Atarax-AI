@@ -7,7 +7,7 @@ from ataraxai.app_logic.utils.security_manager import SecurityManager
 
 import uuid
 
-from ataraxai import __version__, core_ai_py  # type: ignore
+from ataraxai import __version__, hegemonikon_py  # type: ignore
 from ataraxai.app_logic.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.app_logic.preferences_manager import PreferencesManager
 from ataraxai.app_logic.utils.ataraxai_logger import ArataxAILogger
@@ -149,7 +149,7 @@ class InputValidator:
             ValidationError: If the uuid_value is None or empty.
         """
         try:
-            uuid_obj = UUID(uuid_value, version=version)
+            uuid_obj = UUID(uuid_value, version=version) # type: ignore
         except ValueError:
             raise ValidationError(f"{param_name} is not a valid UUID: {uuid_value}")
 
@@ -462,7 +462,7 @@ class CoreAIServiceManager:
         self, llama_params: LlamaModelParams, whisper_params: WhisperModelParams
     ) -> Tuple[Any, Any, Any, Any]:
         """
-        Converts Llama and Whisper model parameter objects into their corresponding core_ai_py representations.
+        Converts Llama and Whisper model parameter objects into their corresponding hegemonikon_py representations.
 
         Args:
             llama_params (LlamaModelParams): The Llama model parameters to convert.
@@ -470,24 +470,24 @@ class CoreAIServiceManager:
 
         Returns:
             Tuple[Any, Any, Any, Any]: A tuple containing:
-                - Converted Llama model parameters (core_ai_py.LlamaModelParams)
-                - Converted Llama generation parameters (core_ai_py.GenerationParams)
-                - Converted Whisper model parameters (core_ai_py.WhisperModelParams)
-                - Converted Whisper transcription parameters (core_ai_py.WhisperGenerationParams)
+                - Converted Llama model parameters (hegemonikon_py.LlamaModelParams)
+                - Converted Llama generation parameters (hegemonikon_py.GenerationParams)
+                - Converted Whisper model parameters (hegemonikon_py.WhisperModelParams)
+                - Converted Whisper transcription parameters (hegemonikon_py.WhisperGenerationParams)
         """
-        llama_model_params_cc: Any = core_ai_py.LlamaModelParams.from_dict(  # type: ignore
+        llama_model_params_cc: Any = hegemonikon_py.LlamaModelParams.from_dict(  # type: ignore
             llama_params.model_dump()
         )
 
-        llama_generation_params_cc: Any = core_ai_py.GenerationParams.from_dict(  # type: ignore
+        llama_generation_params_cc: Any = hegemonikon_py.GenerationParams.from_dict(  # type: ignore
             self.config_manager.llama_config.get_generation_params().model_dump()
         )
 
-        whisper_model_params_cc: Any = core_ai_py.WhisperModelParams.from_dict(  # type: ignore
+        whisper_model_params_cc: Any = hegemonikon_py.WhisperModelParams.from_dict(  # type: ignore
             whisper_params.model_dump()
         )
 
-        whisper_transcription_params_cc: Any = core_ai_py.WhisperGenerationParams.from_dict(  # type: ignore
+        whisper_transcription_params_cc: Any = hegemonikon_py.WhisperGenerationParams.from_dict(  # type: ignore
             self.config_manager.whisper_config.get_transcription_params().model_dump()
         )
 
@@ -509,7 +509,7 @@ class CoreAIServiceManager:
         Returns:
             Any: An instance of CoreAIService with the Llama and Whisper models initialized.
         """
-        service = core_ai_py.CoreAIService()  # type: ignore
+        service = hegemonikon_py.CoreAIService()  # type: ignore
         service.initialize_llama_model(llama_params)  # type: ignore
         service.initialize_whisper_model(whisper_params)  # type: ignore
         return service  # type: ignore

@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <iostream>
 
-#include "core_ai/llama_interface.hh"      
+#include "hegemonikon/llama_interface.hh"
 
 const std::string REAL_LLAMA_MODEL_PATH = TEST_LLAMA_MODEL_PATH;
 
