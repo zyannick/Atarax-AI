@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 import uuid
 from fastapi import FastAPI, Form
-from ataraxai.app_logic.ataraxai_orchestrator import AtaraxAIOrchestrator
+from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 
 
