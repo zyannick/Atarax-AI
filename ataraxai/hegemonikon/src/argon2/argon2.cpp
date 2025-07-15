@@ -29,8 +29,8 @@
 
 
 
-#include "argon2.h"
-#include "argon2-core.h"
+#include "argon2/argon2.h"
+#include "argon2/argon2-core.h"
 
 
 /************************* Error messages *********************************************************************************/

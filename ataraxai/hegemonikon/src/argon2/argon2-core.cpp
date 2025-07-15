@@ -21,8 +21,8 @@
 #include "kat.h"
 
 
-#include "blake2.h"
-#include "blake2-impl.h"
+#include "argon2/blake2.h"
+#include "argon2/blake2-impl.h"
 
 
 block operator^(const block& l, const block& r) {

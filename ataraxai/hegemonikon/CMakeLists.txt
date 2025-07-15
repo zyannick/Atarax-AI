@@ -108,6 +108,12 @@ add_library(hegemonikon STATIC
     src/core_ai_service.cc
     src/llama_interface.cc
     src/whisper_interface.cc
+    src/argon2/argon2-core.cpp
+    src/argon2/argon2-opt-core.cpp
+    src/argon2/argon2-ref-core.cpp
+    src/argon2/argon2.cpp
+    src/argon2/kat.cpp
+    src/argon2/blake2b.c
 )
 
 set_target_properties(hegemonikon PROPERTIES POSITION_INDEPENDENT_CODE ON)
@@ -120,7 +126,7 @@ target_link_libraries(hegemonikon PRIVATE
     "${GGML_CPU_LIBRARY_FILE}"
     "${WHISPER_LIBRARY_FILE}" 
     OpenMP::OpenMP_CXX 
-     pthread
+    pthread
     dl
     m
 )
@@ -131,6 +137,7 @@ target_include_directories(hegemonikon PUBLIC
     "${LLAMA_INCLUDE_DIR}/ggml/include"
     ${Boost_INCLUDE_DIRS}
     ${WHISPER_INCLUDE_DIR}
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/argon2"
     PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"        
 )

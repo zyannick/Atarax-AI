@@ -13,9 +13,9 @@
 #include <stdint.h>
 
 
-#include "argon2.h"
-#include "argon2-core.h"
-#include "kat.h"
+#include "argon2/argon2.h"
+#include "argon2/argon2-core.h"
+#include "argon2/kat.h"
 
 
 #include "blamka-round-ref.h"

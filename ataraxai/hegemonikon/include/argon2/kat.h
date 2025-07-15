@@ -14,8 +14,8 @@
 #define __ARGON2_KAT_H__
 
 #include <string>
-#include "argon2.h"
-#include "argon2-core.h"
+#include "argon2/argon2.h"
+#include "argon2/argon2-core.h"
 /*
  * Initial KAT function that prints the inputs to the file
  * @param  blockhash  Array that contains pre-hashing digest
