@@ -4,9 +4,9 @@
 #include <vector>
 #include <memory>
 
-#include "hegemonikon/core_ai_service.hh"
-#include "hegemonikon/llama_interface.hh"      
-#include "hegemonikon/whisper_interface.hh"
+#include "core_ai_service.hh"
+#include "llama_interface.hh"      
+#include "whisper_interface.hh"
 
 
 class MockLlamaInterface : public LlamaInterface {

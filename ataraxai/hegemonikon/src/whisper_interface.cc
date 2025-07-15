@@ -1,4 +1,4 @@
-#include "hegemonikon/whisper_interface.hh"
+#include "whisper_interface.hh"
 #include "whisper.h"
 #include <stdexcept>
 #include <iostream>

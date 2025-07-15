@@ -10,8 +10,8 @@
 #include <iostream>
 #include <cstdlib>
 
-#include "hegemonikon/core_ai.hh"
-#include "hegemonikon/json.hpp"
+#include "core_ai.hh"
+#include "json.hpp"
 #include "io_utils/directory_utils.hh"
 
 using json = nlohmann::json;

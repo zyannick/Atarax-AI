@@ -4,7 +4,7 @@
 #include <vector>
 #include <cmath>
 
-#include "hegemonikon/whisper_interface.hh"
+#include "whisper_interface.hh"
 
 const std::string REAL_WHISPER_MODEL_PATH = TEST_WHISPER_MODEL_PATH;
 

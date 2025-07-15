@@ -1,5 +1,5 @@
 #include <atomic>
-#include "hegemonikon/llama_interface.hh"
+#include "llama_interface.hh"
 #include <stdexcept>
 #include <iostream>
 #include <algorithm>

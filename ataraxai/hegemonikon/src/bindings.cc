@@ -1,8 +1,9 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "hegemonikon/core_ai_service.hh"
-#include "hegemonikon/model_benchmarker.hh"
+#include "core_ai_service.hh"
+#include "model_benchmarker.hh"
+#include "memory_locker.hh"
 
 namespace py = pybind11;
 
@@ -369,4 +370,25 @@ PYBIND11_MODULE(hegemonikon_py, m)
               py::arg("model_info"), py::arg("params"))
          .def("benchmark_all_models", &LlamaBenchmarker::benchmarkAllModels, "Benchmark all loaded LLM models",
               py::arg("params"));
+
+     py::class_<SecureKey>(m, "SecureKey", "A C++ class to hold sensitive data (like encryption keys) in locked memory.")
+         .def("data", [](const SecureKey &self)
+              { return py::bytes(reinterpret_cast<const char *>(self.data()), self.size()); }, "Returns the key data as a Python bytes object.")
+         .def("size", &SecureKey::size, "Returns the size of the key in bytes.");
+
+     m.def("derive_and_protect_key", [](const std::string &password_str, const py::bytes &salt_bytes)
+           {
+                SecureString secure_password(password_str.c_str());
+
+                char *salt_buffer;
+                ssize_t salt_length;
+                if (PYBIND11_BYTES_AS_STRING_AND_SIZE(salt_bytes.ptr(), &salt_buffer, &salt_length))
+                {
+                     throw std::runtime_error("Unable to process salt bytes");
+                }
+                std::vector<uint8_t> salt(salt_buffer, salt_buffer + salt_length);
+
+                return derive_and_protect_key(secure_password, salt);
+           },
+           py::arg("password"), py::arg("salt"), "Derives a key from a password using Argon2id and returns it in a protected object.");
 };
