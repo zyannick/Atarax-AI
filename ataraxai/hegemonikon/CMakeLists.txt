@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(AtaraxAICoreAIModule LANGUAGES CXX C)
+project(HegemonikonModule LANGUAGES CXX C)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -201,7 +201,7 @@ if (BUILD_TESTING)
         m
     )
 
-    add_test(NAME CoreAILogicTests COMMAND core_ai_tests)
+    add_test(NAME HegemonikonTests COMMAND hegemonikon_tests)
 
 endif()
 

@@ -2,12 +2,13 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Tuple, Type
 from dataclasses import dataclass
-from enum import Enum
-from ataraxai.praxis.utils.security_manager import SecurityManager
+from enum import Enum, auto
+
 
 import uuid
 
 from ataraxai import __version__, hegemonikon_py  # type: ignore
+from ataraxai.praxis.utils.security_manager import SecurityManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.preferences_manager import PreferencesManager
 from ataraxai.praxis.utils.ataraxai_logger import ArataxAILogger
@@ -17,7 +18,7 @@ from ataraxai.praxis.utils.rag_config_manager import RAGConfigManager
 from ataraxai.praxis.utils.whisper_config_manager import WhisperConfigManager
 from platformdirs import user_config_dir, user_data_dir, user_cache_dir, user_log_dir
 from uuid import UUID
-
+import getpass
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.praxis.modules.prompt_engine.context_manager import ContextManager
@@ -34,7 +35,7 @@ from ataraxai.praxis.modules.chat.chat_models import (
 )
 import time
 from prometheus_client import Counter
-
+import threading
 
 CHAINS_EXECUTED_COUNTER = Counter(
     "ataraxai_chains_executed_total",
@@ -42,21 +43,34 @@ CHAINS_EXECUTED_COUNTER = Counter(
     ["chain_name"],
 )
 
-APP_NAME = "AtaraxAI"
-APP_AUTHOR = "AtaraxAI"
+from pydantic_settings import BaseSettings
+from enum import Enum
+
+
+class AtaraxAISettings(BaseSettings):
+    app_name: str = "AtaraxAI"
+    app_author: str = "AtaraxAI"
+    database_filename: str = "chat_history.sqlite"
+    log_level: str = "INFO"
+    max_retries: int = 3
+    # version = __version__
+
+    class Config:
+        env_prefix = "ATARAXAI_"
+        case_sensitive = False
 
 
 class ServiceStatus(Enum):
-    NOT_INITIALIZED = "not_initialized"
-    INITIALIZING = "initializing"
-    INITIALIZED = "initialized"
-    FAILED = "failed"
-
+    NOT_INITIALIZED = auto()
+    INITIALIZING = auto()
+    INITIALIZED = auto()
+    FAILED = auto()
 
 class AppState(Enum):
-    LOCKED = "locked"
-    UNLOCKED = "unlocked"
-    FIRST_LAUNCH = "first_launch"
+    LOCKED = auto()
+    UNLOCKED = auto()
+    FIRST_LAUNCH = auto()
+    ERROR = auto()
 
 
 class AtaraxAIError(Exception):
@@ -83,7 +97,7 @@ class AppDirectories:
     logs: Path
 
     @classmethod
-    def create_default(cls) -> "AppDirectories":
+    def create_default(cls, settings: AtaraxAISettings) -> "AppDirectories":
         """
         Creates an instance of AppDirectories with default paths for config, data, cache, and logs
         using the user's operating system conventions. The directories are created if they do not exist.
@@ -92,10 +106,34 @@ class AppDirectories:
             AppDirectories: An instance with initialized and created directory paths.
         """
         dirs = cls(
-            config=Path(user_config_dir(appname=APP_NAME, appauthor=APP_AUTHOR)),
-            data=Path(user_data_dir(appname=APP_NAME, appauthor=APP_AUTHOR)),
-            cache=Path(user_cache_dir(appname=APP_NAME, appauthor=APP_AUTHOR)),
-            logs=Path(user_log_dir(appname=APP_NAME, appauthor=APP_AUTHOR)),
+            config=Path(
+                user_config_dir(
+                    appname=settings.app_name,
+                    appauthor=settings.app_author,
+                    version=__version__,
+                )
+            ),
+            data=Path(
+                user_data_dir(
+                    appname=settings.app_name,
+                    appauthor=settings.app_author,
+                    version=__version__,
+                )
+            ),
+            cache=Path(
+                user_cache_dir(
+                    appname=settings.app_name,
+                    appauthor=settings.app_author,
+                    version=__version__,
+                )
+            ),
+            logs=Path(
+                user_log_dir(
+                    appname=settings.app_name,
+                    appauthor=settings.app_author,
+                    version=__version__,
+                )
+            ),
         )
         dirs.create_directories()
         return dirs
@@ -137,7 +175,9 @@ class AppConfig:
 class InputValidator:
 
     @staticmethod
-    def validate_uuid(uuid_value: Optional[uuid.UUID], param_name: str, version : int = 4) -> None:
+    def validate_uuid(
+        uuid_value: Optional[uuid.UUID], param_name: str, version: int = 4
+    ) -> None:
         """
         Validates that the provided UUID value is not empty.
 
@@ -149,10 +189,9 @@ class InputValidator:
             ValidationError: If the uuid_value is None or empty.
         """
         try:
-            uuid_obj = UUID(uuid_value, version=version) # type: ignore
+            uuid_obj = UUID(uuid_value, version=version)  # type: ignore
         except ValueError:
             raise ValidationError(f"{param_name} is not a valid UUID: {uuid_value}")
-
 
     @staticmethod
     def validate_string(string_value: Optional[str], param_name: str) -> None:
@@ -281,32 +320,12 @@ class ConfigurationManager:
 class CoreAIServiceManager:
 
     def __init__(self, config_manager: ConfigurationManager, logger: ArataxAILogger):
-        """
-        Initializes the orchestrator with the provided configuration manager and logger.
-
-        Args:
-            config_manager (ConfigurationManager): The configuration manager instance to handle configuration settings.
-            logger (ArataxAILogger): The logger instance for logging orchestrator activities.
-
-        Attributes:
-            service (Optional[Any]): The service instance managed by the orchestrator, initialized as None.
-            status (ServiceStatus): The current status of the service, initialized as NOT_INITIALIZED.
-        """
         self.config_manager = config_manager
         self.logger = logger
         self.service: Optional[Any] = None
         self.status = ServiceStatus.NOT_INITIALIZED
 
     def get_service(self) -> Any:
-        """
-        Retrieves the core AI service instance, initializing it if necessary.
-        If the service has not been initialized, this method will initialize it.
-        If the previous initialization attempt failed, raises a ServiceInitializationError.
-        Returns:S
-            Any: The initialized core AI service instance.
-        Raises:
-            ServiceInitializationError: If the service failed to initialize previously.
-        """
         if self.status == ServiceStatus.NOT_INITIALIZED:
             self.initialize()
         elif self.status == ServiceStatus.FAILED:
@@ -317,17 +336,6 @@ class CoreAIServiceManager:
         return self.service
 
     def initialize(self) -> None:
-        """
-        Initializes the core AI services if they are not already initialized.
-        This method performs the following steps:
-            1. Checks if the services are already initialized and logs a message if so.
-            2. Sets the status to INITIALIZING and logs the initialization process.
-            3. Validates model paths and initializes required services.
-            4. Updates the status to INITIALIZED upon successful completion and logs success.
-            5. Handles exceptions by setting the status to FAILED, logging the error, and raising a ServiceInitializationError.
-        Raises:
-            ServiceInitializationError: If initialization of core AI services fails.
-        """
         if self.status == ServiceStatus.INITIALIZED:
             self.logger.info("Core AI services already initialized")
             return
@@ -925,49 +933,74 @@ class AtaraxAIOrchestrator:
 
     def __init__(self, app_config: Optional[AppConfig] = None):
         """
-        Initializes the orchestrator with application configuration, logging, directory structure, and core managers.
+        Initializes the orchestrator with optional application configuration.
 
         Args:
-            app_config (Optional[AppConfig]): Optional application configuration. If not provided, a default AppConfig is used.
+            app_config (Optional[AppConfig]): An optional application configuration object. If not provided, a default AppConfig is used.
 
         Attributes:
-            app_config (AppConfig): The application configuration instance.
-            logger (logging.Logger): Logger instance for the application.
-            directories (AppDirectories): Handles application directory paths.
-            security_manager (SecurityManager): Manages security-related operations, such as salt and check files.
-            state (AppState): The current state of the application (e.g., FIRST_LAUNCH or LOCKED).
-            setup_manager (SetupManager): Handles setup procedures for the application.
-            config_manager (ConfigurationManager): Manages configuration files and settings.
+            app_config (AppConfig): The application configuration in use.
+            logger (logging.Logger): Logger instance for orchestrator events.
+            directories (AppDirectories): Manages application directory paths.
+            security_manager (SecurityManager): Handles security-related operations, such as salt and check file management.
+            setup_manager (SetupManager): Manages setup procedures using directories, configuration, and logger.
+            config_manager (ConfigurationManager): Handles configuration file management.
             core_ai_manager (CoreAIServiceManager): Manages core AI services.
+            _state_lock (threading.RLock): Reentrant lock for thread-safe state management.
+            _state (OrchestratorState): Current state of the orchestrator.
 
-        Raises:
-            Any exceptions raised by underlying manager initializations or file operations.
-
-        Side Effects:
-            Initializes application state and managers, creates directories and files as needed, and sets up logging.
+        Logs:
+            Logs the initialization and current state of the orchestrator.
         """
+
         self.app_config = app_config or AppConfig()
         self.logger = self._init_logger()
-        self.directories = AppDirectories.create_default()
+        self.settings = AtaraxAISettings()
+        self.directories = AppDirectories.create_default(self.settings)
 
         salt_file = self.directories.data / "vault.salt"
         check_file = self.directories.data / "vault.check"
         self.security_manager = SecurityManager(
             salt_path=str(salt_file), check_path=str(check_file)
         )
-
-        if not Path(salt_file).exists():
-            self.state = AppState.FIRST_LAUNCH
-        else:
-            self.state = AppState.LOCKED
-
         self.setup_manager = SetupManager(
             self.directories, self.app_config, self.logger
         )
         self.config_manager = ConfigurationManager(self.directories.config, self.logger)
         self.core_ai_manager = CoreAIServiceManager(self.config_manager, self.logger)
 
-        self._initialize_application()
+        self._state_lock = threading.RLock()
+        self._state = self._determine_initial_state()
+
+        self.logger.info(f"Orchestrator initialized. Current state: {self._state.name}")
+
+    """
+    Gets the current application state in a thread-safe manner.
+
+    Returns:
+        AppState: The current state of the application.
+    """
+
+    @property
+    def state(self) -> AppState:
+        with self._state_lock:
+            return self._state
+
+    """
+    Sets the current application state in a thread-safe manner.
+
+    Args:
+        value (AppState): The new state to set for the application.
+
+    This setter acquires a lock to ensure that updates to the internal state
+    are thread-safe, preventing race conditions when the state is accessed or modified
+    by multiple threads.
+    """
+
+    @state.setter
+    def state(self, value: AppState) -> None:
+        with self._state_lock:
+            self._state = value
 
     def _init_logger(self) -> ArataxAILogger:
         """
@@ -978,37 +1011,132 @@ class AtaraxAIOrchestrator:
         """
         return ArataxAILogger()
 
-    def _initialize_application(self) -> None:
+    def _determine_initial_state(self) -> AppState:
+        """
+        Determines the initial application state based on the existence of a security check file.
+
+        Returns:
+            AppState: Returns AppState.LOCKED if the security check file exists,
+                      otherwise returns AppState.FIRST_LAUNCH.
+        """
+        if Path(self.security_manager.check_path).exists():
+            return AppState.LOCKED
+        else:
+            return AppState.FIRST_LAUNCH
+
+    def _initialize_base_components(self):
+        """
+        Initializes the base components required for the application.
+
+        Logs the start of the application with its version. If this is the first launch,
+        it triggers the setup manager to perform initial setup tasks. Handles and logs any
+        exceptions that occur during initialization, updates the application state to ERROR,
+        and re-raises the exception.
+        """
         try:
             self.logger.info(f"Starting AtaraxAI v{__version__}")
-
             if self.setup_manager.is_first_launch():
                 self.setup_manager.perform_first_launch_setup()
+        except Exception as e:
+            self.logger.error(f"Failed during base initialization: {e}")
+            self._state = AppState.ERROR
+            raise
 
+    def initialize_new_vault(self, master_password: str) -> bool:
+        """
+        Initializes a new secure vault with the provided master password.
+
+        This method should only be called during the application's first launch.
+        It creates and initializes a new vault using the security manager, updates
+        the application state to UNLOCKED upon success, and initializes services
+        that require the vault to be unlocked. If the vault already exists or an
+        error occurs during initialization, the method logs the error, updates the
+        application state to ERROR, and returns False.
+
+        Args:
+            master_password (str): The master password to secure the new vault.
+
+        Returns:
+            bool: True if the vault was successfully initialized and unlocked,
+                  False otherwise.
+        """
+        if self._state != AppState.FIRST_LAUNCH:
+            self.logger.error("Attempted to initialize an existing vault.")
+            return False
+
+        try:
+            self.security_manager.create_and_initialize_vault(master_password)
+            self._state = AppState.UNLOCKED
+            self.logger.info("Vault successfully initialized and unlocked.")
+            self._initialize_unlocked_services()
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to initialize new vault: {e}")
+            self._state = AppState.ERROR
+            return False
+
+    def unlock_application(self, master_password: str) -> bool:
+        """
+        Attempts to unlock the application using the provided master password.
+
+        If the application is not in the LOCKED state, logs a warning and returns whether the application is already unlocked.
+        If the provided master password is correct, unlocks the application, updates the state, initializes unlocked services, and returns True.
+        If the password is incorrect, logs a warning and returns False.
+
+        Args:
+            master_password (str): The master password used to unlock the application.
+
+        Returns:
+            bool: True if the application was successfully unlocked, False otherwise.
+        """
+        if self._state != AppState.LOCKED:
+            self.logger.warning(
+                f"Unlock attempt in non-locked state: {self._state.name}"
+            )
+            return self._state == AppState.UNLOCKED
+
+        if self.security_manager.unlock_vault(master_password):
+            self._state = AppState.UNLOCKED
+            self.logger.info("Application unlocked successfully.")
+            self._initialize_unlocked_services()
+            return True
+        else:
+            self.logger.warning("Unlock failed: incorrect password.")
+            return False
+
+    def _initialize_unlocked_services(self):
+        """
+        Initializes all unlocked services required for the application to function.
+
+        This method sequentially initializes the database, RAG manager, and prompt engine,
+        then finalizes the setup. If all services are initialized successfully, an info log
+        is recorded. If any exception occurs during initialization, the error is logged,
+        the application state is set to ERROR, the application is locked, and the exception is re-raised.
+
+        Raises:
+            Exception: Propagates any exception that occurs during the initialization process.
+        """
+        try:
             self._init_database()
             self._init_rag_manager()
             self._init_prompt_engine()
-
-            config_status = self.core_ai_manager.get_configuration_status()
-            if (
-                config_status["llama_configured"]
-                and config_status["whisper_configured"]
-            ):
-                self.logger.info(
-                    "AI services are properly configured and ready for use"
-                )
-            else:
-                self.logger.warning(
-                    "AI services are not fully configured - some features may be unavailable"
-                )
-
             self._finalize_setup()
-
-            self.logger.info("AtaraxAI initialization completed successfully")
-
+            self.logger.info("All unlocked services initialized successfully.")
         except Exception as e:
-            self.logger.error(f"Failed to initialize AtaraxAI: {e}")
+            self.logger.error(f"Failed to initialize unlocked services: {e}")
+            self._state = AppState.ERROR
+            self.lock_application()
             raise
+
+    def lock_application(self):
+        """
+        Locks the application by invoking the security manager's lock method, shutting down the application,
+        updating the application state to LOCKED, and logging the action.
+        """
+        self.security_manager.lock()
+        self.shutdown()
+        self._state = AppState.LOCKED
+        self.logger.info("Application locked.")
 
     def _init_database(self) -> None:
         """
@@ -1019,33 +1147,12 @@ class AtaraxAIOrchestrator:
         Logs a message upon successful initialization.
         """
         db_path = self.directories.data / self.app_config.database_filename
-        self.db_manager = ChatDatabaseManager(db_path=db_path, security_manager=self.security_manager)
+        self.db_manager = ChatDatabaseManager(
+            db_path=db_path, security_manager=self.security_manager
+        )
         self.chat_context = ChatContextManager(db_manager=self.db_manager)
         self.chat_manager = ChatManager(self.db_manager, self.logger)
         self.logger.info("Database initialized successfully")
-
-    def set_master_password(self, password: str):
-        """
-        Sets the master password for the vault during the first launch.
-
-        This method derives a cryptographic key from the provided password,
-        creates a vault check to verify the integrity of the vault, updates
-        the application state to UNLOCKED, and initializes services that
-        require the vault to be unlocked.
-
-        Args:
-            password (str): The master password to set for the vault.
-
-        Raises:
-            RuntimeError: If the method is called when the application is not in the FIRST_LAUNCH state.
-        """
-        if self.state != AppState.FIRST_LAUNCH:
-            raise RuntimeError("Cannot set master password on an existing vault.")
-
-        self.security_manager.derive_key(password)
-        self.security_manager.create_vault_check()
-        self.state = AppState.UNLOCKED
-        self._initialize_unlocked_services()
 
     def unlock(self, password: str):
         """
@@ -1063,7 +1170,7 @@ class AtaraxAIOrchestrator:
             ValueError: If the provided password is invalid.
             Exception: If any other error occurs during the unlocking process.
         """
-        if self.state != AppState.LOCKED:
+        if self._state != AppState.LOCKED:
             self.logger.warning("Application is already unlocked.")
             return
 
@@ -1074,16 +1181,13 @@ class AtaraxAIOrchestrator:
                 self.security_manager.lock()
                 raise ValueError("Invalid password.")
 
-            self.state = AppState.UNLOCKED
+            self._state = AppState.UNLOCKED
             self._initialize_unlocked_services()
             self.logger.info("Vault unlocked successfully.")
         except Exception as e:
-            self.state = AppState.LOCKED
+            self._state = AppState.LOCKED
             self.logger.error(f"Failed to unlock vault: {e}")
             raise
-
-    def _initialize_unlocked_services(self):
-        pass
 
     def lock(self):
         """
@@ -1092,7 +1196,7 @@ class AtaraxAIOrchestrator:
         """
         self.security_manager.lock()
         self.shutdown()
-        self.state = AppState.LOCKED
+        self._state = AppState.LOCKED
         self.logger.info("Vault locked.")
 
     def _init_rag_manager(self) -> None:
@@ -1143,8 +1247,8 @@ class AtaraxAIOrchestrator:
 
     def _finalize_setup(self) -> None:
         """
-        Finalizes the setup process by validating and initializing the RAG index, 
-        performing an initial scan or rebuilding the index as necessary, and 
+        Finalizes the setup process by validating and initializing the RAG index,
+        performing an initial scan or rebuilding the index as necessary, and
         starting file monitoring on the configured watched directories.
 
         Steps:
@@ -1270,7 +1374,7 @@ class AtaraxAIOrchestrator:
         Raises:
             Any exceptions raised by chat_manager.get_project.
         """
-        project =  self.chat_manager.get_project(project_id)
+        project = self.chat_manager.get_project(project_id)
         if project:
             self.logger.info(f"Retrieved project: {project_id}")
         else:
@@ -1304,7 +1408,7 @@ class AtaraxAIOrchestrator:
         Returns:
             List[ProjectResponse]: A list containing project response objects representing the available projects.
         """
-        list_projects =  self.chat_manager.list_projects()
+        list_projects = self.chat_manager.list_projects()
         self.logger.info(f"Retrieved {len(list_projects)} projects")
         return list_projects
 
@@ -1340,7 +1444,9 @@ class AtaraxAIOrchestrator:
         InputValidator.validate_string(title, "Session title")
         self.logger.info(f"Creating session '{title}' for project {project_id}")
         if not self.chat_manager.get_project(project_id):
-            self.logger.warning(f"Project {project_id} not found, cannot create session.")
+            self.logger.warning(
+                f"Project {project_id} not found, cannot create session."
+            )
             raise ValueError(f"Project {project_id} does not exist.")
         return self.chat_manager.create_session(project_id, title)
 
@@ -1376,7 +1482,7 @@ class AtaraxAIOrchestrator:
             self.logger.warning(f"Session {session_id} not found, cannot delete.")
             return False
         return self.chat_manager.delete_session(session_id)
-    
+
     def get_session(self, session_id: uuid.UUID) -> ChatSessionResponse:
         """
         Retrieve a chat session by its unique identifier.
@@ -1419,7 +1525,9 @@ class AtaraxAIOrchestrator:
             self.logger.warning(f"Session {session_id} not found, cannot add message.")
             raise ValueError(f"Session {session_id} does not exist.")
         if role not in ["user", "assistant"]:
-            self.logger.error(f"Invalid role '{role}' for message in session {session_id}")
+            self.logger.error(
+                f"Invalid role '{role}' for message in session {session_id}"
+            )
             raise ValueError(f"Invalid role '{role}' for message.")
         return self.chat_manager.add_message(session_id, role, content)
 
@@ -1436,7 +1544,9 @@ class AtaraxAIOrchestrator:
         InputValidator.validate_uuid(session_id, "Session ID")
         self.logger.info(f"Retrieving messages for session {session_id}")
         if not self.get_session(session_id):
-            self.logger.warning(f"Session {session_id} not found, cannot retrieve messages.")
+            self.logger.warning(
+                f"Session {session_id} not found, cannot retrieve messages."
+            )
             raise ValueError(f"Session {session_id} does not exist.")
         return self.chat_manager.get_messages_for_session(session_id)
 
@@ -1487,9 +1597,42 @@ class AtaraxAIOrchestrator:
 
 if __name__ == "__main__":
     with AtaraxAIOrchestrator() as orchestrator:
-        projects = orchestrator.list_projects()
-        current_user_home = Path.home()
-        orchestrator.add_watch_directory(str(current_user_home / "Documents"))
-        while True:
-            time.sleep(1)
-        print(f"Found {len(projects)} projects")
+        if orchestrator.state == AppState.FIRST_LAUNCH:
+            master_password = input("Enter master password: ")
+            orchestrator.initialize_new_vault(master_password)
+        elif orchestrator.state == AppState.LOCKED:
+            master_password = getpass.getpass("Enter master password to unlock: ")
+            try:
+                orchestrator.unlock_application(master_password)
+            except:
+                print("Failed to unlock the application. Please check your password.")
+                orchestrator.state = AppState.ERROR
+        elif orchestrator.state == AppState.UNLOCKED:
+            print("Application is already unlocked. You can now use the orchestrator.")
+        elif orchestrator.state == AppState.ERROR:
+            print(
+                "Application is in an error state. Please resolve the issues before proceeding."
+            )
+        else:
+            print("Unknown application state. Please check the logs for details.")
+
+        if orchestrator.state == AppState.UNLOCKED:
+            try:
+                project = orchestrator.create_project(
+                    "Test Project", "A test project description"
+                )
+                print(f"Created project: {project.name} with ID {project.id}")
+
+                session = orchestrator.create_session(project.id, "Test Session")
+                print(f"Created session: {session.title} with ID {session.id}")
+
+                message = orchestrator.add_message(
+                    session.id, "user", "Hello, What is the capital of Ethiopia?"
+                )
+                print(f"Added message: {message.content} with ID {message.id}")
+
+                messages = orchestrator.get_messages_for_session(session.id)
+                print(f"Messages in session: {[msg.content for msg in messages]}")
+
+            except Exception as e:
+                print(f"An error occurred: {e}")
