@@ -1,7 +1,11 @@
-<img src="https://github.com/user-attachments/assets/fdd8be29-ac97-4efc-8e5b-b559096e5234" alt="AtaraxAI" width="200">
+<!-- <img src="https://github.com/user-attachments/assets/fdd8be29-ac97-4efc-8e5b-b559096e5234" alt="AtaraxAI" width="200"> -->
 
 
 # Atarax-AI
+
+![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)
+![Build Status](https://img.shields.io/badge/build-passing-green.svg)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)
 
 A Local, Privacy-Preserving AI Assistant Powered by llama.cpp
 
@@ -11,129 +15,74 @@ Developing a full-featured AI assistant that runs entirely offline using llama.c
 
 The assistant supports multi-modal inputs (text + voice + images/videos), performs real-time reasoning, and integrates with local system APIs (calendar, file system, etc.)  all with zero cloud dependency.
 
-<img src="docs/architecture/architecture.svg" alt="Architecture Diagram" width="500"/>
+<img src="docs/architecture/architecture.svg" alt="Architecture Diagram" width="800"/>
 
 
-## Key Features
+## 🎯 Project Vision
 
-- Quantized Model Deployment: Use 4-bit or 5-bit quantization with llama.cpp to make large models run smoothly on CPU or edge devices.
-- Custom Prompt Engineering Engine: Create a modular prompting system (like reusable “prompt chains”) to allow dynamic behaviors (e.g., “summarize recent emails,” “generate shell scripts,” “answer from local docs”).
-- Voice Interface: Integrate Whisper.cpp for speech-to-text, making it a voice-capable offline assistant.
-- Local Contextual Memory: Maintain persistent local memory (e.g., SQLite + embeddings) for personal assistant functionality.
-- Privacy-First Design: No cloud calls; all processing and data storage is local. Emphasize encryption, transparency, and control.
-- Smart Caching and Context Window Management: Implement sliding-window techniques, smart summarization, and embeddings to keep long-term context in RAM-limited environments.
+Create a production-ready AI assistant that:
+- Runs 100% offline - No internet connection required after setup
+- Preserves privacy - All data processing happens locally
+- Works on consumer hardware - Optimized for laptops and desktop computers
+- Provides multi-modal interaction - Text, voice, and document processing
+- Integrates with your workflow - Seamless integration with local applications
+
+## ✨ Features
+
+### Core Capabilities
+- Text-based AI assistant with context-aware responses
+- Voice interaction via Whisper.cpp integration
+- Document processing for local files and knowledge bases
+- Persistent memory with semantic search capabilities
+- System integration for calendar, files, and task management
+
+### Technical Highlights
+- Adaptive context management with sliding window techniques
+- Modular prompt engineering framework
+- Real-time performance monitoring and optimization
+- Comprehensive logging and debugging tools
+
+### Security Features
+- End-to-end encryption - All user data encrypted with AES-256-GCM
+- Local key management - Keys derived from user password, never stored
+- Secure deletion - Cryptographic erasure of sensitive data
+<!-- - **Memory protection** - Sensitive data cleared from RAM after use
+- **Audit logging** - All security events logged and encrypted -->
 
 
-## Planning
-  - [x] Core Setup with llama.cpp. whisper.cpp
-  - [x] Automatic local benchmarking
-  - [x] Frompt engineering framework
-  - [x] Embedding Store + Context Management
-  - [ ] System Integration
-  - [ ] UI Layer
-  - [ ] Testing, Benchmarking, Optimization 
+## Usage
 
+### Standard user
 
+Package coming soon
 
+### Power user 
 
-## Usage 
+#### Without Docker
 
-### Local installation
+In order to run the code on your computer, you can clone this repository, then you need to manually install:
 
-You can install ataraxai using the command line for cpu installation:
+##### Backend
 
 ```
-./install.sh  --clean
+.\install.sh 
 ```
 
-and for gpu installation :
+You can add some options:
+- ```--use-conda``` : if you want to use you preferred environnement
+- ```--clean``` : if you want to clean your previous installations
+- ```--clean-ccache``` : if you want to clean ccache that is use to accelerated the c++ compilation. 
+- ```--use-cuda``` : if you want to build llama.cpp and whisper.cpp with cuda supports
+- ```--only-cpp``` : if you want to build and install only the c++ part of the backend
+- ```--cuda-arch``` : if you want to precise your cuda architecture
 
-```
-./install.sh --clean --use-cuda  
-```
-
-### Docker installation
-
-We have provide two versions:
-
-  - CPU: 
-  ``` 
-    docker build -t ataraxai:cpu -f docker/Dockerfile.cpu .
-
-    docker run -it --rm -v "$(pwd)/data:/app/data:ro"  ataraxai:cpu
-  ```
-
-  - GPU:
-  ``` 
-    docker build -t ataraxai:gpu -f Dockerfile.gpu .
-
-    docker run --gpus all -it --rm ataraxai:gpu
-  ``` 
-
-### Monitoring using Grafana/Prometheus
-
-We also provide some script to monitor your application. In a first terminal, you can launch:
-
-- for CPU and GPU monitoring:
-``` 
-docker compose -f docker-compose.monitoring.base.yml -f docker-compose.monitoring.gpu.yml up -d
-``` 
-
-- for only CPU monitoring:
-``` 
-docker compose -f docker/docker-compose.monitoring.base.yml up -d
-``` 
-
-In a second terminal:
-
-- GPU:
-``` 
-docker run --gpus all -it --rm ataraxai:gpu
-``` 
+#### Frontend
 
 
-- CPU:
-``` 
-docker run -it --rm ataraxai:cpu
-``` 
 
-Then you can monitor in prometheus/grafana:
-
-![alt text](docs/api/prometheus.png)
-
-## Modules
-
-### Core Infra
-
-We try to setup a module to automatically benchmark the models on the user laptop and them select the best model and the best quantization. 
-
-- Set up llama.cpp locally (CPU + GPU support)
-- Test quantized model (e.g. 7B Q4_K_M)
-- Script inference loop with logging
-- Benchmark token throughput
-
-### Prompt & Task Engine
-
-This module is to setup the Prompt Engineering Framework:
-
-- Create modular prompt system
-- Design reusable templates and task runners
-
-### Embedding Store + Context Management 
-
-We will also try to setup a module for embedding storage and context management:
-
-- Integrate ChromaDB
-- Add semantic search, chunking strategies
-- Implement context window manager
+#### With Docker
 
 
-### System integration
-
-In this module we will try to integrate information from the system:
-
-- File system, calendar, notes, task access via APIs
-- OS-level hooks or CLI integrations
 
 ## Privacy Policy
 
@@ -148,8 +97,4 @@ In this module we will try to integrate information from the system:
 This project is licensed under the [GNU GPLv3 License](LICENSE).  
 You are free to use, modify, and distribute this software under the terms of the GPL.
 
-### 🚫 No Commercial Use Without Compliance
 
-If you use this in a commercial or derivative system, **your entire codebase must also be licensed under GPLv3**.
-
-If you want a commercial license or integration support, please contact: yannickzoet@gmail.com.

@@ -31,7 +31,7 @@ for arg in "$@"; do
     --only-cpp)
         ONLY_CPP=1
         SETUP_ARGS+=" --only-cpp"
-        echo "[+] Only building C++ components, skipping Python bindings."
+        echo "[+] Only building C++ components."
         ;;
     --use-conda)
         USE_CONDA=1
@@ -91,7 +91,7 @@ cmake --build build --config Release
 
 
 echo " Building C++ Tests..."
-cmake --build build --target core_ai_tests
+cmake --build build --target hegemonikon_tests
 
 if [[ $ONLY_CPP -eq 1 ]]; then
     echo "[+] C++ build complete. Exiting due to --only-cpp flag."
@@ -102,4 +102,4 @@ echo "[+] Running pip install to build Python extension..."
 python3 -m pip install -e .
 
 echo "[+] Verifying installation..."
-python3 -c "from ataraxai import core_ai_py; print('[SUCCESS] Atarax-AI installed and core module is importable!')"
+python3 -c "from ataraxai import hegemonikon_py; print('[SUCCESS] Atarax-AI installed and core module is importable!')"

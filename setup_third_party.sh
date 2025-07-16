@@ -47,7 +47,7 @@ echo "Using C++ compiler: $CXX"
 
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-THIRD_PARTY_SRC_DIR="$PROJECT_ROOT/ataraxai/core_ai/third_party"
+THIRD_PARTY_SRC_DIR="$PROJECT_ROOT/ataraxai/hegemonikon/third_party"
 THIRD_PARTY_INSTALL_DIR="$PROJECT_ROOT/build/third_party_install"
 
 LLAMA_CPP_SRC_DIR="$THIRD_PARTY_SRC_DIR/llama.cpp"
