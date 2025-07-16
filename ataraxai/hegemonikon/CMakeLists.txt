@@ -173,6 +173,7 @@ if (BUILD_TESTING)
         tests/test_core_ai_service.cc
         tests/test_llama_integration.cc
         tests/test_whisper_integration.cc
+        tests/test_memory_locker.cc
     )
 
     set(DOWNLOADED_LLAMA_MODEL_PATH "${CMAKE_SOURCE_DIR}/test_assets/tinyllama.gguf")

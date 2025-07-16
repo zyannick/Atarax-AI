@@ -153,6 +153,50 @@ public:
     }
 
     /**
+     * @brief Move constructor for LockedMemory.
+     *
+     * Transfers ownership of the locked memory from another LockedMemory instance.
+     * After the move, the source instance is left in a valid but empty state.
+     *
+     * @param other The LockedMemory instance to move from.
+     */
+    LockedMemory(LockedMemory&& other) noexcept
+        : ptr(other.ptr), size(other.size)
+    {
+        other.ptr = nullptr;
+        other.size = 0;
+    }
+
+
+    /**
+     * @brief Move assignment operator for LockedMemory.
+     *
+     * Transfers ownership of the locked memory from another LockedMemory instance.
+     * If this instance already owns memory, it securely wipes the contents,
+     * unlocks the memory, and frees it before taking ownership of the other's memory.
+     * The source instance is left in a valid but empty state.
+     *
+     * @param other The LockedMemory instance to move from.
+     * @return Reference to this LockedMemory instance.
+     */
+    LockedMemory& operator=(LockedMemory&& other) noexcept {
+        if (this != &other) {
+            if (ptr) {
+                secure_memset(ptr, 0, size);
+                munlock(ptr, size);
+                free(ptr);
+            }
+
+            ptr = other.ptr;
+            size = other.size;
+
+            other.ptr = nullptr;
+            other.size = 0;
+        }
+        return *this;
+    }
+
+    /**
      * @brief Destructor for the LockedMemory class.
      *
      * This destructor securely erases the memory region pointed to by `ptr` using `secure_memset`,
@@ -240,6 +284,8 @@ public:
     {
         mprotect(ptr, size, PROT_READ);
     }
+
+    void *get() { return ptr; }
 
     /**
      * @brief Changes the memory protection of the region pointed to by `ptr` to allow both reading and writing.
