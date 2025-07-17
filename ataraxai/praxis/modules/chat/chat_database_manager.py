@@ -3,7 +3,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Union
 from contextlib import contextmanager
-from ataraxai.praxis.utils.vault_manager import VaultManager
 import logging
 from peewee import (
     SqliteDatabase,
