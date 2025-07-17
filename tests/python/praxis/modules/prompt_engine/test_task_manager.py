@@ -21,7 +21,7 @@ class DummyTask(BaseTask):
 
 def test_register_and_get_task(monkeypatch):
     tm = TaskManager(
-        tasks_directory="ataraxai/app_logic/modules/prompt_engine/specific_tasks"
+        tasks_directory="ataraxai/praxis/modules/prompt_engine/specific_tasks"
     )
     tm.tasks = {}
 
@@ -32,7 +32,7 @@ def test_register_and_get_task(monkeypatch):
 
 def test_register_task_overwrites(monkeypatch, capsys):
     tm = TaskManager(
-        tasks_directory="ataraxai/app_logic/modules/prompt_engine/specific_tasks"
+        tasks_directory="ataraxai/praxis/modules/prompt_engine/specific_tasks"
     )
     tm.tasks = {}
 
@@ -46,7 +46,7 @@ def test_register_task_overwrites(monkeypatch, capsys):
 
 def test_get_task_not_found():
     tm = TaskManager(
-        tasks_directory="ataraxai/app_logic/modules/prompt_engine/specific_tasks"
+        tasks_directory="ataraxai/praxis/modules/prompt_engine/specific_tasks"
     )
     tm.tasks = {}
     with pytest.raises(ValueError):
@@ -55,7 +55,7 @@ def test_get_task_not_found():
 
 def test_list_tasks():
     tm = TaskManager(
-        tasks_directory="ataraxai/app_logic/modules/prompt_engine/specific_tasks"
+        tasks_directory="ataraxai/praxis/modules/prompt_engine/specific_tasks"
     )
     tm.tasks = {}
     dummy = DummyTask()
@@ -72,7 +72,7 @@ def test_discover_and_load_tasks(monkeypatch):
     fake_file.name = "dummy_task.py"
     fake_file.with_suffix.return_value.parts = [
         "ataraxai",
-        "app_logic",
+        "praxis",
         "modules",
         "prompt_engine",
         "specific_tasks",
@@ -85,17 +85,17 @@ def test_discover_and_load_tasks(monkeypatch):
     dummy_module.DummyTask = DummyTask
 
     with mock.patch(
-        "ataraxai.app_logic.modules.prompt_engine.task_manager.Path",
+        "ataraxai.praxis.modules.prompt_engine.task_manager.Path",
         return_value=fake_path,
     ), mock.patch(
-        "ataraxai.app_logic.modules.prompt_engine.task_manager.importlib.import_module",
+        "ataraxai.praxis.modules.prompt_engine.task_manager.importlib.import_module",
         return_value=dummy_module,
     ), mock.patch(
-        "ataraxai.app_logic.modules.prompt_engine.task_manager.inspect.getmembers",
+        "ataraxai.praxis.modules.prompt_engine.task_manager.inspect.getmembers",
         return_value=[("DummyTask", DummyTask)],
     ):
         tm = TaskManager(
-            tasks_directory="ataraxai/app_logic/modules/prompt_engine/specific_tasks"
+            tasks_directory="ataraxai/praxis/modules/prompt_engine/specific_tasks"
         )
         assert "dummy" in tm.tasks
         assert isinstance(tm.get_task("dummy"), DummyTask)

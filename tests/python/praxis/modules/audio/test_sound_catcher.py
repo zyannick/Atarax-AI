@@ -16,8 +16,8 @@ def mock_sound_recording_params():
     return mock
 
 
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.sd")
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.VADProcessor")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.sd")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.VADProcessor")
 def test_init_with_device(mock_vad, mock_sd, mock_sound_recording_params):
     mock_stream = MagicMock()
     mock_sd.RawInputStream.return_value = mock_stream
@@ -38,8 +38,8 @@ def test_init_with_device(mock_vad, mock_sd, mock_sound_recording_params):
     assert catcher.processing_thread is None
 
 
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.sd")
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.VADProcessor")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.sd")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.VADProcessor")
 def test_init_without_device_uses_default(
     mock_vad, mock_sd, mock_sound_recording_params
 ):
@@ -54,8 +54,8 @@ def test_init_without_device_uses_default(
     assert catcher.stream == mock_stream
 
 
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.sd")
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.VADProcessor")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.sd")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.VADProcessor")
 def test_start_and_stop(mock_vad, mock_sd, mock_sound_recording_params):
     mock_stream = MagicMock()
     mock_sd.RawInputStream.return_value = mock_stream
@@ -77,8 +77,8 @@ def test_start_and_stop(mock_vad, mock_sd, mock_sound_recording_params):
         mock_join.assert_called_once_with(timeout=1.0)
 
 
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.sd")
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.VADProcessor")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.sd")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.VADProcessor")
 def test_callback_puts_data_in_queue(mock_vad, mock_sd, mock_sound_recording_params):
     catcher = SoundCatcher(device=2, sound_recording_params=mock_sound_recording_params)
     catcher.sound_queue = queue.Queue()
@@ -92,8 +92,8 @@ def test_callback_puts_data_in_queue(mock_vad, mock_sd, mock_sound_recording_par
     assert catcher.sound_queue.get() == indata
 
 
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.sd")
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.VADProcessor")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.sd")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.VADProcessor")
 def test_callback_prints_status(mock_vad, mock_sd, mock_sound_recording_params, capsys):
     catcher = SoundCatcher(device=2, sound_recording_params=mock_sound_recording_params)
     status = "SomeStatus"
@@ -102,8 +102,8 @@ def test_callback_prints_status(mock_vad, mock_sd, mock_sound_recording_params, 
     assert "Audio callback status: SomeStatus" in captured.out
 
 
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.sd")
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.VADProcessor")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.sd")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.VADProcessor")
 def test_process_audio_segment_prints_info(
     mock_vad, mock_sd, mock_sound_recording_params, capsys
 ):
@@ -114,8 +114,8 @@ def test_process_audio_segment_prints_info(
     assert "Processing audio segment: 10 samples" in captured.out
 
 
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.sd")
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.VADProcessor")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.sd")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.VADProcessor")
 def test_catch_sound_handles_queue_empty_and_exception(
     mock_vad, mock_sd, mock_sound_recording_params, capsys
 ):
@@ -131,8 +131,8 @@ def test_catch_sound_handles_queue_empty_and_exception(
     assert "Error in catch_sound: Test error" in captured.out
 
 
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.sd")
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.VADProcessor")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.sd")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.VADProcessor")
 def test_process_audio_segment_prints_correct_sample_count(
     mock_vad, mock_sd, mock_sound_recording_params, capsys
 ):
@@ -143,8 +143,8 @@ def test_process_audio_segment_prints_correct_sample_count(
     assert "Processing audio segment: 5 samples" in captured.out
 
 
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.sd")
-@patch("ataraxai.app_logic.modules.audio.sound_catcher.VADProcessor")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.sd")
+@patch("ataraxai.praxis.modules.audio.sound_catcher.VADProcessor")
 def test_process_audio_segment_empty_bytes(
     mock_vad, mock_sd, mock_sound_recording_params, capsys
 ):

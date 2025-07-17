@@ -8,14 +8,14 @@ from ataraxai.praxis.modules.prompt_engine.specific_tasks.base_task import BaseT
 class TaskManager:
     def __init__(
         self,
-        tasks_directory: str = "ataraxai/app_logic/modules/prompt_engine/specific_tasks",
+        tasks_directory: str = "ataraxai/praxis/modules/prompt_engine/specific_tasks",
     ):
         """
         Initializes the TaskManager by setting up the tasks dictionary and discovering available tasks.
 
         Args:
             tasks_directory (str, optional): Path to the directory containing specific task modules.
-                Defaults to "ataraxai/app_logic/modules/prompt_engine/specific_tasks".
+                Defaults to "ataraxai/praxis/modules/prompt_engine/specific_tasks".
 
         Attributes:
             tasks (Dict[str, BaseTask]): A dictionary mapping task names to their corresponding BaseTask instances.

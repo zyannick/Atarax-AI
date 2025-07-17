@@ -46,4 +46,4 @@ RUN chmod +x ./install.sh ./setup_third_party.sh ./clean.sh
 
 RUN ./install.sh --clean --use-cuda --cuda-arch="75;80;86;89;90"
 
-CMD ["python3", "ataraxai/app_logic/ataraxai_cli.py"]
+CMD ["python3", "ataraxai/praxis/ataraxai_cli.py"]

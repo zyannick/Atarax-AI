@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest import mock
 from ataraxai.praxis.utils.rag_config_manager import RAGConfigManager, RAG_CONFIG_FILENAME
 
-# Mock RAGConfig for testing
+
 class DummyRAGConfig:
     def __init__(self, foo="bar"):
         self.foo = foo
@@ -17,7 +17,6 @@ class DummyRAGConfig:
 
 @pytest.fixture(autouse=True)
 def patch_rag_config(monkeypatch):
-    # Patch RAGConfig in the module to DummyRAGConfig
     import ataraxai.praxis.utils.rag_config_manager as rag_config_manager_mod
     monkeypatch.setattr(rag_config_manager_mod, "RAGConfig", DummyRAGConfig)
     yield

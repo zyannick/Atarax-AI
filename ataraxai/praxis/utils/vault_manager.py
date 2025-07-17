@@ -6,10 +6,25 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.exceptions import InvalidTag
 
 
-from ataraxai.hegemonikon_py import SecureKey, derive_and_protect_key  # type: ignore
+from ataraxai.hegemonikon_py import SecureKey, SecureString, derive_and_protect_key  # type: ignore
+from enum import Enum, auto
+from dataclasses import dataclass
 
 
-class SecurityManager:
+class VaultUnlockStatus(Enum):
+    SUCCESS = auto()
+    INVALID_PASSWORD = auto()
+    ALREADY_UNLOCKED = auto()
+    UNINITIALIZED = auto()
+
+
+@dataclass
+class UnlockResult:
+    status: VaultUnlockStatus
+    error: Optional[Exception] = None
+
+
+class VaultManager:
     VAULT_CHECK_PLAINTEXT = b"ATARAXAI_VAULT_OK"
     SALT_SIZE_BYTES = 16
 
@@ -52,7 +67,7 @@ class SecurityManager:
                 f.write(salt)
             return salt
 
-    def unlock_vault(self, password: str) -> bool:
+    def unlock_vault(self, password: SecureString) -> UnlockResult:
         """
         Attempts to unlock the vault using the provided password.
 
@@ -67,18 +82,18 @@ class SecurityManager:
             bool: True if the vault was successfully unlocked, False otherwise.
         """
         if not password:
-            return False
+            return UnlockResult(status=VaultUnlockStatus.INVALID_PASSWORD)
 
         try:
             temp_key = derive_and_protect_key(password=password, salt=self.salt)
 
             if self._verify_key(temp_key):
                 self._secure_key = temp_key
-                return True
+                return UnlockResult(status=VaultUnlockStatus.SUCCESS)
             else:
-                return False
+                return UnlockResult(status=VaultUnlockStatus.INVALID_PASSWORD)
         except Exception as e:
-            return False
+            return UnlockResult(status=VaultUnlockStatus.UNINITIALIZED, error=e)
 
     def create_and_initialize_vault(self, password: str):
         """

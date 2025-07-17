@@ -70,9 +70,9 @@ def test_on_moved_directory(indexer, processing_queue):
     assert processing_queue.empty()
     
 
-@patch("ataraxai.app_logic.modules.rag.resilient_indexer.Observer")
-@patch("ataraxai.app_logic.modules.rag.resilient_indexer.ResilientFileIndexer")
-@patch("ataraxai.app_logic.modules.rag.resilient_indexer.threading.Thread")
+@patch("ataraxai.praxis.modules.rag.resilient_indexer.Observer")
+@patch("ataraxai.praxis.modules.rag.resilient_indexer.ResilientFileIndexer")
+@patch("ataraxai.praxis.modules.rag.resilient_indexer.threading.Thread")
 def test_start_rag_file_monitoring_existing_paths(
     mock_thread, mock_indexer, mock_observer
 ):
@@ -87,7 +87,7 @@ def test_start_rag_file_monitoring_existing_paths(
     mock_thread_instance = MagicMock()
     mock_thread.return_value = mock_thread_instance
 
-    with patch("ataraxai.app_logic.modules.rag.resilient_indexer.Path.exists", return_value=True):
+    with patch("ataraxai.praxis.modules.rag.resilient_indexer.Path.exists", return_value=True):
         result = resilient_indexer.start_rag_file_monitoring(
             ["/tmp/dir1", "/tmp/dir2"], mock_manifest, mock_rag_store, chunk_config
         )
@@ -97,9 +97,9 @@ def test_start_rag_file_monitoring_existing_paths(
     mock_obs_instance.start.assert_called_once()
     assert result == mock_obs_instance
 
-@patch("ataraxai.app_logic.modules.rag.resilient_indexer.Observer")
-@patch("ataraxai.app_logic.modules.rag.resilient_indexer.ResilientFileIndexer")
-@patch("ataraxai.app_logic.modules.rag.resilient_indexer.threading.Thread")
+@patch("ataraxai.praxis.modules.rag.resilient_indexer.Observer")
+@patch("ataraxai.praxis.modules.rag.resilient_indexer.ResilientFileIndexer")
+@patch("ataraxai.praxis.modules.rag.resilient_indexer.threading.Thread")
 def test_start_rag_file_monitoring_nonexistent_paths(
     mock_thread, mock_indexer, mock_observer, capsys
 ):
@@ -114,7 +114,7 @@ def test_start_rag_file_monitoring_nonexistent_paths(
     mock_thread_instance = MagicMock()
     mock_thread.return_value = mock_thread_instance
 
-    with patch("ataraxai.app_logic.modules.rag.resilient_indexer.Path.exists", return_value=False):
+    with patch("ataraxai.praxis.modules.rag.resilient_indexer.Path.exists", return_value=False):
         result = resilient_indexer.start_rag_file_monitoring(
             ["/notfound/dir1", "/notfound/dir2"], mock_manifest, mock_rag_store, chunk_config
         )
@@ -128,9 +128,9 @@ def test_start_rag_file_monitoring_nonexistent_paths(
     assert "Warning: Path not found, cannot watch: /notfound/dir1" in captured.out
     assert "Warning: Path not found, cannot watch: /notfound/dir2" in captured.out
 
-@patch("ataraxai.app_logic.modules.rag.resilient_indexer.Observer")
-@patch("ataraxai.app_logic.modules.rag.resilient_indexer.ResilientFileIndexer")
-@patch("ataraxai.app_logic.modules.rag.resilient_indexer.threading.Thread")
+@patch("ataraxai.praxis.modules.rag.resilient_indexer.Observer")
+@patch("ataraxai.praxis.modules.rag.resilient_indexer.ResilientFileIndexer")
+@patch("ataraxai.praxis.modules.rag.resilient_indexer.threading.Thread")
 def test_start_rag_file_monitoring_mixed_paths(
     mock_thread, mock_indexer, mock_observer, capsys
 ):
@@ -148,7 +148,7 @@ def test_start_rag_file_monitoring_mixed_paths(
     def exists_side_effect(self):
         return str(self) == "/exists/dir"
 
-    with patch("ataraxai.app_logic.modules.rag.resilient_indexer.Path.exists", new=exists_side_effect):
+    with patch("ataraxai.praxis.modules.rag.resilient_indexer.Path.exists", new=exists_side_effect):
         result = resilient_indexer.start_rag_file_monitoring(
             ["/exists/dir", "/notfound/dir"], mock_manifest, mock_rag_store, chunk_config
         )
