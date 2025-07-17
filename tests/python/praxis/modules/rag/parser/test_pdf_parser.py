@@ -22,7 +22,7 @@ def patch_fitz_open(monkeypatch, mock_fitz_document):
 @pytest.fixture
 def patch_set_base_metadata(monkeypatch):
     monkeypatch.setattr(
-        "ataraxai.app_logic.modules.rag.parser.pdf_parser.set_base_metadata",
+        "ataraxai.praxis.modules.rag.parser.pdf_parser.set_base_metadata",
         lambda path: {"filename": str(path)}
     )
 

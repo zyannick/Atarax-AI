@@ -45,10 +45,10 @@ def test_execute_raises_on_missing_image_path(ocr_task):
 
 
 @mock.patch(
-    "ataraxai.app_logic.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.Image"
+    "ataraxai.praxis.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.Image"
 )
 @mock.patch(
-    "ataraxai.app_logic.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.pytesseract"
+    "ataraxai.praxis.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.pytesseract"
 )
 def test_execute_returns_no_text_message(mock_pytesseract, mock_image, ocr_task):
     mock_image.open.return_value = "img"
@@ -59,10 +59,10 @@ def test_execute_returns_no_text_message(mock_pytesseract, mock_image, ocr_task)
 
 
 @mock.patch(
-    "ataraxai.app_logic.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.Image"
+    "ataraxai.praxis.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.Image"
 )
 @mock.patch(
-    "ataraxai.app_logic.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.pytesseract"
+    "ataraxai.praxis.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.pytesseract"
 )
 def test_execute_successful_flow(mock_pytesseract, mock_image, ocr_task):
     mock_image.open.return_value = "img"
@@ -99,10 +99,10 @@ def test_execute_successful_flow(mock_pytesseract, mock_image, ocr_task):
 
 
 @mock.patch(
-    "ataraxai.app_logic.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.Image"
+    "ataraxai.praxis.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.Image"
 )
 @mock.patch(
-    "ataraxai.app_logic.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.pytesseract"
+    "ataraxai.praxis.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.pytesseract"
 )
 def test_execute_ocr_failure(mock_pytesseract, mock_image, ocr_task):
     mock_image.open.side_effect = Exception("bad image")
@@ -114,10 +114,10 @@ def test_execute_ocr_failure(mock_pytesseract, mock_image, ocr_task):
 
 
 @mock.patch(
-    "ataraxai.app_logic.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.Image"
+    "ataraxai.praxis.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.Image"
 )
 @mock.patch(
-    "ataraxai.app_logic.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.pytesseract"
+    "ataraxai.praxis.modules.prompt_engine.specific_tasks.ocr_and_summarize_task.pytesseract"
 )
 def test_execute_llm_failure(mock_pytesseract, mock_image, ocr_task):
     mock_image.open.return_value = "img"

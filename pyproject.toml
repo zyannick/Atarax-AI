@@ -48,7 +48,9 @@ dependencies = [
     "cryptography",
     "ragas",
     "uvicorn[standard]",
-    "fastapi"
+    "fastapi",
+    "psutil",
+    "GPUtil",
 ]
 
 [project.optional-dependencies]

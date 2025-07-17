@@ -6,8 +6,8 @@ from ataraxai.praxis.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
 from ataraxai.praxis.modules.rag.resilient_indexer import start_rag_file_monitoring
 from ataraxai.praxis.modules.rag.rag_store import RAGStore
 from ataraxai.praxis.modules.rag.rag_manifest import RAGManifest
-# from ataraxai.app_logic.modules.rag.rag_updater import process_new_file
-# from ataraxai.app_logic.preferences_manager import PreferencesManager
+# from ataraxai.praxis.modules.rag.rag_updater import process_new_file
+# from ataraxai.praxis.preferences_manager import PreferencesManager
 from sentence_transformers import CrossEncoder
 from chromadb import QueryResult
 import numpy as np

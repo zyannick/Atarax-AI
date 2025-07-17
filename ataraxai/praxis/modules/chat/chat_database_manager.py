@@ -1,9 +1,8 @@
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from contextlib import contextmanager
-from ataraxai.praxis.utils.security_manager import SecurityManager
 import logging
 from peewee import (
     SqliteDatabase,
@@ -16,6 +15,7 @@ from peewee import (
     IntegrityError,
     DoesNotExist,
     Select,
+    BlobField
 )
 
 
@@ -82,7 +82,7 @@ class Message(BaseModel):
     id = UUIDField(primary_key=True)
     session = ForeignKeyField(ChatSession, backref="messages", on_delete="CASCADE")
     role = CharField()
-    content = TextField()
+    content = BlobField() 
     timestamp = DateTimeField(default=datetime.now)
 
     def __str__(self):
@@ -272,8 +272,8 @@ class ChatSessionService(BaseService):
             query = (
                 self.model.select()  # type: ignore
                 .where(self.model.project == project_id)  # type: ignore
-                .order_by(self.model.created_at.desc())
-            )  # type: ignore
+                .order_by(self.model.created_at.desc())  # type: ignore
+            ) 
 
             if limit:
                 query = query.limit(limit)  # type: ignore
@@ -334,7 +334,7 @@ class MessageService(BaseService):
         super().__init__(Message)
 
     def create_message(
-        self, session_id: uuid.UUID, role: str, content: str
+        self, session_id: uuid.UUID, role: str, content: Union[str, bytes]
     ) -> Message:
         try:
 
@@ -368,8 +368,8 @@ class MessageService(BaseService):
             query = (
                 self.model.select()  # type: ignore
                 .where(self.model.session == session_id)  # type: ignore
-                .order_by(self.model.timestamp.asc())
-            )  # type: ignore
+                .order_by(self.model.timestamp.asc())  # type: ignore
+            )
 
             if limit:
                 query = query.limit(limit)  # type: ignore
@@ -436,9 +436,8 @@ class MessageService(BaseService):
 
 class ChatDatabaseManager:
 
-    def __init__(self, db_path: Path, security_manager: SecurityManager):
+    def __init__(self, db_path: Path):
         self.db_path = db_path
-        self.security_manager = security_manager
         self._initialize_database()
 
         self.project_service = ProjectService()
@@ -501,13 +500,12 @@ class ChatDatabaseManager:
     def delete_session(self, session_id: uuid.UUID) -> bool:
         return self.session_service.delete_session(session_id)
 
-    def add_message(self, session_id: uuid.UUID, role: str, content: str) -> Message:
-        if not content or not content.strip():
+    def add_message(
+        self, session_id: uuid.UUID, role: str, encrypted_content: Union[str, bytes]
+    ) -> Message:
+        if not encrypted_content or not encrypted_content.strip():
             raise ValidationError("Message content cannot be empty")
-        # encrypted_content: bytes = self.security_manager.encrypt(
-        #     content.encode("utf-8")
-        # )
-        return self.message_service.create_message(session_id, role, content)
+        return self.message_service.create_message(session_id, role, encrypted_content)
 
     def get_message(self, message_id: uuid.UUID) -> Message:
         return self.message_service.get_message(message_id)
@@ -616,36 +614,3 @@ class ChatDatabaseManager:
     def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore
         self.close()
 
-
-if __name__ == "__main__":
-
-    
-    db_path = Path("chat_example.db")
-    security_manager = SecurityManager(salt_path="salt.txt", check_path="check.txt")
-    try:
-        with ChatDatabaseManager(db_path, security_manager) as chat_db:
-            project = chat_db.create_project(
-                "AI Research", "Research project for AI development"
-            )
-            print(f"Created project: {project}")
-
-            session = chat_db.create_session(project.get_id(), "Initial Discussion")
-            print(f"Created session: {session}")
-
-            msg1 = chat_db.add_message(
-                session.get_id(), "user", "Hello, how can you help me?"
-            )
-            msg2 = chat_db.add_message(
-                session.get_id(), "assistant", "I can help you with various tasks!"
-            )
-
-            history = chat_db.get_conversation_history(session.get_id())
-            print(f"Conversation history: {history}")
-
-            summary = chat_db.get_project_summary(project.get_id())
-            print(f"Project summary: {summary}")
-
-    except (DatabaseError, NotFoundError, ValidationError) as e:
-        print(f"Database operation failed: {e}")
-    except Exception as e:
-        print(f"Unexpected error: {e}")

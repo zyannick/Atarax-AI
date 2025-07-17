@@ -81,6 +81,16 @@ public:
         }
     }
 
+    explicit SecureString(const std::string &str) : data(nullptr), length(0), capacity(0)
+    {
+        if (!str.empty())
+        {
+            length = str.size();
+            allocate_memory(length + 1);
+            memcpy(data, str.c_str(), length + 1);
+        }
+    }
+
     SecureString() : data(nullptr), length(0), capacity(0) {}
 
     ~SecureString()

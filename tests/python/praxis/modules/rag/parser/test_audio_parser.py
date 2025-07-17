@@ -40,7 +40,7 @@ def fake_flac_path(tmp_path):
     return file
 
 def test_parse_mp3_metadata_only(parser, fake_mp3_path):
-    with mock.patch("ataraxai.app_logic.modules.rag.parser.audio_parser.MP3") as mock_mp3:
+    with mock.patch("ataraxai.praxis.modules.rag.parser.audio_parser.MP3") as mock_mp3:
         mock_audio = mock.Mock()
         mock_audio.items.return_value = [("artist", ["Test Artist"]), ("album", ["Test Album"])]
         mock_mp3.return_value = mock_audio
@@ -57,7 +57,7 @@ def test_parse_mp3_metadata_only(parser, fake_mp3_path):
         assert "album" in chunk.metadata
 
 def test_parse_wav_metadata_only(parser, fake_wav_path):
-    with mock.patch("ataraxai.app_logic.modules.rag.parser.audio_parser.WAVE") as mock_wave:
+    with mock.patch("ataraxai.praxis.modules.rag.parser.audio_parser.WAVE") as mock_wave:
         mock_audio = mock.Mock()
         mock_audio.items.return_value = []
         mock_wave.return_value = mock_audio
@@ -70,7 +70,7 @@ def test_parse_wav_metadata_only(parser, fake_wav_path):
         assert chunk.metadata["type"] == "music"
 
 def test_parse_flac_metadata_only(parser, fake_flac_path):
-    with mock.patch("ataraxai.app_logic.modules.rag.parser.audio_parser.EasyID3") as mock_easyid3:
+    with mock.patch("ataraxai.praxis.modules.rag.parser.audio_parser.EasyID3") as mock_easyid3:
         mock_audio = mock.Mock()
         mock_audio.items.return_value = [("title", ["Test Title"])]
         mock_easyid3.return_value = mock_audio
@@ -92,7 +92,7 @@ def test_parse_unsupported_format(parser, tmp_path):
     assert chunk.metadata["type"] == "error"
 
 def test_parse_with_transcription_success(parser, fake_mp3_path, mock_core_ai_service):
-    with mock.patch("ataraxai.app_logic.modules.rag.parser.audio_parser.MP3") as mock_mp3:
+    with mock.patch("ataraxai.praxis.modules.rag.parser.audio_parser.MP3") as mock_mp3:
         mock_audio = mock.Mock()
         mock_audio.items.return_value = [("artist", ["Test Artist"])]
         mock_mp3.return_value = mock_audio
@@ -105,7 +105,7 @@ def test_parse_with_transcription_success(parser, fake_mp3_path, mock_core_ai_se
         assert chunks[1].metadata["type"] == "transcription"
 
 def test_parse_with_transcription_failure(parser, fake_mp3_path):
-    with mock.patch("ataraxai.app_logic.modules.rag.parser.audio_parser.MP3") as mock_mp3:
+    with mock.patch("ataraxai.praxis.modules.rag.parser.audio_parser.MP3") as mock_mp3:
         mock_audio = mock.Mock()
         mock_audio.items.return_value = []
         mock_mp3.return_value = mock_audio

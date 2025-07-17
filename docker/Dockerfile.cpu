@@ -42,4 +42,4 @@ RUN chmod +x ./install.sh ./setup_third_party.sh ./clean.sh
 
 RUN ./install.sh --clean
 
-CMD ["python3", "ataraxai/app_logic/ataraxai_cli.py"]
+CMD ["python3", "ataraxai/praxis/ataraxai_cli.py"]

@@ -31,9 +31,9 @@ def tmp_app_data_root(tmp_path):
 
 @pytest.fixture
 def manager(mock_rag_config_manager, tmp_app_data_root, mock_core_ai_service):
-    with mock.patch("ataraxai.app_logic.modules.rag.ataraxai_rag_manager.AtaraxAIEmbedder"), \
-         mock.patch("ataraxai.app_logic.modules.rag.ataraxai_rag_manager.RAGStore") as rag_store_cls, \
-         mock.patch("ataraxai.app_logic.modules.rag.ataraxai_rag_manager.RAGManifest"):
+    with mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.AtaraxAIEmbedder"), \
+         mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.RAGStore") as rag_store_cls, \
+         mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.RAGManifest"):
         rag_store = rag_store_cls.return_value
         rag_store.collection_name = "ataraxai_knowledge"
         rag_store.client.get_or_create_collection.return_value = mock.Mock()
@@ -74,7 +74,7 @@ def test_perform_initial_scan_files(tmp_path, manager):
     assert files_found == 1
 
 def test_start_file_monitoring_success(manager):
-    with mock.patch("ataraxai.app_logic.modules.rag.ataraxai_rag_manager.start_rag_file_monitoring") as start_monitor:
+    with mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.start_rag_file_monitoring") as start_monitor:
         start_monitor.return_value = mock.Mock(is_alive=lambda: True)
         result = manager.start_file_monitoring(["/tmp"])
         assert result is True
@@ -107,7 +107,7 @@ def test_cleanup(manager):
 def test_cross_encoder_lazy_load(manager):
     manager.rag_use_reranking = True
     manager.core_ai_service = True
-    with mock.patch("ataraxai.app_logic.modules.rag.ataraxai_rag_manager.CrossEncoder") as ce:
+    with mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.CrossEncoder") as ce:
         ce.return_value = "cross_encoder_instance"
         manager._cross_encoder_initialized = False
         result = manager.cross_encoder

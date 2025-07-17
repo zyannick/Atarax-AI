@@ -376,6 +376,10 @@ PYBIND11_MODULE(hegemonikon_py, m)
               { return py::bytes(reinterpret_cast<const char *>(self.data()), self.size()); }, "Returns the key data as a Python bytes object.")
          .def("size", &SecureKey::size, "Returns the size of the key in bytes.");
 
+     py::class_<SecureString>(m, "SecureString", "A C++ class to hold sensitive strings in locked memory.")
+         .def(py::init<const char *>(), "Constructor from a C-style string")
+         .def(py::init<const std::string &>(), "Constructor from a std::string");
+
      m.def("derive_and_protect_key", [](const std::string &password_str, const py::bytes &salt_bytes)
            {
                 SecureString secure_password(password_str.c_str());
