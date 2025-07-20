@@ -7,7 +7,7 @@ from ataraxai.hegemonikon_py import SecureString  # type: ignore
 
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-from ataraxai.praxis.utils.ataraxai_logger import ArataxAILogger
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 import threading
@@ -37,7 +37,7 @@ class AtaraxAIOrchestrator:
         self,
         app_config: AppConfig,
         settings: AtaraxAISettings,
-        logger: ArataxAILogger,
+        logger: AtaraxAILogger,
         directories: AppDirectories,
         vault_manager: VaultManager,
         setup_manager: SetupManager,
@@ -74,7 +74,6 @@ class AtaraxAIOrchestrator:
 
         self._state_lock = threading.RLock()
         self._state: AppState = AppState.LOCKED
-        self._set_state(self._determine_initial_state())
         self.initialize()
 
     def initialize(self):
@@ -87,6 +86,7 @@ class AtaraxAIOrchestrator:
         Raises:
             Any exceptions raised by the underlying initialization methods.
         """
+        self._set_state(self._determine_initial_state())
         with self._state_lock:
             if self._state == AppState.FIRST_LAUNCH:
                 self._initialize_base_components()
@@ -115,8 +115,8 @@ class AtaraxAIOrchestrator:
             if self._state != new_state:
                 self._state = new_state
 
-    def _init_logger(self) -> "ArataxAILogger":
-        return ArataxAILogger()
+    def _init_logger(self) -> "AtaraxAILogger":
+        return AtaraxAILogger()
 
     def _init_security_manager(self) -> VaultManager:
         """
@@ -160,6 +160,30 @@ class AtaraxAIOrchestrator:
             self.logger.error(f"Failed during base initialization: {e}")
             self._set_state(AppState.ERROR)
             raise
+        
+    # def _clear_internal_refs(self):
+    #     """
+    #     Clears internal references to services and managers to help with garbage collection.
+
+    #     This method is called when the orchestrator is shutting down to ensure that all internal
+    #     references are cleared, allowing Python's garbage collector to reclaim memory.
+    #     """
+    #     self.services = None
+    #     self.vault_manager = None
+    #     self.setup_manager = None
+    #     self.config_manager = None
+    #     self.core_ai_manager = None
+    
+    def _reset_state(self):
+        """
+        Resets the internal state of the orchestrator to its initial state.
+
+        This method is called when the orchestrator is shutting down to ensure that the state
+        is reset, allowing for a clean restart of the application.
+        """
+        with self._state_lock:
+            self._state = AppState.LOCKED
+            self.logger.info("Orchestrator state reset to LOCKED.")
 
     def initialize_new_vault(self, master_password: str) -> bool:
         """
@@ -289,14 +313,14 @@ class AtaraxAIOrchestrator:
             - On successful unlock, updates the application state, logs the event, initializes unlocked services, and returns True.
             - On failure, logs a warning and returns False.
         """
-        password = SecureString(password)
+        password = SecureString(password) # type: ignore
         if self._state != AppState.LOCKED:
             self.logger.warning(
                 f"Unlock attempt in non-locked state: {self._state.name}"
             )
             return self._state == AppState.UNLOCKED
 
-        unlock_result = self.vault_manager.unlock_vault(password)
+        unlock_result = self.vault_manager.unlock_vault(password) # type: ignore
         if unlock_result.status == VaultUnlockStatus.SUCCESS:
             self._state = AppState.UNLOCKED
             self.logger.info("Application unlocked successfully.")
@@ -336,17 +360,6 @@ class AtaraxAIOrchestrator:
             chain_definition=chain_definition, initial_user_query=initial_user_query
         )
 
-    def add_watch_directory(self, directory: str) -> None:
-        """
-        Adds a new directory to the list of watched directories.
-
-        Args:
-            directory (str): The path to the directory to be watched.
-
-        Returns:
-            None
-        """
-        self.services.add_watched_directory(directory)
 
     @property
     def chat(self) -> ChatManager:
@@ -386,7 +399,7 @@ class AtaraxAIOrchestratorFactory:
     @staticmethod
     def create_orchestrator() -> AtaraxAIOrchestrator:
         app_config = AppConfig()
-        logger = ArataxAILogger()
+        logger = AtaraxAILogger()
         settings = AtaraxAISettings()
         directories = AppDirectories.create_default(settings)
 

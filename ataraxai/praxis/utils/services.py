@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-from ataraxai.praxis.utils.ataraxai_logger import ArataxAILogger
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.praxis.modules.prompt_engine.context_manager import ContextManager
@@ -25,7 +25,7 @@ class Services:
     def __init__(
         self,
         directories: AppDirectories,
-        logger: ArataxAILogger,
+        logger: AtaraxAILogger,
         db_manager: ChatDatabaseManager,
         chat_context: ChatContextManager,
         chat_manager: ChatManager,
@@ -250,7 +250,7 @@ class Services:
         watched_dirs = self.config_manager.get_watched_directories()
         is_valid = self.rag_manager.manifest.is_valid(self.rag_manager.rag_store)
         if not is_valid:
-            self.rag_manager.rebuild_index(watched_dirs)
+            self.rag_manager.rebuild_index_for_watches(watched_dirs)
         else:
             self.rag_manager.perform_initial_scan(watched_dirs)
         self.rag_manager.start_file_monitoring(watched_dirs)

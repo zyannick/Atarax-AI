@@ -28,7 +28,7 @@ class CustomFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-class ArataxAILogger:
+class AtaraxAILogger:
 
     def __init__(self, log_file: str = "ataraxai.log"):
         """

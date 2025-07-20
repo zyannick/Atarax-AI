@@ -39,7 +39,9 @@ class RAGStore:
             raise ValueError("An embedder instance must be provided to RAGStore.")
         self.embedder = embedder
 
-        self.client = chromadb.PersistentClient(path=str(self.db_path), settings=Settings(anonymized_telemetry=False))
+        self.client = chromadb.PersistentClient(
+            path=str(self.db_path), settings=Settings(anonymized_telemetry=False)
+        )
 
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name,
@@ -49,7 +51,6 @@ class RAGStore:
         print(
             f"RAGStore: Collection '{self.collection.name}' loaded/created with {self.collection.count()} items."
         )
-
 
     def add_chunks(
         self,
@@ -72,7 +73,11 @@ class RAGStore:
             Adds or updates the specified items in the collection and prints a summary of the operation.
         """
         if len(metadatas) != len(texts):
-            raise ValueError("Length of metadatas must match length of texts. {} vs {}".format(len(metadatas), len(texts)))
+            raise ValueError(
+                "Length of metadatas must match length of texts. {} vs {}".format(
+                    len(metadatas), len(texts)
+                )
+            )
 
         self.collection.add(
             ids=ids,
@@ -82,8 +87,6 @@ class RAGStore:
         print(
             f"Added/updated {len(ids)} items to collection '{self.collection.name}'. New count: {self.collection.count()}"
         )
-
-
 
     def query(
         self,

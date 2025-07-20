@@ -18,3 +18,6 @@ class AtaraxAIAuthenticationError(AtaraxAIError):
 
 class AtaraxAIStateError(AtaraxAIError):
     pass
+
+class AtaraxAILockError(AtaraxAIError):
+    pass

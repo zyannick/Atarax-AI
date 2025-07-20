@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Optional
 from ataraxai.praxis.utils.exceptions import ServiceInitializationError
-from ataraxai.praxis.utils.ataraxai_logger import ArataxAILogger
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.preferences_manager import PreferencesManager
 from ataraxai.praxis.utils.llama_config_manager import LlamaConfigManager
 from ataraxai.praxis.utils.whisper_config_manager import WhisperConfigManager
@@ -9,7 +9,7 @@ from ataraxai.praxis.utils.rag_config_manager import RAGConfigManager
 
 class ConfigurationManager:
 
-    def __init__(self, config_dir: Path, logger: ArataxAILogger):
+    def __init__(self, config_dir: Path, logger: AtaraxAILogger):
         """
         Initializes the orchestrator with the specified configuration directory and logger.
 

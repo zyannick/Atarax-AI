@@ -6,6 +6,7 @@ from ataraxai.praxis.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
 from ataraxai.praxis.modules.rag.resilient_indexer import start_rag_file_monitoring
 from ataraxai.praxis.modules.rag.rag_store import RAGStore
 from ataraxai.praxis.modules.rag.rag_manifest import RAGManifest
+
 # from ataraxai.praxis.modules.rag.rag_updater import process_new_file
 # from ataraxai.praxis.preferences_manager import PreferencesManager
 from sentence_transformers import CrossEncoder
@@ -121,7 +122,7 @@ class AtaraxAIRAGManager:
             self.logger.error(f"Error checking manifest validity: {e}")
             return False
 
-    def rebuild_index(self, directories_to_scan: Optional[List[str]]) -> bool:
+    def rebuild_index_for_watches(self, directories_to_scan: List[str]) -> bool:
         """
         Rebuilds the RAG (Retrieval-Augmented Generation) index from scratch using the specified directories.
 
@@ -155,6 +156,25 @@ class AtaraxAIRAGManager:
         except Exception as e:
             self.logger.error(f"Error during index rebuild: {e}")
             return False
+
+    def rebuild_index(self) -> bool:
+        """
+        Rebuilds the RAG index for the configured watch directories.
+
+        Retrieves the list of directories to watch from the RAG configuration manager.
+        If no directories are specified, logs a warning and returns False.
+        Otherwise, triggers the index rebuild process for the specified directories.
+
+        Returns:
+            bool: True if the index was rebuilt successfully, False otherwise.
+        """
+
+        watch_dirs: List[str] = self.rag_config_manager.get("rag_watch_directories", [])  # type: ignore
+        if not watch_dirs:
+            self.logger.warning("No directories specified for RAG index rebuild.")
+            return False
+
+        return self.rebuild_index_for_watches(watch_dirs)  # type: ignore
 
     def perform_initial_scan(self, directories_to_scan: Optional[List[str]]) -> int:
         """
@@ -204,6 +224,126 @@ class AtaraxAIRAGManager:
         )
         return files_found
 
+    def add_watch_directories(self, directories_to_watch: List[str]) -> bool:
+        """
+        Adds directories to the list of watched directories for RAG updates.
+
+        Args:
+            directories_to_watch (List[str]): List of directory paths to add for monitoring.
+
+        Returns:
+            bool: True if directories were added successfully, False otherwise.
+
+        Logs:
+            - Info when directories are added.
+            - Warning if no directories are specified.
+            - Error if an exception occurs during the process.
+        """
+        if not directories_to_watch:
+            self.logger.warning("No directories specified for watching.")
+            return False
+
+        try:
+            current_directories: List[str] = self.rag_config_manager.get("rag_watch_directories", [])  # type: ignore
+            current_directories.extend(directories_to_watch)
+            self.rag_config_manager.set("rag_watch_directories", current_directories)
+            self.update_collection_add_directory(directories_to_watch)
+            self.logger.info(f"Added directories to watch: {directories_to_watch}")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error adding watch directories: {e}")
+            return False
+
+    def remove_watch_directories(self, directories_to_remove: List[str]) -> bool:
+        """
+        Removes specified directories from the list of watched directories for RAG updates.
+
+        Args:
+            directories_to_remove (List[str]): List of directory paths to remove from monitoring.
+
+        Returns:
+            bool: True if directories were removed successfully, False otherwise.
+
+        Logs:
+            - Info when directories are removed.
+            - Warning if no directories are specified.
+            - Error if an exception occurs during the process.
+        """
+        if not directories_to_remove:
+            self.logger.warning("No directories specified for removal.")
+            return False
+
+        try:
+            current_directories: List[str] = self.rag_config_manager.get("rag_watch_directories", [])  # type: ignore
+            for directory in directories_to_remove:
+                if directory in current_directories:
+                    current_directories.remove(directory)
+                    self.logger.info(f"Removed directory from watch: {directory}")
+                else:
+                    self.logger.warning(
+                        f"Directory not found in watch list: {directory}"
+                    )
+
+            self.rag_config_manager.set("rag_watch_directories", current_directories)
+            self.update_collection_remove_directory(directories_to_remove)
+            return True
+        except Exception as e:
+            self.logger.error(f"Error removing watch directories: {e}")
+            return False
+
+    def update_collection_add_directory(self, directories_to_add: List[str]) -> bool:
+        if not directories_to_add:
+            self.logger.warning("No directories specified for update.")
+            return False
+
+        for directory in directories_to_add:
+            if not os.path.exists(directory):
+                self.logger.warning(f"Directory does not exist: {directory}")
+                continue
+
+            try:
+                for root, _, files in os.walk(directory):
+                    for filename in files:
+                        file_path = os.path.join(root, filename)
+                        if not self.manifest.is_file_in_manifest(file_path):
+                            self.manifest.add_file(file_path)
+                            task = {"event_type": "created", "path": file_path}
+                            self.processing_queue.put(task)
+
+            except Exception as e:
+                self.logger.error(f"Error processing directory {directory}: {e}")
+                continue
+
+        return True
+
+    def update_collection_remove_directory(
+        self, directories_to_remove: List[str]
+    ) -> bool:
+
+        if not directories_to_remove:
+            self.logger.warning("No directories specified for removal.")
+            return False
+
+        for directory in directories_to_remove:
+            if not os.path.exists(directory):
+                self.logger.warning(f"Directory does not exist: {directory}")
+                continue
+
+            try:
+                for root, _, files in os.walk(directory):
+                    for filename in files:
+                        file_path = os.path.join(root, filename)
+                        if self.manifest.is_file_in_manifest(file_path):
+                            self.manifest.remove_file(file_path)
+                            task = {"event_type": "deleted", "path": file_path}
+                            self.processing_queue.put(task)
+
+            except Exception as e:
+                self.logger.error(f"Error processing directory {directory}: {e}")
+                continue
+
+        return True
+
     def start_file_monitoring(self, watched_directories: Optional[List[str]]) -> bool:
         """
         Starts monitoring the specified directories for file changes and initializes the RAG update worker thread.
@@ -236,7 +376,7 @@ class AtaraxAIRAGManager:
                 or not self.worker_thread
                 or not self.worker_thread.is_alive()
             ):
-                self.worker_thread : threading.Thread = threading.Thread(
+                self.worker_thread: threading.Thread = threading.Thread(
                     target=rag_update_worker,
                     args=(
                         self.processing_queue,
