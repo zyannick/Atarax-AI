@@ -12,8 +12,24 @@ API_REQUEST_LATENCY_SECONDS = Histogram(
     "api_request_latency_seconds", "Latency of API requests", ["method", "endpoint"]
 )
 
+HTTP_REQUESTS_TOTAL = Counter(
+    "http_requests_total", "Total number of HTTP requests", ["method", "endpoint"]
+)
+
+VAULT_UNLOCK_ATTEMPTS_TOTAL = Counter(
+    "vault_unlock_attempts_total", "Total number of vault unlock attempts", ["status"]
+)
 
 class Katalepsis:
+    
+    _instance = None  
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._init()
+        return cls._instance
+    
     def __init__(self):
         self.metrics_buffer = []
         self.cache_stats = {"hits": 0, "misses": 0}

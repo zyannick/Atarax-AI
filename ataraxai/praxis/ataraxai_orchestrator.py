@@ -297,12 +297,12 @@ class AtaraxAIOrchestrator:
             self.lock()
             raise
 
-    def unlock(self, password: str) -> bool:
+    def unlock(self, password: SecureString) -> bool:
         """
         Attempts to unlock the application using the provided password.
 
         Args:
-            password (str): The password to unlock the application.
+            password (SecureString): The password to unlock the application.
 
         Returns:
             bool: True if the application was successfully unlocked, False otherwise.
