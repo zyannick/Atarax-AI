@@ -19,7 +19,7 @@ client = TestClient(router_vault)
 def orch_mock():
     return MagicMock()
 
-@patch("ataraxai.routes.vault.get_unlocked_orchestrator")
+@patch("ataraxai.routes.vault_api.vault.get_unlocked_orchestrator")
 def test_initialize_vault_success(get_unlocked_orchestrator):
     orch = MagicMock()
     orch.initialize_new_vault.return_value = True
@@ -30,7 +30,7 @@ def test_initialize_vault_success(get_unlocked_orchestrator):
     assert response.status_code == 200
     assert response.json()["status"] == Status.SUCCESS
 
-@patch("ataraxai.routes.vault.get_unlocked_orchestrator")
+@patch("ataraxai.routes.vault_api.vault.get_unlocked_orchestrator")
 def test_initialize_vault_failure(get_unlocked_orchestrator):
     orch = MagicMock()
     orch.initialize_new_vault.return_value = False
@@ -40,7 +40,7 @@ def test_initialize_vault_failure(get_unlocked_orchestrator):
     response = client.post("/api/v1/vault/initialize", json=payload)
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
-@patch("ataraxai.routes.vault.get_unlocked_orchestrator")
+@patch("ataraxai.routes.vault_api.vault.get_unlocked_orchestrator")
 def test_reinitialize_vault_success(get_unlocked_orchestrator):
     orch = MagicMock()
     orch.reinitialize_vault.return_value = True
@@ -51,7 +51,7 @@ def test_reinitialize_vault_success(get_unlocked_orchestrator):
     assert response.status_code == 200
     assert response.json()["status"] == Status.SUCCESS
 
-@patch("ataraxai.routes.vault.get_unlocked_orchestrator")
+@patch("ataraxai.routes.vault_api.vault.get_unlocked_orchestrator")
 def test_reinitialize_vault_failure(get_unlocked_orchestrator):
     orch = MagicMock()
     orch.reinitialize_vault.return_value = False
@@ -61,8 +61,8 @@ def test_reinitialize_vault_failure(get_unlocked_orchestrator):
     response = client.post("/api/v1/vault/reinitialize", json=payload)
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
-@patch("ataraxai.routes.vault.get_orchestrator")
-@patch("ataraxai.routes.vault.SecureString")
+@patch("ataraxai.routes.vault_api.vault.get_orchestrator")
+@patch("ataraxai.routes.vault_api.vault.SecureString")
 def test_unlock_success(SecureString, get_orchestrator):
     orch = MagicMock()
     orch.state = "LOCKED"
@@ -75,7 +75,7 @@ def test_unlock_success(SecureString, get_orchestrator):
     assert response.status_code == 200
     assert response.json()["status"] == Status.SUCCESS
 
-@patch("ataraxai.routes.vault.get_orchestrator")
+@patch("ataraxai.routes.vault_api.vault.get_orchestrator")
 def test_unlock_conflict(get_orchestrator):
     orch = MagicMock()
     orch.state = "UNLOCKED"
@@ -85,8 +85,8 @@ def test_unlock_conflict(get_orchestrator):
     response = client.post("/api/v1/vault/unlock", json=payload)
     assert response.status_code == status.HTTP_409_CONFLICT
 
-@patch("ataraxai.routes.vault.get_orchestrator")
-@patch("ataraxai.routes.vault.SecureString")
+@patch("ataraxai.routes.vault_api.vault.get_orchestrator")
+@patch("ataraxai.routes.vault_api.vault.SecureString")
 def test_unlock_failure(SecureString, get_orchestrator):
     orch = MagicMock()
     orch.state = "LOCKED"
@@ -98,7 +98,7 @@ def test_unlock_failure(SecureString, get_orchestrator):
     response = client.post("/api/v1/vault/unlock", json=payload)
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
-@patch("ataraxai.routes.vault.get_unlocked_orchestrator")
+@patch("ataraxai.routes.vault_api.vault.get_unlocked_orchestrator")
 def test_lock_success(get_unlocked_orchestrator):
     orch = MagicMock()
     orch.lock.return_value = True
@@ -108,7 +108,7 @@ def test_lock_success(get_unlocked_orchestrator):
     assert response.status_code == 200
     assert response.json()["status"] == Status.SUCCESS
 
-@patch("ataraxai.routes.vault.get_unlocked_orchestrator")
+@patch("ataraxai.routes.vault_api.vault.get_unlocked_orchestrator")
 def test_lock_failure(get_unlocked_orchestrator):
     orch = MagicMock()
     orch.lock.return_value = False

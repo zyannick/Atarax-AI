@@ -31,7 +31,7 @@ def orch_mock():
 
 def test_check_manifest_success(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(rag=MagicMock(check_manifest_validity=lambda: True)),
     ):
         response = client.get("/api/v1/rag/check_manifest")
@@ -41,7 +41,7 @@ def test_check_manifest_success(client):
 
 def test_check_manifest_failure(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(rag=MagicMock(check_manifest_validity=lambda: False)),
     ):
         response = client.get("/api/v1/rag/check_manifest")
@@ -51,7 +51,7 @@ def test_check_manifest_failure(client):
 
 def test_check_manifest_exception(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(
             rag=MagicMock(
                 check_manifest_validity=MagicMock(side_effect=Exception("fail"))
@@ -64,7 +64,7 @@ def test_check_manifest_exception(client):
 
 def test_rebuild_index_success(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(rag=MagicMock(rebuild_index=MagicMock())),
     ):
         response = client.post("/api/v1/rag/rebuild_index")
@@ -74,7 +74,7 @@ def test_rebuild_index_success(client):
 
 def test_rebuild_index_exception(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(
             rag=MagicMock(rebuild_index=MagicMock(side_effect=Exception("fail")))
         ),
@@ -85,7 +85,7 @@ def test_rebuild_index_exception(client):
 
 def test_scan_and_index_success(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(rag=MagicMock(perform_initial_scan=MagicMock())),
     ):
         response = client.post("/api/v1/rag/scan_and_index")
@@ -95,7 +95,7 @@ def test_scan_and_index_success(client):
 
 def test_scan_and_index_exception(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(
             rag=MagicMock(perform_initial_scan=MagicMock(side_effect=Exception("fail")))
         ),
@@ -106,7 +106,7 @@ def test_scan_and_index_exception(client):
 
 def test_add_directory_success(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(rag=MagicMock(add_watch_directories=MagicMock())),
     ):
         payload = {"directories": ["dir1", "dir2"]}
@@ -118,7 +118,7 @@ def test_add_directory_success(client):
 
 def test_add_directory_exception(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(
             rag=MagicMock(
                 add_watch_directories=MagicMock(side_effect=Exception("fail"))
@@ -132,7 +132,7 @@ def test_add_directory_exception(client):
 
 def test_remove_directory_success(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(rag=MagicMock(remove_watch_directories=MagicMock())),
     ):
         payload = {"directories": ["dir3", "dir4"]}
@@ -144,7 +144,7 @@ def test_remove_directory_success(client):
 
 def test_remove_directory_exception(client):
     with patch(
-        "ataraxai.routes.rag.get_unlocked_orchestrator",
+        "ataraxai.routes.rag_api.rag.get_unlocked_orchestrator",
         return_value=MagicMock(
             rag=MagicMock(
                 remove_watch_directories=MagicMock(side_effect=Exception("fail"))
