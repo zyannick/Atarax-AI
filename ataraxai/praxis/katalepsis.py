@@ -1,11 +1,11 @@
 import functools
 import threading
-from prometheus_client import Counter, Histogram, Gauge, Summary
+from prometheus_client import Counter, Histogram
 import time
 from contextlib import contextmanager
-from typing import Awaitable, Callable, Dict, Any, Optional
-import asyncio
-from typing import Callable, TypeVar, Any, cast
+from typing import Callable, Dict, Any, Optional
+from typing import TypeVar
+import inspect
 
 F = TypeVar("F")
 
@@ -23,7 +23,10 @@ VAULT_UNLOCK_ATTEMPTS_TOTAL = Counter(
 
 
 class Katalepsis:
-
+    """
+    A Singleton class for application-wide observability and metrics collection.
+    Provides decorators and context managers to instrument code.
+    """
     _instance: Optional["Katalepsis"] = None
     _lock = threading.Lock()
 
@@ -37,78 +40,70 @@ class Katalepsis:
     def __init__(self) -> None:
         if hasattr(self, "_initialized"):
             return
-
-        self._buffer_lock = threading.Lock()
-        self.metrics_buffer: list = []
-        self.cache_stats = {"hits": 0, "misses": 0}
         self._initialized = True
 
     @contextmanager
-    def measure_time(
-        self,
-        metric: Histogram,
-        labels: Optional[Dict[str, str]] = None,
-        record_count: bool = True,
-    ):
+    def measure_time(self, metric: Histogram, labels: Optional[Dict[str, str]] = None):
+        """A context manager to time a block of code and record the duration."""
         start_time = time.time()
-        status = "success"
-
         try:
             yield
-        except Exception as e:
-            status = "error"
-            raise
         finally:
             duration = time.time() - start_time
-            final_labels = (labels or {}).copy()
-            final_labels["status"] = status
+            if labels:
+                metric.labels(**labels).observe(duration)
+            else:
+                metric.observe(duration)
 
-            try:
-                if final_labels:
-                    metric.labels(**final_labels).observe(duration)
-                    if record_count:
-                        HTTP_REQUESTS_TOTAL.labels(**final_labels).inc()
-                else:
-                    metric.observe(duration)
-            except Exception:
-                pass
-
-    def instrument_async_api(
-        self, method: str = "POST", endpoint_prefix: str = "/v1/"
-    ) -> Callable[[Callable[..., Awaitable[Any]]], Callable[..., Awaitable[Any]]]:
-
-        def decorator(
-            func: Callable[..., Awaitable[Any]],
-        ) -> Callable[..., Awaitable[Any]]:
-            @functools.wraps(func)
-            async def wrapper(*args, **kwargs): # type: ignore
-                endpoint_path = f"{endpoint_prefix}{func.__name__}"
-                labels = {"method": method, "endpoint": endpoint_path}
-
-                with self.measure_time(API_REQUEST_LATENCY_SECONDS, labels):
-                    return await func(*args, **kwargs)
-
-            return wrapper # type: ignore
-
+    def instrument_api(self, method: str = "POST") -> Callable[[F], F]:
+        """
+        A versatile decorator that instruments both sync and async functions.
+        It records latency and counts for API endpoints.
+        
+        Usage:
+            @katalepsis_monitor.instrument_api(method="GET")
+            async def my_endpoint():
+                ...
+        """
+        def decorator(func: F) -> F:
+            endpoint_path = f"/v1/{func.__name__}"
+            
+            # Handle async functions
+            if inspect.iscoroutinefunction(func):
+                @functools.wraps(func)
+                async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+                    status_code = "success"
+                    start_time = time.time()
+                    try:
+                        return await func(*args, **kwargs)
+                    except Exception:
+                        status_code = "error"
+                        raise # Re-raise the exception after catching it
+                    finally:
+                        duration = time.time() - start_time
+                        labels = {"method": method, "endpoint": endpoint_path, "status": status_code}
+                        API_REQUEST_LATENCY_SECONDS.labels(**labels).observe(duration)
+                        HTTP_REQUESTS_TOTAL.labels(**labels).inc()
+                return async_wrapper # type: ignore
+            
+            # Handle sync functions
+            else:
+                @functools.wraps(func)
+                def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
+                    status_code = "success"
+                    start_time = time.time()
+                    try:
+                        return func(*args, **kwargs)
+                    except Exception:
+                        status_code = "error"
+                        raise
+                    finally:
+                        duration = time.time() - start_time
+                        labels = {"method": method, "endpoint": endpoint_path, "status": status_code}
+                        API_REQUEST_LATENCY_SECONDS.labels(**labels).observe(duration)
+                        HTTP_REQUESTS_TOTAL.labels(**labels).inc()
+                return sync_wrapper # type: ignore
         return decorator
 
-    def instrument_sync_api(
-        self, method: str = "POST", endpoint_prefix: str = "/v1/"
-    ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
-        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
-            @functools.wraps(func)
-            def wrapper(*args, **kwargs): # type: ignore
-                endpoint_path = f"{endpoint_prefix}{func.__name__}"
-                labels = {"method": method, "endpoint": endpoint_path}
 
-                with self.measure_time(API_REQUEST_LATENCY_SECONDS, labels):
-                    return func(*args, **kwargs)
-
-            return wrapper # type: ignore
-
-        return decorator
-
-    def instrument_api(
-        self, func: Callable[..., Awaitable[Any]]
-    ) -> Callable[..., Awaitable[Any]]:
-        return self.instrument_async_api()(func)
+katalepsis_monitor = Katalepsis()

@@ -2,8 +2,6 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 from typing import List
 import uuid
-import os
-from ataraxai import __version__
 from ataraxai.routes.chat_api_models import (
     CreateProjectRequest,
     ProjectResponse,
@@ -16,7 +14,8 @@ from ataraxai.routes.status import StatusResponse, Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 
 from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator, katalepsis_monitor
+from ataraxai.routes.dependency_api import get_unlocked_orchestrator
+from ataraxai.praxis.katalepsis import katalepsis_monitor
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 
 
@@ -27,7 +26,7 @@ router_chat = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 
 
 @router_chat.post("/projects", response_model=ProjectResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Create Project")
 async def create_new_project(
     project_data: CreateProjectRequest,
@@ -66,7 +65,7 @@ async def create_new_project(
 
 
 @router_chat.delete("/projects/{project_id}", response_model=StatusResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("DELETE")  # type: ignore
 @handle_api_errors("Delete Project")
 async def delete_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
@@ -105,7 +104,7 @@ async def delete_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Dep
 
 
 @router_chat.get("/projects/{project_id}", response_model=ProjectResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("Get Project")
 async def get_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
@@ -133,7 +132,7 @@ async def get_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depend
 
 
 @router_chat.get("/projects", response_model=List[ProjectResponse])
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("List Projects")
 async def list_projects(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
@@ -164,7 +163,7 @@ async def list_projects(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orches
 @router_chat.get(
     "/projects/{project_id}/sessions", response_model=List[SessionResponse]
 )
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("List Sessions")
 async def list_sessions(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
@@ -197,7 +196,7 @@ async def list_sessions(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depe
 
 
 @router_chat.post("/session", response_model=SessionResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Create Session")
 async def create_session(session_data: CreateSessionRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
@@ -230,7 +229,7 @@ async def create_session(session_data: CreateSessionRequest, orch: AtaraxAIOrche
 
 
 @router_chat.delete("/sessions/{session_id}", response_model=StatusResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("DELETE")  # type: ignore
 @handle_api_errors("Delete Session")
 async def delete_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
@@ -260,7 +259,7 @@ async def delete_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Dep
 
 
 @router_chat.get("/sessions/{session_id}", response_model=SessionResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("Get Session")
 async def get_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
@@ -288,7 +287,7 @@ async def get_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depend
 
 
 @router_chat.post("/sessions/{session_id}/messages", response_model=MessageResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Send Message")
 async def send_message(
     session_id: uuid.UUID, message_data: ChatMessageRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore

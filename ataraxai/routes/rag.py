@@ -1,7 +1,5 @@
-from fastapi import APIRouter, FastAPI, HTTPException, BackgroundTasks, status
+from fastapi import APIRouter, HTTPException, BackgroundTasks, status
 from fastapi.params import Depends
-from ataraxai import __version__
-from ataraxai.hegemonikon_py import SecureString  # type: ignore
 from ataraxai.routes.rag_api_models import (
     DirectoriesToAddRequest,
     DirectoriesToRemoveRequest,
@@ -15,7 +13,8 @@ from ataraxai.routes.status import  Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator, katalepsis_monitor
+from ataraxai.routes.dependency_api import get_unlocked_orchestrator
+from ataraxai.praxis.katalepsis import katalepsis_monitor
 
 
 logger = AtaraxAILogger("ataraxai.praxis.rag")
@@ -25,7 +24,7 @@ router_rag = APIRouter(prefix="/api/v1/rag", tags=["RAG"])
 
 
 @router_rag.get("/check_manifest", response_model=CheckManifestResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("Check Manifest")
 async def check_manifest(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> CheckManifestResponse:  # type: ignore
     """
@@ -63,7 +62,7 @@ async def check_manifest(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orche
 
 
 @router_rag.post("/rebuild_index", response_model=RebuildIndexResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Rebuild Index")
 async def rebuild_index(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> RebuildIndexResponse:  # type: ignore
     """
@@ -96,7 +95,7 @@ async def rebuild_index(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orches
 
 
 @router_rag.post("/scan_and_index", response_model=ScanAndIndexResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Scan and Index")
 async def scan_and_index(background_tasks: BackgroundTasks, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> ScanAndIndexResponse:  # type: ignore
     """
@@ -125,12 +124,12 @@ async def scan_and_index(background_tasks: BackgroundTasks, orch: AtaraxAIOrches
         logger.error("Failed to start scan and indexing.")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while starting scan and indexing. ",
+            detail="An error occurred while starting scan and indexing.",
         )
 
 
 @router_rag.post("/add_directories", response_model=DirectoriesAdditionResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Add Directories")
 async def add_directory(
     background_tasks: BackgroundTasks, request: DirectoriesToAddRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore
@@ -168,7 +167,7 @@ async def add_directory(
 
 
 @router_rag.post("/remove_directories", response_model=DirectoriesRemovalResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Remove Directories")
 async def remove_directory(
     background_tasks: BackgroundTasks, request: DirectoriesToRemoveRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore

@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
-from ataraxai import __version__
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
 from ataraxai.routes.vault_api_models import (
@@ -12,9 +11,10 @@ from ataraxai.routes.vault_api_models import (
 )
 from ataraxai.routes.status import Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator, katalepsis_monitor
+from ataraxai.routes.dependency_api import get_unlocked_orchestrator, get_orchestrator
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from ataraxai.praxis.katalepsis import katalepsis_monitor
 
 logger = AtaraxAILogger("ataraxai.praxis.vault")
 
@@ -23,7 +23,7 @@ router_vault = APIRouter(prefix="/api/v1/vault", tags=["Vault"])
 
 
 @router_vault.post("/initialize", response_model=VaultPasswordResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Initialize Vault")
 async def initialize_vault(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> VaultPasswordResponse:  # type: ignore
     """
@@ -58,7 +58,7 @@ async def initialize_vault(request: VaultPasswordRequest, orch: AtaraxAIOrchestr
 
 
 @router_vault.post("/reinitialize", response_model=ConfirmationPhaseResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Reinitialize Vault")
 async def reinitialize_vault(
     request: ConfirmationPhaseRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore
@@ -95,7 +95,7 @@ async def reinitialize_vault(
 
 
 @router_vault.post("/unlock", response_model=VaultPasswordResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Unlock Vault")
 async def unlock(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Depends(get_orchestrator)) -> VaultPasswordResponse:  # type: ignore
     """
@@ -133,7 +133,7 @@ async def unlock(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Dep
 
 
 @router_vault.post("/lock", response_model=LockVaultResponse)
-@katalepsis_monitor.instrument_api  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Lock Vault")
 async def lock(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> LockVaultResponse:  # type: ignore
     """

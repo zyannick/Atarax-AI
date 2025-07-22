@@ -1,16 +1,10 @@
-from fastapi import APIRouter, FastAPI, HTTPException, BackgroundTasks, Request, status
+from fastapi import  FastAPI
 from contextlib import asynccontextmanager
 from fastapi.params import Depends
-from pydantic import BaseModel, Field
-from typing import List, Dict, Any
-import uuid
 import os
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
 from ataraxai import __version__
-from ataraxai.praxis.utils.app_state import AppState
-from ataraxai.hegemonikon_py import SecureString  # type: ignore
 from ataraxai.routes.status import StatusResponse, Status
-from ataraxai.praxis.utils.exceptions import AtaraxAIError, AtaraxAILockError
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +13,7 @@ from ataraxai.praxis.katalepsis import Katalepsis
 from ataraxai.routes.rag import router_rag
 from ataraxai.routes.vault import router_vault
 from ataraxai.routes.chat import router_chat
+from ataraxai.routes.dependency_api import get_orchestrator
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
@@ -29,7 +24,7 @@ logger = AtaraxAILogger("ataraxai.praxis.api")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.orchestrator = AtaraxAIOrchestratorFactory.create_orchestrator()
-    app.state.katalepsis = Katalepsis()
+    app.state.katalepsis_monitor = Katalepsis()
     yield
     logger.info("API is shutting down. Closing orchestrator resources.")
     app.state.orchestrator.shutdown()

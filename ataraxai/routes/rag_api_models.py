@@ -1,8 +1,6 @@
-from pydantic import BaseModel, Field, field_validator, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List
-from fastapi import FastAPI
 from ataraxai.routes.status import Status
-from pathlib import Path
 
 
 class CheckManifestResponse(BaseModel):

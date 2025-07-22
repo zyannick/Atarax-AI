@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 from typing import Dict, Any    
-from ataraxai.hegemonikon_py import SecureString as _SecureString  # type: ignore
 from ataraxai.routes.status import Status
 
 class ConfirmationPhaseRequest(BaseModel):

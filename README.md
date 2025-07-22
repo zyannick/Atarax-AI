@@ -15,7 +15,7 @@ Developing a full-featured AI assistant that runs entirely offline using llama.c
 
 The assistant supports multi-modal inputs (text + voice + images/videos), performs real-time reasoning, and integrates with local system APIs (calendar, file system, etc.)  all with zero cloud dependency.
 
-<img src="docs/architecture/architecture.svg" alt="Architecture Diagram" width="800"/>
+<img src="docs/architecture/architecture.png" alt="Architecture Diagram" width="800"/>
 
 
 ## 🎯 Project Vision

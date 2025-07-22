@@ -2,7 +2,6 @@ import pytest
 from unittest import mock
 from ataraxai.praxis.utils.services import Services
 from ataraxai.praxis.utils.exceptions import ValidationError, ServiceInitializationError
-from pathlib import Path
 
 
 @pytest.fixture
