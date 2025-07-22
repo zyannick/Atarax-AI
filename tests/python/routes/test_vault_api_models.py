@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 from ataraxai.routes.status import Status
 
-from ataraxai.routes.vault_api_models import (
+from ataraxai.routes.vault_api.vault_api_models import (
     ConfirmationPhaseRequest,
     ConfirmationPhaseResponse,
     VaultPasswordRequest,

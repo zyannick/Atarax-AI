@@ -63,6 +63,8 @@ dev = [
     "mypy",
     "types-PyYAML",
     "types-peewee",
+    "types-requests",
+    "types-tqdm",
 ]
 
 [project.urls]

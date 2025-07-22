@@ -10,9 +10,9 @@ from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from ataraxai.praxis.katalepsis import Katalepsis
-from ataraxai.routes.rag import router_rag
-from ataraxai.routes.vault import router_vault
-from ataraxai.routes.chat import router_chat
+from ataraxai.routes.rag_api.rag import router_rag
+from ataraxai.routes.vault_api.vault import router_vault
+from ataraxai.routes.chat_api.chat import router_chat
 from ataraxai.routes.dependency_api import get_orchestrator
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")

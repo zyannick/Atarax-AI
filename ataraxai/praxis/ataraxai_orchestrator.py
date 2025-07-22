@@ -5,6 +5,7 @@ import shutil
 from ataraxai import __version__  # type: ignore
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
 
+from ataraxai.praxis.modules.models_manager.model_manager import ModelManager
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
@@ -27,6 +28,7 @@ from ataraxai.praxis.utils.chat_manager import ChatManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
 from ataraxai.praxis.utils.services import Services
+
 
 
 class AtaraxAIOrchestrator:
@@ -378,6 +380,15 @@ class AtaraxAIOrchestrator:
                     "Application is locked. RAG operations are not available."
                 )
             return self.services.rag_manager
+        
+    @property
+    def model_manager(self) -> ModelManager:
+        with self._state_lock:
+            if self.state != AppState.UNLOCKED or self.services is None:
+                raise AtaraxAIError(
+                    "Application is locked. Model management operations are not available."
+                )
+            return self.services.model_manager
 
     def shutdown(self) -> None:
         self.services.shutdown()

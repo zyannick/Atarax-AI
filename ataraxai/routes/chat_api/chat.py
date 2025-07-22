@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 from typing import List
 import uuid
-from ataraxai.routes.chat_api_models import (
+from ataraxai.routes.chat_api.chat_api_models import (
     CreateProjectRequest,
     ProjectResponse,
     CreateSessionRequest,
@@ -96,10 +96,10 @@ async def delete_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Dep
             status=Status.SUCCESS, message=f"Project {project_id} deleted successfully."
         )
     except Exception as e:
-        logger.error(f"Failed to delete project {project_id}")
+        logger.error(f"Failed to delete project {project_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while deleting the project: {project_id}",
+            detail=f"An error occurred while deleting the project: {project_id} - {str(e)}",
         )
 
 

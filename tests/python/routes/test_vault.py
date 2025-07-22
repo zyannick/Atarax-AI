@@ -2,7 +2,7 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
-from ataraxai.routes.vault import router_vault
+from ataraxai.routes.vault_api.vault import router_vault
 from ataraxai.routes.status import Status
 
 class VaultPasswordRequest:

@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 from ataraxai.routes.status import Status
 
-from ataraxai.routes.rag_api_models import (
+from ataraxai.routes.rag_api.rag_api_models import (
     CheckManifestResponse,
     DirectoriesToScanRequest,
     DirectoriesToAddRequest,

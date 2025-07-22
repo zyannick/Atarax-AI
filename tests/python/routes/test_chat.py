@@ -3,10 +3,10 @@ from fastapi import status
 from fastapi.testclient import TestClient
 from unittest import mock
 import uuid
-from ataraxai.routes.chat import router_chat
+from ataraxai.routes.chat_api.chat import router_chat
 from ataraxai.routes.status import Status
 from fastapi import FastAPI
-from ataraxai.routes.chat import get_unlocked_orchestrator
+from ataraxai.routes.chat_api.chat import get_unlocked_orchestrator
 
 
 app = FastAPI()

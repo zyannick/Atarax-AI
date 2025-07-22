@@ -2,7 +2,7 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from unittest.mock import MagicMock, patch
-from ataraxai.routes.rag import router_rag
+from ataraxai.routes.rag_api.rag import router_rag
 from ataraxai.routes.status import Status
 from fastapi import FastAPI
 

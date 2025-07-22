@@ -1,7 +1,7 @@
 import uuid
 import pytest
 
-from ataraxai.routes.chat_api_models import (
+from ataraxai.routes.chat_api.chat_api_models import (
     CreateProjectRequest,
     DeleteProjectRequest,
     CreateSessionRequest,
