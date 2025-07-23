@@ -14,6 +14,13 @@ ataraxai.log
 .coverage
 *.mp3
 
+ataraxai.praxis.chat
+ataraxai.praxis.rag
+ataraxai.praxis.vault
+ataraxai.praxis.api
+
+.coverage
+
 /node_modules
 
 /src-tauri/target

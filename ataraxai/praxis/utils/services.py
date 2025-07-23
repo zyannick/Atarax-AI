@@ -1,8 +1,10 @@
 from pathlib import Path
 from typing import Any, Dict, List
+
+from typing import Optional
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-from ataraxai.praxis.utils.ataraxai_logger import ArataxAILogger
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.praxis.modules.prompt_engine.context_manager import ContextManager
@@ -15,6 +17,7 @@ from ataraxai.praxis.utils.exceptions import (
     ValidationError,
     ServiceInitializationError,
 )
+from ataraxai.praxis.modules.models_manager.model_manager import ModelManager
 from ataraxai.praxis.utils.chat_manager import ChatManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
@@ -25,13 +28,14 @@ class Services:
     def __init__(
         self,
         directories: AppDirectories,
-        logger: ArataxAILogger,
+        logger: AtaraxAILogger,
         db_manager: ChatDatabaseManager,
         chat_context: ChatContextManager,
         chat_manager: ChatManager,
         config_manager: ConfigurationManager,
         app_config: AppConfig,
         vault_manager: VaultManager,
+        model_manager: ModelManager,
     ):
         """
         Initializes the service with required managers, configuration, and logging utilities.
@@ -53,6 +57,7 @@ class Services:
         self.chat_manager = chat_manager
         self.config_manager = config_manager
         self.app_config = app_config
+        self.model_manager = model_manager
         self.core_ai_service = None
         self.vault_manager = vault_manager
 
@@ -247,10 +252,10 @@ class Services:
         4. If the manifest is valid, performs an initial scan of the watched directories.
         5. Starts monitoring the watched directories for file changes.
         """
-        watched_dirs = self.config_manager.get_watched_directories()
+        watched_dirs: Optional[List[str]] = self.config_manager.get_watched_directories()
         is_valid = self.rag_manager.manifest.is_valid(self.rag_manager.rag_store)
         if not is_valid:
-            self.rag_manager.rebuild_index(watched_dirs)
+            self.rag_manager.rebuild_index_for_watches(watched_dirs)
         else:
             self.rag_manager.perform_initial_scan(watched_dirs)
         self.rag_manager.start_file_monitoring(watched_dirs)

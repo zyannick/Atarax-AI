@@ -2,12 +2,12 @@ import logging
 import os
 import pytest
 from unittest import mock
-from ataraxai.praxis.utils.ataraxai_logger import ArataxAILogger, CustomFormatter
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger, CustomFormatter
 
 @pytest.fixture
 def logger(tmp_path):
     log_file = tmp_path / "test.log"
-    return ArataxAILogger(str(log_file)), log_file
+    return AtaraxAILogger(str(log_file)), log_file
 
 def test_logger_writes_to_file(logger):
     log, log_file = logger

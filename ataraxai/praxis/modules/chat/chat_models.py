@@ -5,10 +5,10 @@ import uuid
 
 class ProjectResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
+    
     id: uuid.UUID
     name: str
-    description: Optional[str] = None
+    description: str
 
     chat_sessions: Optional[List["ChatSessionResponse"]] = None
 

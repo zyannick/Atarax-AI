@@ -1,5 +1,5 @@
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
-from ataraxai.praxis.utils.ataraxai_logger import ArataxAILogger
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.input_validator import InputValidator
 import uuid
 from typing import List
@@ -16,7 +16,7 @@ class ChatManager:
     def __init__(
         self,
         db_manager: ChatDatabaseManager,
-        logger: ArataxAILogger,
+        logger: AtaraxAILogger,
         vault_manager: VaultManager,
     ):
         """

@@ -57,13 +57,13 @@ fi
 
 if [[ $CLEAN -eq 1 ]]; then
     echo "[+] Cleaning previous build artifacts..."
-    rm -rf build ataraxai_assistant.egg-info dist _skbuild
+    rm -rf build ataraxai.egg-info dist _skbuild
     rm -f ataraxai/*.so
     [ -f clean.sh ] && ./clean.sh
 fi
 
 echo "[+] Uninstalling any previous version..."
-pip uninstall ataraxai_assistant -y || true
+pip uninstall ataraxai -y || true
 
 if [ -f "setup_third_party.sh" ]; then
     echo "[+] Setting up third-party libraries..."

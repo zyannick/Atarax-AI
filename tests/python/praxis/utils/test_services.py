@@ -2,7 +2,6 @@ import pytest
 from unittest import mock
 from ataraxai.praxis.utils.services import Services
 from ataraxai.praxis.utils.exceptions import ValidationError, ServiceInitializationError
-from pathlib import Path
 
 
 @pytest.fixture
@@ -16,6 +15,7 @@ def mock_dependencies():
         "config_manager": mock.Mock(),
         "app_config": mock.Mock(),
         "vault_manager": mock.Mock(),
+        "model_manager": mock.Mock(),
     }
 
 
@@ -165,8 +165,9 @@ def test_finalize_setup_manifest_invalid(services):
     services.rag_manager = mock.Mock()
     services.rag_manager.manifest.is_valid.return_value = False
     services._finalize_setup()
-    services.rag_manager.rebuild_index.assert_called_with(["dir1"])
+    services.rag_manager.rebuild_index_for_watches.assert_called_with(["dir1"])
     services.rag_manager.start_file_monitoring.assert_called_with(["dir1"])
+
 
 
 def test_finalize_setup_manifest_valid(services):

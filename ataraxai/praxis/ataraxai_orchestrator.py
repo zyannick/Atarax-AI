@@ -5,9 +5,10 @@ import shutil
 from ataraxai import __version__  # type: ignore
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
 
+from ataraxai.praxis.modules.models_manager.model_manager import ModelManager
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-from ataraxai.praxis.utils.ataraxai_logger import ArataxAILogger
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 import threading
@@ -15,7 +16,7 @@ from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.exceptions import (
     AtaraxAIError,
-    ValidationError,
+    # ValidationError,
 )
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
 from ataraxai.praxis.utils.vault_manager import (
@@ -29,6 +30,7 @@ from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
 from ataraxai.praxis.utils.services import Services
 
 
+
 class AtaraxAIOrchestrator:
 
     EXPECTED_RESET_CONFIRMATION_PHRASE = "reset ataraxai vault"
@@ -37,7 +39,7 @@ class AtaraxAIOrchestrator:
         self,
         app_config: AppConfig,
         settings: AtaraxAISettings,
-        logger: ArataxAILogger,
+        logger: AtaraxAILogger,
         directories: AppDirectories,
         vault_manager: VaultManager,
         setup_manager: SetupManager,
@@ -74,7 +76,6 @@ class AtaraxAIOrchestrator:
 
         self._state_lock = threading.RLock()
         self._state: AppState = AppState.LOCKED
-        self._set_state(self._determine_initial_state())
         self.initialize()
 
     def initialize(self):
@@ -87,6 +88,7 @@ class AtaraxAIOrchestrator:
         Raises:
             Any exceptions raised by the underlying initialization methods.
         """
+        self._set_state(self._determine_initial_state())
         with self._state_lock:
             if self._state == AppState.FIRST_LAUNCH:
                 self._initialize_base_components()
@@ -115,8 +117,8 @@ class AtaraxAIOrchestrator:
             if self._state != new_state:
                 self._state = new_state
 
-    def _init_logger(self) -> "ArataxAILogger":
-        return ArataxAILogger()
+    def _init_logger(self) -> "AtaraxAILogger":
+        return AtaraxAILogger()
 
     def _init_security_manager(self) -> VaultManager:
         """
@@ -160,6 +162,30 @@ class AtaraxAIOrchestrator:
             self.logger.error(f"Failed during base initialization: {e}")
             self._set_state(AppState.ERROR)
             raise
+        
+    # def _clear_internal_refs(self):
+    #     """
+    #     Clears internal references to services and managers to help with garbage collection.
+
+    #     This method is called when the orchestrator is shutting down to ensure that all internal
+    #     references are cleared, allowing Python's garbage collector to reclaim memory.
+    #     """
+    #     self.services = None
+    #     self.vault_manager = None
+    #     self.setup_manager = None
+    #     self.config_manager = None
+    #     self.core_ai_manager = None
+    
+    def _reset_state(self):
+        """
+        Resets the internal state of the orchestrator to its initial state.
+
+        This method is called when the orchestrator is shutting down to ensure that the state
+        is reset, allowing for a clean restart of the application.
+        """
+        with self._state_lock:
+            self._state = AppState.LOCKED
+            self.logger.info("Orchestrator state reset to LOCKED.")
 
     def initialize_new_vault(self, master_password: str) -> bool:
         """
@@ -195,40 +221,40 @@ class AtaraxAIOrchestrator:
             self._set_state(AppState.ERROR)
             return False
 
-    def reinitialize_vault(self, confirmation_phrase: str) -> None:
+    def reinitialize_vault(self, confirmation_phrase: str) -> bool:
         """
         Re-initializes the vault by performing a factory reset, deleting all user data and resetting the application state.
 
         Args:
-            confirmation_phrase (str): The phrase required to confirm the factory reset operation.
+            confirmation_phrase (str): The confirmation phrase required to authorize the factory reset.
 
-        Raises:
-            ValidationError: If the provided confirmation phrase does not match the expected phrase.
-            AtaraxAIError: If the vault is not in the UNLOCKED state.
-            Exception: If an error occurs while deleting the data directory.
+        Returns:
+            bool: True if the vault was successfully re-initialized, False otherwise.
 
-        Side Effects:
-            - Deletes the data directory and all its contents.
-            - Recreates necessary directories.
-            - Re-initializes the vault security manager.
-            - Sets the application state to FIRST_LAUNCH.
-            - Logs actions and errors throughout the process.
+        Behavior:
+            - Checks if the provided confirmation phrase matches the expected phrase.
+            - Ensures the vault is in the UNLOCKED state before proceeding.
+            - Deletes the data directory and all user data.
+            - Recreates necessary directories and re-initializes the security manager.
+            - Sets the application state to FIRST_LAUNCH upon successful completion.
+            - Logs all major actions and errors during the process.
         """
 
         if confirmation_phrase != self.EXPECTED_RESET_CONFIRMATION_PHRASE:
             self.logger.error(
                 "Vault re-initialization failed: incorrect confirmation phrase."
             )
-            raise ValidationError(
-                "Incorrect confirmation phrase. Factory reset has been aborted."
-            )
+            return False
+            # raise ValidationError(
+            #     "Incorrect confirmation phrase. Factory reset has been aborted."
+            # )
 
         with self._state_lock:
             if self._state != AppState.UNLOCKED:
                 self.logger.error(
                     "Vault must be unlocked to perform re-initialization."
                 )
-                raise AtaraxAIError("Cannot re-initialize a locked vault.")
+                return False
 
         self.logger.warning("PERFORMING FACTORY RESET: All user data will be deleted.")
 
@@ -243,7 +269,7 @@ class AtaraxAIOrchestrator:
                 f"Failed to delete data directory during re-initialization: {e}"
             )
             self._set_state(AppState.ERROR)
-            raise
+            return False
 
         self.directories.create_directories()
 
@@ -253,6 +279,7 @@ class AtaraxAIOrchestrator:
         self.logger.info(
             "Vault re-initialization complete. Application is now in FIRST_LAUNCH state."
         )
+        return True
 
     def _initialize_unlocked_services(self):
         """
@@ -273,12 +300,12 @@ class AtaraxAIOrchestrator:
             self.lock()
             raise
 
-    def unlock(self, password: str) -> bool:
+    def unlock(self, password: SecureString) -> bool:
         """
         Attempts to unlock the application using the provided password.
 
         Args:
-            password (str): The password to unlock the application.
+            password (SecureString): The password to unlock the application.
 
         Returns:
             bool: True if the application was successfully unlocked, False otherwise.
@@ -289,14 +316,14 @@ class AtaraxAIOrchestrator:
             - On successful unlock, updates the application state, logs the event, initializes unlocked services, and returns True.
             - On failure, logs a warning and returns False.
         """
-        password = SecureString(password)
+        password = SecureString(password) # type: ignore
         if self._state != AppState.LOCKED:
             self.logger.warning(
                 f"Unlock attempt in non-locked state: {self._state.name}"
             )
             return self._state == AppState.UNLOCKED
 
-        unlock_result = self.vault_manager.unlock_vault(password)
+        unlock_result = self.vault_manager.unlock_vault(password) # type: ignore
         if unlock_result.status == VaultUnlockStatus.SUCCESS:
             self._state = AppState.UNLOCKED
             self.logger.info("Application unlocked successfully.")
@@ -336,17 +363,6 @@ class AtaraxAIOrchestrator:
             chain_definition=chain_definition, initial_user_query=initial_user_query
         )
 
-    def add_watch_directory(self, directory: str) -> None:
-        """
-        Adds a new directory to the list of watched directories.
-
-        Args:
-            directory (str): The path to the directory to be watched.
-
-        Returns:
-            None
-        """
-        self.services.add_watched_directory(directory)
 
     @property
     def chat(self) -> ChatManager:
@@ -365,6 +381,15 @@ class AtaraxAIOrchestrator:
                     "Application is locked. RAG operations are not available."
                 )
             return self.services.rag_manager
+        
+    @property
+    def model_manager(self) -> ModelManager:
+        with self._state_lock:
+            if self.state != AppState.UNLOCKED or self.services is None:
+                raise AtaraxAIError(
+                    "Application is locked. Model management operations are not available."
+                )
+            return self.services.model_manager
 
     def shutdown(self) -> None:
         self.services.shutdown()
@@ -386,7 +411,7 @@ class AtaraxAIOrchestratorFactory:
     @staticmethod
     def create_orchestrator() -> AtaraxAIOrchestrator:
         app_config = AppConfig()
-        logger = ArataxAILogger()
+        logger = AtaraxAILogger()
         settings = AtaraxAISettings()
         directories = AppDirectories.create_default(settings)
 
@@ -407,6 +432,11 @@ class AtaraxAIOrchestratorFactory:
         chat_manager = ChatManager(
             db_manager=db_manager, logger=logger, vault_manager=vault_manager
         )
+        
+        model_manager = ModelManager(
+            directories=directories,
+            logger=logger
+        )
 
         services = Services(
             directories=directories,
@@ -417,6 +447,7 @@ class AtaraxAIOrchestratorFactory:
             config_manager=config_manager,
             app_config=app_config,
             vault_manager=vault_manager,
+            model_manager=model_manager
         )
 
         orchestrator = AtaraxAIOrchestrator(
