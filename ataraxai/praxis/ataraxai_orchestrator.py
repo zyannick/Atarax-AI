@@ -16,7 +16,7 @@ from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.exceptions import (
     AtaraxAIError,
-    ValidationError,
+    # ValidationError,
 )
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
 from ataraxai.praxis.utils.vault_manager import (
