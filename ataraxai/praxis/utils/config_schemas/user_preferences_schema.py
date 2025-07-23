@@ -5,7 +5,6 @@ from typing import List, Dict
 class UserPreferences(BaseModel):
     config_version: float = 1.0
 
-    watched_directories: List[str] = Field(default_factory=list)
     index_on_startup: bool = True
     realtime_monitoring: bool = False
 
