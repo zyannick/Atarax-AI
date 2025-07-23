@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Any    
 from ataraxai.routes.status import Status
 
@@ -6,6 +6,12 @@ class ConfirmationPhaseRequest(BaseModel):
     confirmation_phrase: str = Field(
         ..., description="The confirmation phrase sent to the user for verification."
     )
+    
+    @field_validator("confirmation_phrase")
+    def validate_confirmation_phrase(cls, v: str) -> str:
+        if not v:
+            raise ValueError("Confirmation phrase cannot be empty.")
+        return v
 
 
 class ConfirmationPhaseResponse(BaseModel):
@@ -21,6 +27,12 @@ class VaultPasswordRequest(BaseModel):
         json_encoders: Dict[Any, Any] = {
             str: lambda v: "***" if "password" in str(v) else v
         }
+        
+    @field_validator("password")
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
+        return v
 
 
 class VaultPasswordResponse(BaseModel):

@@ -53,16 +53,17 @@ def test_check_manifest_validity(manager):
 
 def test_rebuild_index_success(manager):
     manager.perform_initial_scan = mock.Mock(return_value=2)
-    result = manager.rebuild_index(["/tmp"])
+    result = manager.rebuild_index_for_watches(["/tmp"])
     assert result is True
     manager.perform_initial_scan.assert_called_once()
 
 def test_rebuild_index_no_dirs(manager):
-    result = manager.rebuild_index([])
+    result = manager.rebuild_index_for_watches([])
     assert result is False
 
 def test_perform_initial_scan_no_dirs(manager):
-    assert manager.perform_initial_scan([]) == 0
+    with pytest.raises(ValueError):
+        manager.perform_initial_scan([])
 
 def test_perform_initial_scan_files(tmp_path, manager):
     d = tmp_path / "dir"

@@ -27,7 +27,7 @@ router_chat = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 
 @router_chat.post("/projects", response_model=ProjectResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Create Project")
+@handle_api_errors("Create Project", logger=logger)
 async def create_new_project(
     project_data: CreateProjectRequest,
     orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
@@ -48,25 +48,19 @@ async def create_new_project(
     Raises:
         HTTPException: If an error occurs during project creation, returns a 500 Internal Server Error.
     """
-    try:
-        project = orch.chat.create_project(
-            name=project_data.name, description=project_data.description
-        )
+    project = orch.chat.create_project(
+        name=project_data.name, description=project_data.description
+    )
 
-        return ProjectResponse(
-            project_id=project.id, name=project.name, description=project.description
-        )
-    except Exception as e:
-        logger.error(f"Failed to create project {project_data.name}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while creating the project: {project_data.name}",
-        )
+    return ProjectResponse(
+        project_id=project.id, name=project.name, description=project.description
+    )
+
 
 
 @router_chat.delete("/projects/{project_id}", response_model=StatusResponse)
 @katalepsis_monitor.instrument_api("DELETE")  # type: ignore
-@handle_api_errors("Delete Project")
+@handle_api_errors("Delete Project", logger=logger)
 async def delete_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
     Deletes a project by its unique project ID.
@@ -90,22 +84,16 @@ async def delete_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Dep
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
 
-    try:
-        orch.chat.delete_project(project_id)
-        return StatusResponse(
-            status=Status.SUCCESS, message=f"Project {project_id} deleted successfully."
-        )
-    except Exception as e:
-        logger.error(f"Failed to delete project {project_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while deleting the project: {project_id} - {str(e)}",
-        )
+    orch.chat.delete_project(project_id)
+    return StatusResponse(
+        status=Status.SUCCESS, message=f"Project {project_id} deleted successfully."
+    )
+
 
 
 @router_chat.get("/projects/{project_id}", response_model=ProjectResponse)
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
-@handle_api_errors("Get Project")
+@handle_api_errors("Get Project", logger=logger)
 async def get_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
     Retrieve a project by its unique identifier.
@@ -133,7 +121,7 @@ async def get_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depend
 
 @router_chat.get("/projects", response_model=List[ProjectResponse])
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
-@handle_api_errors("List Projects")
+@handle_api_errors("List Projects", logger=logger)
 async def list_projects(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
     Handles GET requests to "/v1/projects" and returns a list of projects.
@@ -164,7 +152,7 @@ async def list_projects(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orches
     "/projects/{project_id}/sessions", response_model=List[SessionResponse]
 )
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
-@handle_api_errors("List Sessions")
+@handle_api_errors("List Sessions", logger=logger)
 async def list_sessions(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
     Retrieve a list of chat sessions for a given project.
@@ -195,9 +183,9 @@ async def list_sessions(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depe
     ]
 
 
-@router_chat.post("/session", response_model=SessionResponse)
+@router_chat.post("/sessions", response_model=SessionResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Create Session")
+@handle_api_errors("Create Session", logger=logger)
 async def create_session(session_data: CreateSessionRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
     Creates a new chat session for a given project.
@@ -212,25 +200,19 @@ async def create_session(session_data: CreateSessionRequest, orch: AtaraxAIOrche
     Raises:
         HTTPException: If an error occurs during session creation, returns a 500 Internal Server Error with details.
     """
-    try:
-        session = orch.chat.create_session(
-            project_id=session_data.project_id, title=session_data.title
-        )
+    session = orch.chat.create_session(
+        project_id=session_data.project_id, title=session_data.title
+    )
 
-        return SessionResponse(
-            session_id=session.id, title=session.title, project_id=session.project_id
-        )
-    except Exception as e:
-        logger.error(f"Failed to create session for project {session_data.project_id}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Unable to create session. An error occurred: {str(e)}",
-        )
+    return SessionResponse(
+        session_id=session.id, title=session.title, project_id=session.project_id
+    )
+
 
 
 @router_chat.delete("/sessions/{session_id}", response_model=StatusResponse)
 @katalepsis_monitor.instrument_api("DELETE")  # type: ignore
-@handle_api_errors("Delete Session")
+@handle_api_errors("Delete Session", logger=logger)
 async def delete_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
     Deletes a chat session by its session ID.
@@ -260,7 +242,7 @@ async def delete_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Dep
 
 @router_chat.get("/sessions/{session_id}", response_model=SessionResponse)
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
-@handle_api_errors("Get Session")
+@handle_api_errors("Get Session", logger=logger)
 async def get_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
     Retrieve a chat session by its unique session ID.
@@ -288,7 +270,7 @@ async def get_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depend
 
 @router_chat.post("/sessions/{session_id}/messages", response_model=MessageResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Send Message")
+@handle_api_errors("Send Message", logger=logger)
 async def send_message(
     session_id: uuid.UUID, message_data: ChatMessageRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore
 ):
@@ -315,17 +297,41 @@ async def send_message(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
 
-    try:
-        response = orch.chat.add_message(
-            session_id=session_id, role="user", content=message_data.user_query
-        )
-        return MessageResponse(
-            assistant_response=response.content,
-            session_id=session_id,
-        )
-    except Exception as e:
-        logger.error(f"Failed to send message in session {session_id}")
+
+    response = orch.chat.add_message(
+        session_id=session_id, role="user", content=message_data.user_query
+    )
+    return MessageResponse(
+        assistant_response=response.content,
+        session_id=session_id,
+    )
+
+
+@router_chat.get("/sessions/{session_id}/messages", response_model=List[MessageResponse])
+@katalepsis_monitor.instrument_api("GET")  # type: ignore
+@handle_api_errors("Get Messages", logger=logger)
+async def get_messages(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
+    """
+    Retrieve all messages for a specific chat session.
+
+    Args:
+        session_id (uuid.UUID): The unique identifier of the session.
+        orch: The orchestrator dependency, injected by FastAPI.
+
+    Returns:
+        List[MessageResponse]: A list of messages in the session.
+
+    Raises:
+        HTTPException: If the session with the given ID is not found (404 Not Found).
+    """
+    session = orch.chat.get_session(session_id)
+    if not session:
+        logger.error(f"Session with ID {session_id} not found.")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while sending the message: {str(e)}",
+            status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
+
+    messages = orch.chat.get_message(session_id)
+    # return [MessageResponse(**msg) for msg in messages]
+    return [MessageResponse.model_validate(msg) for msg in messages]
+    

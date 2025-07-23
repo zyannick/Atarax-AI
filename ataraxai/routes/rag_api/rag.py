@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks, status
+from fastapi import APIRouter, BackgroundTasks
 from fastapi.params import Depends
 from ataraxai.routes.rag_api.rag_api_models import (
     DirectoriesToAddRequest,
@@ -25,7 +25,7 @@ router_rag = APIRouter(prefix="/api/v1/rag", tags=["RAG"])
 
 @router_rag.get("/check_manifest", response_model=CheckManifestResponse)
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
-@handle_api_errors("Check Manifest")
+@handle_api_errors("Check Manifest", logger=logger)
 async def check_manifest(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> CheckManifestResponse:  # type: ignore
     """
     Endpoint to check the validity of the RAG manifest.
@@ -42,28 +42,22 @@ async def check_manifest(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orche
     Raises:
         HTTPException: If an error occurs during the manifest check, returns a 500 Internal Server Error with details.
     """
-    try:
-        is_valid = orch.rag.check_manifest_validity()
-        if is_valid:
-            return CheckManifestResponse(
-                status=Status.SUCCESS, message="Manifest is valid."
-            )
-        else:
-            return CheckManifestResponse(
-                status=Status.ERROR,
-                message="Manifest is invalid or missing.",
-            )
-    except Exception as e:
-        logger.error("Failed to check manifest.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while checking the manifest: {str(e)}",
+    is_valid = orch.rag.check_manifest_validity()
+    if is_valid:
+        return CheckManifestResponse(
+            status=Status.SUCCESS, message="Manifest is valid."
         )
+    else:
+        return CheckManifestResponse(
+            status=Status.ERROR,
+            message="Manifest is invalid or missing.",
+        )
+
 
 
 @router_rag.post("/rebuild_index", response_model=RebuildIndexResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Rebuild Index")
+@handle_api_errors("Rebuild Index", logger=logger)
 async def rebuild_index(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> RebuildIndexResponse:  # type: ignore
     """
     Endpoint to rebuild the RAG (Retrieval-Augmented Generation) index.
@@ -81,22 +75,17 @@ async def rebuild_index(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orches
     Raises:
         HTTPException: If an error occurs during the index rebuild process.
     """
-    try:
-        orch.rag.rebuild_index()
-        return RebuildIndexResponse(
-            status=Status.SUCCESS, message="Index rebuilt successfully."
-        )
-    except Exception as e:
-        logger.error("Failed to rebuild index.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while rebuilding the index: {str(e)}",
-        )
+
+    orch.rag.rebuild_index()
+    return RebuildIndexResponse(
+        status=Status.SUCCESS, message="Index rebuilt successfully."
+    )
+
 
 
 @router_rag.post("/scan_and_index", response_model=ScanAndIndexResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Scan and Index")
+@handle_api_errors("Scan and Index", logger=logger)
 async def scan_and_index(background_tasks: BackgroundTasks, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> ScanAndIndexResponse:  # type: ignore
     """
     Starts a background task to perform an initial scan and indexing operation.
@@ -114,23 +103,16 @@ async def scan_and_index(background_tasks: BackgroundTasks, orch: AtaraxAIOrches
     Raises:
         HTTPException: If an error occurs while starting the scan and indexing process, returns a 500 Internal Server Error.
     """
-    try:
-        background_tasks.add_task(orch.rag.perform_initial_scan, [])
-        return ScanAndIndexResponse(
-            status=Status.SUCCESS,
-            message="Scan and indexing started in the background.",
-        )
-    except Exception as e:
-        logger.error("Failed to start scan and indexing.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while starting scan and indexing.",
-        )
+    background_tasks.add_task(orch.rag.perform_initial_scan, [])
+    return ScanAndIndexResponse(
+        status=Status.SUCCESS,
+        message="Scan and indexing started in the background.",
+    )
 
 
 @router_rag.post("/add_directories", response_model=DirectoriesAdditionResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Add Directories")
+@handle_api_errors("Add Directories", logger=logger)
 async def add_directory(
     background_tasks: BackgroundTasks, request: DirectoriesToAddRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore
 ) -> DirectoriesAdditionResponse:
@@ -152,23 +134,17 @@ async def add_directory(
     Raises:
         HTTPException: If an error occurs while adding directories, returns HTTP 500 with an error message.
     """
-    try:
-        background_tasks.add_task(orch.rag.add_watch_directories, request.directories)
-        return DirectoriesAdditionResponse(
-            status=Status.SUCCESS,
-            message=f"Directories '{', '.join(request.directories)}' added for indexing.",
-        )
-    except Exception as e:
-        logger.error("Failed to add directories.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while adding directories: {', '.join(request.directories)}",
-        )
+    background_tasks.add_task(orch.rag.add_watch_directories, request.directories)
+    return DirectoriesAdditionResponse(
+        status=Status.SUCCESS,
+        message=f"Directories '{', '.join(request.directories)}' added for indexing.",
+    )
+
 
 
 @router_rag.post("/remove_directories", response_model=DirectoriesRemovalResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Remove Directories")
+@handle_api_errors("Remove Directories", logger=logger)
 async def remove_directory(
     background_tasks: BackgroundTasks, request: DirectoriesToRemoveRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore
 ) -> DirectoriesRemovalResponse:
@@ -191,17 +167,9 @@ async def remove_directory(
     Raises:
         HTTPException: If an error occurs during the removal process, returns HTTP 500 with error details.
     """
-    try:
-        for directory in request.directories:
-            background_tasks.add_task(orch.rag.remove_watch_directories, [directory])
-        return DirectoriesRemovalResponse(
-            status=Status.SUCCESS,
-            message=f"Directories '{', '.join(request.directories)}' removed from indexing.",
-        )
-    except Exception as e:
-        logger.error("Failed to remove directories.")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An error occurred while removing directories: {', '.join(request.directories)}",
-        )
-
+    for directory in request.directories:
+        background_tasks.add_task(orch.rag.remove_watch_directories, [directory])
+    return DirectoriesRemovalResponse(
+        status=Status.SUCCESS,
+        message=f"Directories '{', '.join(request.directories)}' removed from indexing.",
+    )

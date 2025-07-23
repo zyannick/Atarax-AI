@@ -17,6 +17,7 @@ ataraxai.log
 ataraxai.praxis.chat
 ataraxai.praxis.rag
 ataraxai.praxis.vault
+ataraxai.praxis.api
 
 .coverage
 

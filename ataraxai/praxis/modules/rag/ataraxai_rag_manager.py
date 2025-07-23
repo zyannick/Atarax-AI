@@ -122,7 +122,7 @@ class AtaraxAIRAGManager:
             self.logger.error(f"Error checking manifest validity: {e}")
             return False
 
-    def rebuild_index_for_watches(self, directories_to_scan: List[str]) -> bool:
+    def rebuild_index_for_watches(self, directories_to_scan: Optional[List[str]]) -> bool:
         """
         Rebuilds the RAG (Retrieval-Augmented Generation) index from scratch using the specified directories.
 
@@ -192,9 +192,9 @@ class AtaraxAIRAGManager:
             - Debug for each file queued for processing.
             - Error if an exception occurs during scanning.
         """
-        if not directories_to_scan:
+        if not directories_to_scan or len(directories_to_scan) == 0:
             self.logger.info("No directories to scan.")
-            return 0
+            raise ValueError("No directories specified for scanning.")
 
         files_found = 0
         self.logger.info(

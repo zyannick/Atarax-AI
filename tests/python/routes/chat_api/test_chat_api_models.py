@@ -1,4 +1,5 @@
 import uuid
+from pydantic import ValidationError
 import pytest
 
 from ataraxai.routes.chat_api.chat_api_models import (
@@ -30,9 +31,7 @@ def test_create_session_request_fields():
     assert req.title == "Session Title"
 
 def test_chat_message_request_fields():
-    sid = uuid.uuid4()
-    req = ChatMessageRequest(session_id=sid, user_query="Hello AI")
-    assert req.session_id == sid
+    req = ChatMessageRequest(user_query="Hello AI")
     assert req.user_query == "Hello AI"
 
 def test_message_response_fields():
@@ -74,7 +73,7 @@ def test_delete_session_response_fields():
     assert resp.status == "deleted"
 
 def test_create_project_request_missing_fields():
-    with pytest.raises(TypeError):
+    with pytest.raises(ValidationError):
         CreateProjectRequest(name="OnlyName")
 
 def test_delete_project_request_invalid_uuid():

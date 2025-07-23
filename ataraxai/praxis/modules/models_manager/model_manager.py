@@ -560,7 +560,7 @@ class ModelManager:
                     task_data.get("created_at", current_time.isoformat())
                 )
                 age_hours = (current_time - created_at).total_seconds() / 3600
-
+                
                 if age_hours > max_age_hours and task_data["status"] in [
                     ModelDownloadStatus.COMPLETED,
                     ModelDownloadStatus.FAILED,

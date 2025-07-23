@@ -3,6 +3,8 @@ import shutil
 from pathlib import Path
 import pytest
 from ataraxai.praxis.modules.chat import chat_database_manager as cdm
+import uuid
+
 
 
 @pytest.fixture(scope="function")
@@ -136,4 +138,54 @@ def test_get_messages_for_session(temp_db):
     messages = temp_db.get_messages_for_session(session.id)
     assert len(messages) == 2
     
+
+def test_delete_project_also_deletes_sessions_and_messages(temp_db):
+    project = temp_db.create_project("Cascade", "desc")
+    session = temp_db.create_session(project.id, "Cascade Session")
+    msg = temp_db.add_message(session.id, "user", "Cascade message")
+    assert temp_db.delete_project(project.id) is True
+    with pytest.raises(cdm.NotFoundError):
+        temp_db.get_project(project.id)
+    with pytest.raises(cdm.NotFoundError):
+        temp_db.get_session(session.id)
+    with pytest.raises(cdm.NotFoundError):
+        temp_db.get_message(msg.id)
+
+def test_delete_session_also_deletes_messages(temp_db):
+    project = temp_db.create_project("Cascade2", "desc")
+    session = temp_db.create_session(project.id, "Cascade2 Session")
+    msg = temp_db.add_message(session.id, "user", "Cascade2 message")
+    assert temp_db.delete_session(session.id) is True
+    with pytest.raises(cdm.NotFoundError):
+        temp_db.get_session(session.id)
+    with pytest.raises(cdm.NotFoundError):
+        temp_db.get_message(msg.id)
+
+def test_update_message_invalid_role_raises(temp_db):
+    project = temp_db.create_project("Proj", "desc")
+    session = temp_db.create_session(project.id, "Sess")
+    msg = temp_db.add_message(session.id, "user", "Hi")
+    with pytest.raises(cdm.DatabaseError):
+        temp_db.update_message(msg.id, role="notarole")
+
+def test_update_message_empty_content_raises(temp_db):
+    project = temp_db.create_project("Proj", "desc")
+    session = temp_db.create_session(project.id, "Sess")
+    msg = temp_db.add_message(session.id, "user", "Hi")
+    with pytest.raises(cdm.DatabaseError):
+        temp_db.update_message(msg.id, content="")
+
+def test_get_project_not_found_raises(temp_db):
+    with pytest.raises(cdm.NotFoundError):
+        temp_db.get_project(uuid.uuid4())
+
+def test_get_session_not_found_raises(temp_db):
+    with pytest.raises(cdm.NotFoundError):
+        temp_db.get_session(uuid.uuid4())
+
+def test_get_message_not_found_raises(temp_db):
+    with pytest.raises(cdm.NotFoundError):
+        temp_db.get_message(uuid.uuid4())
+
+
 

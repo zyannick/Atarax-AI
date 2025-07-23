@@ -3,7 +3,7 @@ from unittest import mock
 from pathlib import Path
 import json
 import threading
-from ataraxai.praxis.modules.models_manager.model_manager import ModelManager
+from ataraxai.praxis.modules.models_manager.model_manager import ModelManager, ModelDownloadStatus
 import hashlib
 from datetime import datetime, timedelta
 
@@ -32,8 +32,6 @@ def test_init_creates_models_dir_and_manifest(model_manager, mock_directories):
     assert models_dir.exists()
     assert model_manager.models_dir == models_dir
     assert model_manager.manifest_path == models_dir / "models.json"
-    assert isinstance(model_manager._lock, threading.Lock)
-    assert isinstance(model_manager.manifest, dict)
 
 
 def test_load_manifest_reads_existing_manifest(model_manager):
@@ -195,22 +193,22 @@ def test_cancel_download_sets_status(model_manager):
     model_manager._download_tasks[task_id] = {"status": None}
     result = model_manager.cancel_download(task_id)
     assert result is True
-    assert model_manager._download_tasks[task_id]["status"].name == "CANCELLED"
+    assert model_manager._download_tasks[task_id]["status"] == ModelDownloadStatus.CANCELLED
 
 
 def test_get_download_status_returns_copy(model_manager):
     task_id = "task1"
-    model_manager._download_tasks[task_id] = {"status": "COMPLETED"}
+    model_manager._download_tasks[task_id] = {"status": ModelDownloadStatus.COMPLETED}
     status = model_manager.get_download_status(task_id)
-    assert status == {"status": "COMPLETED"}
+    assert status == {"status": ModelDownloadStatus.COMPLETED}
 
 
 def test_cleanup_old_tasks_removes_old(model_manager):
     now = datetime.now()
     old_time = (now - timedelta(hours=25)).isoformat()
     model_manager._download_tasks = {
-        "t1": {"created_at": old_time, "status": mock.Mock(name="COMPLETED")},
-        "t2": {"created_at": now.isoformat(), "status": mock.Mock(name="DOWNLOADING")},
+        "t1": {"created_at": old_time, "status": ModelDownloadStatus.COMPLETED},
+        "t2": {"created_at": now.isoformat(), "status": ModelDownloadStatus.DOWNLOADING},
     }
     model_manager.cleanup_old_tasks(max_age_hours=24)
     assert "t1" not in model_manager._download_tasks

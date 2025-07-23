@@ -221,40 +221,40 @@ class AtaraxAIOrchestrator:
             self._set_state(AppState.ERROR)
             return False
 
-    def reinitialize_vault(self, confirmation_phrase: str) -> None:
+    def reinitialize_vault(self, confirmation_phrase: str) -> bool:
         """
         Re-initializes the vault by performing a factory reset, deleting all user data and resetting the application state.
 
         Args:
-            confirmation_phrase (str): The phrase required to confirm the factory reset operation.
+            confirmation_phrase (str): The confirmation phrase required to authorize the factory reset.
 
-        Raises:
-            ValidationError: If the provided confirmation phrase does not match the expected phrase.
-            AtaraxAIError: If the vault is not in the UNLOCKED state.
-            Exception: If an error occurs while deleting the data directory.
+        Returns:
+            bool: True if the vault was successfully re-initialized, False otherwise.
 
-        Side Effects:
-            - Deletes the data directory and all its contents.
-            - Recreates necessary directories.
-            - Re-initializes the vault security manager.
-            - Sets the application state to FIRST_LAUNCH.
-            - Logs actions and errors throughout the process.
+        Behavior:
+            - Checks if the provided confirmation phrase matches the expected phrase.
+            - Ensures the vault is in the UNLOCKED state before proceeding.
+            - Deletes the data directory and all user data.
+            - Recreates necessary directories and re-initializes the security manager.
+            - Sets the application state to FIRST_LAUNCH upon successful completion.
+            - Logs all major actions and errors during the process.
         """
 
         if confirmation_phrase != self.EXPECTED_RESET_CONFIRMATION_PHRASE:
             self.logger.error(
                 "Vault re-initialization failed: incorrect confirmation phrase."
             )
-            raise ValidationError(
-                "Incorrect confirmation phrase. Factory reset has been aborted."
-            )
+            return False
+            # raise ValidationError(
+            #     "Incorrect confirmation phrase. Factory reset has been aborted."
+            # )
 
         with self._state_lock:
             if self._state != AppState.UNLOCKED:
                 self.logger.error(
                     "Vault must be unlocked to perform re-initialization."
                 )
-                raise AtaraxAIError("Cannot re-initialize a locked vault.")
+                return False
 
         self.logger.warning("PERFORMING FACTORY RESET: All user data will be deleted.")
 
@@ -269,7 +269,7 @@ class AtaraxAIOrchestrator:
                 f"Failed to delete data directory during re-initialization: {e}"
             )
             self._set_state(AppState.ERROR)
-            raise
+            return False
 
         self.directories.create_directories()
 
@@ -279,6 +279,7 @@ class AtaraxAIOrchestrator:
         self.logger.info(
             "Vault re-initialization complete. Application is now in FIRST_LAUNCH state."
         )
+        return True
 
     def _initialize_unlocked_services(self):
         """
@@ -431,6 +432,11 @@ class AtaraxAIOrchestratorFactory:
         chat_manager = ChatManager(
             db_manager=db_manager, logger=logger, vault_manager=vault_manager
         )
+        
+        model_manager = ModelManager(
+            directories=directories,
+            logger=logger
+        )
 
         services = Services(
             directories=directories,
@@ -441,6 +447,7 @@ class AtaraxAIOrchestratorFactory:
             config_manager=config_manager,
             app_config=app_config,
             vault_manager=vault_manager,
+            model_manager=model_manager
         )
 
         orchestrator = AtaraxAIOrchestrator(

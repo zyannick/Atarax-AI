@@ -1,5 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict, List
+
+from typing import Optional
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
@@ -250,7 +252,7 @@ class Services:
         4. If the manifest is valid, performs an initial scan of the watched directories.
         5. Starts monitoring the watched directories for file changes.
         """
-        watched_dirs = self.config_manager.get_watched_directories()
+        watched_dirs: Optional[List[str]] = self.config_manager.get_watched_directories()
         is_valid = self.rag_manager.manifest.is_valid(self.rag_manager.rag_store)
         if not is_valid:
             self.rag_manager.rebuild_index_for_watches(watched_dirs)
