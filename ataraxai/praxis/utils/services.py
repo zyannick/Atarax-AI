@@ -1,10 +1,9 @@
 from pathlib import Path
 from typing import Any, Dict, List
-
+import logging
 from typing import Optional
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.praxis.modules.prompt_engine.context_manager import ContextManager
@@ -23,12 +22,13 @@ from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
 
 
+
 class Services:
 
     def __init__(
         self,
         directories: AppDirectories,
-        logger: AtaraxAILogger,
+        logger: logging.Logger,
         db_manager: ChatDatabaseManager,
         chat_context: ChatContextManager,
         chat_manager: ChatManager,
@@ -42,7 +42,7 @@ class Services:
 
         Args:
             directories (AppDirectories): Handles application directory paths.
-            logger (ArataxAILogger): Logger instance for logging events and errors.
+            logger (logging.Logger): Logger instance for logging events and errors.
             db_manager (ChatDatabaseManager): Manages chat-related database operations.
             chat_context (ChatContextManager): Maintains chat context and state.
             chat_manager (ChatManager): Handles chat session management.
@@ -233,9 +233,12 @@ class Services:
         """
         self.logger.info("Shutting down AtaraxAI...")
         try:
-            self.rag_manager.stop_file_monitoring()
-            self.db_manager.close()
-            self.core_ai_manager.shutdown()
+            if hasattr(self, 'rag_manager'):
+                self.rag_manager.stop_file_monitoring()
+            if hasattr(self, 'db_manager'):
+                self.db_manager.close()
+            if hasattr(self, 'core_ai_manager'):
+                self.core_ai_manager.shutdown()
             self.logger.info("AtaraxAI shutdown completed successfully")
         except Exception as e:
             self.logger.error(f"Error during shutdown: {e}")

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, SecretStr
 from typing import Dict, Any    
 from ataraxai.routes.status import Status
 
@@ -22,15 +22,15 @@ class ConfirmationPhaseResponse(BaseModel):
 
 
 class VaultPasswordRequest(BaseModel):
-    password: str = Field(..., min_length=8, description="The user's master password.")
-    class Config:
-        json_encoders: Dict[Any, Any] = {
-            str: lambda v: "***" if "password" in str(v) else v
-        }
+    password: SecretStr = Field(..., min_length=8, description="The user's master password.")
+    # class Config:
+    #     json_encoders: Dict[Any, Any] = {
+    #         SecretStr: lambda v: "***" if "password" in str(v) else v
+    #     }
         
     @field_validator("password")
-    def validate_password(cls, v: str) -> str:
-        if len(v) < 8:
+    def validate_password(cls, v: SecretStr) -> SecretStr:
+        if v.__len__() < 8:
             raise ValueError("Password must be at least 8 characters long.")
         return v
 

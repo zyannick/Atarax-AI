@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Type
@@ -39,7 +40,7 @@ class AtaraxAIOrchestrator:
         self,
         app_config: AppConfig,
         settings: AtaraxAISettings,
-        logger: AtaraxAILogger,
+        logger: logging.Logger,
         directories: AppDirectories,
         vault_manager: VaultManager,
         setup_manager: SetupManager,
@@ -47,22 +48,7 @@ class AtaraxAIOrchestrator:
         core_ai_manager: CoreAIServiceManager,
         services: Services,
     ):
-        """
-        Initializes the orchestrator with the provided configuration, managers, and services.
-
-        Args:
-            app_config (AppConfig): The application configuration object.
-            settings (AtaraxAISettings): The settings for AtaraxAI.
-            logger (ArataxAILogger): Logger instance for logging events and errors.
-            directories (AppDirectories): Object managing application directories.
-            vault_manager (VaultManager): Manager for secure vault operations.
-            setup_manager (SetupManager): Manager for application setup procedures.
-            config_manager (ConfigurationManager): Manager for configuration operations.
-            core_ai_manager (CoreAIServiceManager): Manager for core AI services.
-            services (Services, optional): Additional services to be managed. Defaults to None.
-
-        Initializes internal state, sets up threading lock, determines initial state, and performs initial setup.
-        """
+        
         self.app_config = app_config
         self.logger = logger
         self.settings = settings
@@ -187,7 +173,7 @@ class AtaraxAIOrchestrator:
             self._state = AppState.LOCKED
             self.logger.info("Orchestrator state reset to LOCKED.")
 
-    def initialize_new_vault(self, master_password: str) -> bool:
+    def initialize_new_vault(self, master_password: SecureString) -> bool:
         """
         Initializes a new vault with the provided master password.
 
@@ -195,7 +181,7 @@ class AtaraxAIOrchestrator:
         If the application is not in the FIRST_LAUNCH state, initialization will not proceed.
 
         Args:
-            master_password (str): The master password to secure the new vault.
+            master_password (SecureString): The master password to secure the new vault.
 
         Returns:
             bool: True if the vault was successfully initialized and unlocked, False otherwise.
@@ -316,7 +302,6 @@ class AtaraxAIOrchestrator:
             - On successful unlock, updates the application state, logs the event, initializes unlocked services, and returns True.
             - On failure, logs a warning and returns False.
         """
-        password = SecureString(password) # type: ignore
         if self._state != AppState.LOCKED:
             self.logger.warning(
                 f"Unlock attempt in non-locked state: {self._state.name}"
@@ -411,7 +396,7 @@ class AtaraxAIOrchestratorFactory:
     @staticmethod
     def create_orchestrator() -> AtaraxAIOrchestrator:
         app_config = AppConfig()
-        logger = AtaraxAILogger()
+        logger : logging.Logger = AtaraxAILogger().get_logger()
         settings = AtaraxAISettings()
         directories = AppDirectories.create_default(settings)
 

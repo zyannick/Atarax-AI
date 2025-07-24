@@ -15,10 +15,11 @@ from ataraxai.routes.vault_api.vault import router_vault
 from ataraxai.routes.chat_api.chat import router_chat
 from ataraxai.routes.dependency_api import get_orchestrator
 
+os.environ.setdefault("ENVIRONMENT", "development")  # Default to development if not set
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 
-logger = AtaraxAILogger("ataraxai.praxis.api")
+logger = AtaraxAILogger("ataraxai.praxis.api").get_logger()
 
 
 @asynccontextmanager

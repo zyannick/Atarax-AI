@@ -19,7 +19,7 @@ from ataraxai.praxis.katalepsis import katalepsis_monitor
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 
 
-logger = AtaraxAILogger("ataraxai.praxis.chat")
+logger = AtaraxAILogger("ataraxai.praxis.chat").get_logger()
 
 
 router_chat = APIRouter(prefix="/api/v1/chat", tags=["Chat"])

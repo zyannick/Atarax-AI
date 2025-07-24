@@ -95,7 +95,7 @@ class VaultManager:
         except Exception as e:
             return UnlockResult(status=VaultUnlockStatus.UNINITIALIZED, error=e)
 
-    def create_and_initialize_vault(self, password: str):
+    def create_and_initialize_vault(self, password: SecureString):
         """
         Creates and initializes a secure vault using the provided password.
 
@@ -104,7 +104,7 @@ class VaultManager:
         value is written to a file at the specified check path.
 
         Args:
-            password (str): The password to derive the secure key for the vault.
+            password (SecureString): The password to derive the secure key for the vault.
 
         Raises:
             ValueError: If the provided password is empty.

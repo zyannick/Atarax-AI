@@ -17,7 +17,7 @@ import ulid
 from datetime import datetime
 from huggingface_hub import hf_hub_url
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
-
+import logging
 
 class ModelDownloadStatus(Enum):
     STARTING = auto()
@@ -28,13 +28,13 @@ class ModelDownloadStatus(Enum):
 
 
 class ModelManager:
-    def __init__(self, directories: AppDirectories, logger: AtaraxAILogger):
+    def __init__(self, directories: AppDirectories, logger: logging.Logger):
         """
         Initializes the ModelManager instance.
 
         Args:
             directories (AppDirectories): An object containing application directory paths.
-            logger (AtaraxAILogger): Logger instance for logging messages.
+            logger (logging.Logger): Logger instance for logging messages.
 
         Attributes:
             models_dir (Path): Directory path for storing models.
@@ -576,7 +576,7 @@ if __name__ == "__main__":
     settings = AtaraxAISettings()
     directories = AppDirectories.create_default(settings)
 
-    logger = AtaraxAILogger()
+    logger = AtaraxAILogger().get_logger()
     model_manager = ModelManager(directories, logger)
 
     models = model_manager.search_models("llama", limit=10)

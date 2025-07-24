@@ -1,13 +1,13 @@
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.app_config import AppConfig
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+import logging
 from ataraxai import __version__
 
 
 class SetupManager:
 
     def __init__(
-        self, directories: AppDirectories, config: AppConfig, logger: AtaraxAILogger
+        self, directories: AppDirectories, config: AppConfig, logger: logging.Logger
     ):
         """
         Initializes the orchestrator with application directories, configuration, and logger.

@@ -16,7 +16,7 @@ from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.katalepsis import katalepsis_monitor
 
-logger = AtaraxAILogger("ataraxai.praxis.vault")
+logger = AtaraxAILogger("ataraxai.praxis.vault").get_logger()
 
 
 router_vault = APIRouter(prefix="/api/v1/vault", tags=["Vault"])
@@ -25,7 +25,7 @@ router_vault = APIRouter(prefix="/api/v1/vault", tags=["Vault"])
 @router_vault.post("/initialize", response_model=VaultPasswordResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Initialize Vault", logger=logger)
-async def initialize_vault(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> VaultPasswordResponse:  # type: ignore
+async def initialize_vault(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Depends(get_orchestrator)) -> VaultPasswordResponse:  # type: ignore
     """
     Initializes a new vault with the provided password.
 
@@ -43,7 +43,9 @@ async def initialize_vault(request: VaultPasswordRequest, orch: AtaraxAIOrchestr
     Raises:
         HTTPException: If a critical error occurs during vault initialization.
     """
-    success = orch.initialize_new_vault(request.password)
+    logger.info("Initializing vault with provided password.")
+    password_bytes = request.password.get_secret_value().encode("utf-8")
+    success = orch.initialize_new_vault(SecureString(password_bytes))  # type: ignore
 
     if success:
         return VaultPasswordResponse(
@@ -115,7 +117,8 @@ async def unlock(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Dep
             status_code=status.HTTP_409_CONFLICT, detail="Vault is not locked."
         )
 
-    success = orch.unlock(SecureString(str(request.password).encode("utf-8")))  # type: ignore
+    password_bytes = request.password.get_secret_value().encode("utf-8")
+    success = orch.unlock(SecureString(password_bytes))
 
     if success:
         return VaultPasswordResponse(status=Status.SUCCESS, message="Vault unlocked.")

@@ -17,7 +17,7 @@ from ataraxai.routes.dependency_api import get_unlocked_orchestrator
 from ataraxai.praxis.katalepsis import katalepsis_monitor
 
 
-logger = AtaraxAILogger("ataraxai.praxis.rag")
+logger = AtaraxAILogger("ataraxai.praxis.rag").get_logger()
 
 
 router_rag = APIRouter(prefix="/api/v1/rag", tags=["RAG"])

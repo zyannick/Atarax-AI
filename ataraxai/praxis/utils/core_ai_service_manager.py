@@ -1,3 +1,4 @@
+import logging
 from ataraxai import hegemonikon_py  # type: ignore
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.config_schemas.llama_config_schema import LlamaModelParams
@@ -14,7 +15,7 @@ from pathlib import Path
 
 class CoreAIServiceManager:
 
-    def __init__(self, config_manager: ConfigurationManager, logger: AtaraxAILogger):
+    def __init__(self, config_manager: ConfigurationManager, logger: logging.Logger):
         """
         Initializes the core AI service manager with the provided configuration manager and logger.
 

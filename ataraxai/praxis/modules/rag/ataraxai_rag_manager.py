@@ -194,7 +194,7 @@ class AtaraxAIRAGManager:
         """
         if not directories_to_scan or len(directories_to_scan) == 0:
             self.logger.info("No directories to scan.")
-            raise ValueError("No directories specified for scanning.")
+            return 0
 
         files_found = 0
         self.logger.info(

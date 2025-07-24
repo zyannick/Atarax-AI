@@ -59,18 +59,12 @@ class AtaraxAILogger:
 
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
+        
+    def get_logger(self) -> logging.Logger:
+        """
+        Returns the configured logger instance.
 
-    def debug(self, message: str):
-        self.logger.debug(message)
-
-    def info(self, message: str):
-        self.logger.info(message)
-
-    def warning(self, message: str):
-        self.logger.warning(message)
-
-    def error(self, message: str):
-        self.logger.error(message)
-
-    def critical(self, message: str):
-        self.logger.critical(message)
+        Returns:
+            logging.Logger: The logger instance configured with file and console handlers.
+        """
+        return self.logger
