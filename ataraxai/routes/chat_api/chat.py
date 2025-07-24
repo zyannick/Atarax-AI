@@ -3,12 +3,12 @@ from fastapi.params import Depends
 from typing import List
 import uuid
 from ataraxai.routes.chat_api.chat_api_models import (
-    CreateProjectRequest,
-    ProjectResponse,
-    CreateSessionRequest,
-    SessionResponse,
-    ChatMessageRequest,
-    MessageResponse,
+    CreateProjectRequestAPI,
+    ProjectResponseAPI,
+    CreateSessionRequestAPI,
+    SessionResponseAPI,
+    ChatMessageRequestAPI,
+    MessageResponseAPI,
 )
 from ataraxai.routes.status import StatusResponse, Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
@@ -25,11 +25,11 @@ logger = AtaraxAILogger("ataraxai.praxis.chat").get_logger()
 router_chat = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 
 
-@router_chat.post("/projects", response_model=ProjectResponse)
+@router_chat.post("/projects", response_model=ProjectResponseAPI)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Create Project", logger=logger)
 async def create_new_project(
-    project_data: CreateProjectRequest,
+    project_data: CreateProjectRequestAPI,
     orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
 ):
     """
@@ -52,10 +52,9 @@ async def create_new_project(
         name=project_data.name, description=project_data.description
     )
 
-    return ProjectResponse(
+    return ProjectResponseAPI(
         project_id=project.id, name=project.name, description=project.description
     )
-
 
 
 @router_chat.delete("/projects/{project_id}", response_model=StatusResponse)
@@ -90,8 +89,7 @@ async def delete_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Dep
     )
 
 
-
-@router_chat.get("/projects/{project_id}", response_model=ProjectResponse)
+@router_chat.get("/projects/{project_id}", response_model=ProjectResponseAPI)
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("Get Project", logger=logger)
 async def get_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
@@ -114,12 +112,12 @@ async def get_project(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depend
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
-    return ProjectResponse(
+    return ProjectResponseAPI(
         project_id=project.id, name=project.name, description=project.description
     )
 
 
-@router_chat.get("/projects", response_model=List[ProjectResponse])
+@router_chat.get("/projects", response_model=List[ProjectResponseAPI])
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("List Projects", logger=logger)
 async def list_projects(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
@@ -141,7 +139,7 @@ async def list_projects(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orches
     """
     projects = orch.chat.list_projects()
     return [
-        ProjectResponse(
+        ProjectResponseAPI(
             project_id=project.id, name=project.name, description=project.description
         )
         for project in projects
@@ -149,7 +147,7 @@ async def list_projects(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orches
 
 
 @router_chat.get(
-    "/projects/{project_id}/sessions", response_model=List[SessionResponse]
+    "/projects/{project_id}/sessions", response_model=List[SessionResponseAPI]
 )
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("List Sessions", logger=logger)
@@ -176,17 +174,17 @@ async def list_sessions(project_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depe
     """
     sessions = orch.chat.list_sessions(project_id)
     return [
-        SessionResponse(
+        SessionResponseAPI(
             session_id=session.id, title=session.title, project_id=session.project_id
         )
         for session in sessions
     ]
 
 
-@router_chat.post("/sessions", response_model=SessionResponse)
+@router_chat.post("/sessions", response_model=SessionResponseAPI)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Create Session", logger=logger)
-async def create_session(session_data: CreateSessionRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
+async def create_session(session_data: CreateSessionRequestAPI, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
     """
     Creates a new chat session for a given project.
 
@@ -204,10 +202,9 @@ async def create_session(session_data: CreateSessionRequest, orch: AtaraxAIOrche
         project_id=session_data.project_id, title=session_data.title
     )
 
-    return SessionResponse(
+    return SessionResponseAPI(
         session_id=session.id, title=session.title, project_id=session.project_id
     )
-
 
 
 @router_chat.delete("/sessions/{session_id}", response_model=StatusResponse)
@@ -240,7 +237,7 @@ async def delete_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Dep
     )
 
 
-@router_chat.get("/sessions/{session_id}", response_model=SessionResponse)
+@router_chat.get("/sessions/{session_id}", response_model=SessionResponseAPI)
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("Get Session", logger=logger)
 async def get_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
@@ -263,16 +260,16 @@ async def get_session(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depend
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
-    return SessionResponse(
+    return SessionResponseAPI(
         session_id=session.id, title=session.title, project_id=session.project_id
     )
 
 
-@router_chat.post("/sessions/{session_id}/messages", response_model=MessageResponse)
+@router_chat.post("/sessions/{session_id}/messages", response_model=MessageResponseAPI)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Send Message", logger=logger)
 async def send_message(
-    session_id: uuid.UUID, message_data: ChatMessageRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore
+    session_id: uuid.UUID, message_data: ChatMessageRequestAPI, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore
 ):
     """
     Handles sending a user message to a chat session and returns the assistant's response.
@@ -297,17 +294,21 @@ async def send_message(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
 
-
     response = orch.chat.add_message(
         session_id=session_id, role="user", content=message_data.user_query
     )
-    return MessageResponse(
-        assistant_response=response.content,
-        session_id=session_id,
+    return MessageResponseAPI(
+        id=response.id,
+        session_id=response.session_id,
+        role=response.role,
+        content=response.content,
+        date_time=response.date_time,
     )
 
 
-@router_chat.get("/sessions/{session_id}/messages", response_model=List[MessageResponse])
+@router_chat.get(
+    "/sessions/{session_id}/messages", response_model=List[MessageResponseAPI]
+)
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("Get Messages", logger=logger)
 async def get_messages(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)):  # type: ignore
@@ -331,7 +332,6 @@ async def get_messages(session_id: uuid.UUID, orch: AtaraxAIOrchestrator = Depen
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
 
-    messages = orch.chat.get_message(session_id)
+    messages = orch.chat.get_messages_for_session(session_id=session_id)
     # return [MessageResponse(**msg) for msg in messages]
-    return [MessageResponse.model_validate(msg) for msg in messages]
-    
+    return [MessageResponseAPI.model_validate(msg) for msg in messages]

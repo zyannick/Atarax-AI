@@ -66,7 +66,7 @@ class ChatContextManager:
         """
         messages: List[Message] = self.db_manager.get_messages_for_session(session_id)
         dict_messages: List[Dict[str, Any]] = [
-            {"role": msg.role, "content": msg.content, "timestamp": msg.timestamp}
+            {"role": msg.role, "content": msg.content, "timestamp": msg.date_time}
             for msg in messages
         ]
         return dict_messages
@@ -97,7 +97,7 @@ class ChatContextManager:
             message_dict: Dict[str, Any] = {
                 "role": msg.role,
                 "content": msg.content,
-                "timestamp": msg.timestamp,
+                "timestamp": msg.date_time,
             }
 
             if self.tokenizer:
