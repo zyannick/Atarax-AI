@@ -259,7 +259,7 @@ class ChatManager:
                 session_id=uuid.UUID(str(db_message.session.id)),
                 role=str(db_message.role),
                 content=content,
-                timestamp=db_message.timestamp.to_timestamp(),
+                timestamp=db_message.timestamp.to_timestamp()  # Assuming timestamp is a datetime object,
             )
 
             return response
