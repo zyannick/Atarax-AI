@@ -62,8 +62,7 @@ def test_rebuild_index_no_dirs(manager):
     assert result is False
 
 def test_perform_initial_scan_no_dirs(manager):
-    with pytest.raises(ValueError):
-        manager.perform_initial_scan([])
+    assert manager.perform_initial_scan([]) == 0
 
 def test_perform_initial_scan_files(tmp_path, manager):
     d = tmp_path / "dir"

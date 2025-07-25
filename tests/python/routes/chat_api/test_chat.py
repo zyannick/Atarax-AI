@@ -194,13 +194,21 @@ def test_send_message_success(client):
     mock_session.id = session_id
     client.mock_orchestrator.chat.get_session.return_value = mock_session
     mock_response = mock.Mock()
-    mock_response.content = "Assistant reply"
+    mock_response.session_id = session_id
+    mock_response.role = "user"
+    mock_response.date_time = "2024-06-01T12:00:00"
+    mock_response.id = uuid.uuid4()
+    mock_response.content = "Random content"
     client.mock_orchestrator.chat.add_message.return_value = mock_response
 
     payload = {"user_query": "Hello"}
     response = client.post(f"/api/v1/chat/sessions/{session_id}/messages", json=payload)
-    assert response.status_code == status.HTTP_200_OK
-    assert response.json()["assistant_response"] == "Assistant reply"
+    assert response.status_code == status.HTTP_200_OK, f"API returned an error: {response.text}"
+    data = response.json()
+    assert data["session_id"] == str(session_id)
+    assert data["role"] == "user"
+    assert data["content"] == "Random content"
+    assert data["date_time"] == "2024-06-01T12:00:00"
 
 
 def test_send_message_session_not_found(client):

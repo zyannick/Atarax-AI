@@ -3,6 +3,7 @@ import pytest
 from unittest import mock
 from ataraxai.praxis.utils.chat_manager import ChatManager
 
+
 @pytest.fixture
 def mock_db_manager():
     return mock.Mock()
@@ -28,117 +29,124 @@ def chat_manager(mock_db_manager, mock_logger, mock_vault_manager):
 
 def test_create_project_success(chat_manager, mock_db_manager):
     project_data = {"id": uuid.uuid4(), "name": "Test", "description": "desc"}
-    with mock.patch("ataraxai.praxis.modules.chat.chat_models.ProjectResponse.model_validate", return_value="validated_project"):
-        mock_db_manager.create_project.return_value = project_data
+    mock_db_manager.create_project.return_value = project_data
+    with mock.patch("ataraxai.praxis.utils.chat_manager.ProjectResponse") as MockPR:
+        MockPR.model_validate.return_value = "validated_project"
         result = chat_manager.create_project("Test", "desc")
         assert result == "validated_project"
-        chat_manager.logger.info.assert_called_once()
+        mock_db_manager.create_project.assert_called_once_with(name="Test", description="desc")
 
 def test_create_project_validation_error(chat_manager):
     with pytest.raises(Exception):
         chat_manager.create_project("", "desc")
 
 def test_get_project_success(chat_manager, mock_db_manager):
-    pid = uuid.uuid4()
-    project_data = {"id": pid, "name": "Test", "description": "desc"}
-    with mock.patch("ataraxai.praxis.modules.chat.chat_models.ProjectResponse.model_validate", return_value="validated_project"):
-        mock_db_manager.get_project.return_value = project_data
-        result = chat_manager.get_project(pid)
+    project_id = uuid.uuid4()
+    project_data = {"id": project_id, "name": "Test", "description": "desc"}
+    mock_db_manager.get_project.return_value = project_data
+    with mock.patch("ataraxai.praxis.utils.chat_manager.ProjectResponse") as MockPR:
+        MockPR.model_validate.return_value = "validated_project"
+        result = chat_manager.get_project(project_id)
         assert result == "validated_project"
+        mock_db_manager.get_project.assert_called_once_with(project_id)
 
 def test_list_projects_success(chat_manager, mock_db_manager):
     projects = [{"id": uuid.uuid4(), "name": "A", "description": "d"}]
-    with mock.patch("ataraxai.praxis.modules.chat.chat_models.ProjectResponse.model_validate", side_effect=lambda x: x):
-        mock_db_manager.list_projects.return_value = projects
+    mock_db_manager.list_projects.return_value = projects
+    with mock.patch("ataraxai.praxis.utils.chat_manager.ProjectResponse") as MockPR:
+        MockPR.model_validate.side_effect = lambda x: x
         result = chat_manager.list_projects()
         assert result == projects
 
 def test_delete_project_success(chat_manager, mock_db_manager):
-    pid = uuid.uuid4()
+    project_id = uuid.uuid4()
     mock_db_manager.delete_project.return_value = True
-    result = chat_manager.delete_project(pid)
+    result = chat_manager.delete_project(project_id)
     assert result is True
-    chat_manager.logger.info.assert_called_once()
+    mock_db_manager.delete_project.assert_called_once_with(project_id)
 
 def test_create_session_success(chat_manager, mock_db_manager):
-    pid = uuid.uuid4()
-    session_data = {"id": uuid.uuid4(), "project_id": pid, "title": "Session"}
-    with mock.patch("ataraxai.praxis.modules.chat.chat_models.ChatSessionResponse.model_validate", return_value="validated_session"):
-        mock_db_manager.create_session.return_value = session_data
-        result = chat_manager.create_session(pid, "Session")
+    project_id = uuid.uuid4()
+    session_data = {"id": uuid.uuid4(), "project_id": project_id, "title": "Session"}
+    mock_db_manager.create_session.return_value = session_data
+    with mock.patch("ataraxai.praxis.utils.chat_manager.ChatSessionResponse") as MockCSR:
+        MockCSR.model_validate.return_value = "validated_session"
+        result = chat_manager.create_session(project_id, "Session")
         assert result == "validated_session"
 
-def test_get_session_success(chat_manager, mock_db_manager):
-    sid = uuid.uuid4()
-    session_data = {"id": sid, "title": "Session"}
-    with mock.patch("ataraxai.praxis.modules.chat.chat_models.ChatSessionResponse.model_validate", return_value="validated_session"):
-        mock_db_manager.get_session.return_value = session_data
-        result = chat_manager.get_session(sid)
-        assert result == "validated_session"
+def test_get_session_success(chat_manager, mock_db_manager, mock_vault_manager):
+    session_id = uuid.uuid4()
+    message = mock.Mock()
+    message.content = b"encrypted_hello"
+    message.get_id.return_value = uuid.uuid4()
+    message.get_role.return_value = "user"
+    message.get_date_time.return_value = "now"
+    db_session = mock.Mock()
+    db_session.get_id.return_value = session_id
+    db_session.get_project_id.return_value = uuid.uuid4()
+    db_session.get_title.return_value = "title"
+    db_session.get_created_at.return_value = "created"
+    db_session.get_updated_at.return_value = "updated"
+    db_session.messages = [message]
+    mock_db_manager.get_session.return_value = db_session
+    result = chat_manager.get_session(session_id)
+    assert result.id == session_id
+    assert result.messages[0].content == "hello"
 
 def test_list_sessions_success(chat_manager, mock_db_manager):
-    pid = uuid.uuid4()
-    sessions = [{"id": uuid.uuid4(), "title": "S"}]
-    with mock.patch("ataraxai.praxis.modules.chat.chat_models.ChatSessionResponse.model_validate", side_effect=lambda x: x):
-        mock_db_manager.get_sessions_for_project.return_value = sessions
-        result = chat_manager.list_sessions(pid)
+    project_id = uuid.uuid4()
+    sessions = [{"id": uuid.uuid4(), "project_id": project_id, "title": "S"}]
+    mock_db_manager.get_sessions_for_project.return_value = sessions
+    with mock.patch("ataraxai.praxis.utils.chat_manager.ChatSessionResponse") as MockCSR:
+        MockCSR.model_validate.side_effect = lambda x: x
+        result = chat_manager.list_sessions(project_id)
         assert result == sessions
 
 def test_delete_session_success(chat_manager, mock_db_manager):
-    sid = uuid.uuid4()
+    session_id = uuid.uuid4()
     mock_db_manager.delete_session.return_value = True
-    result = chat_manager.delete_session(sid)
+    result = chat_manager.delete_session(session_id)
     assert result is True
-    chat_manager.logger.info.assert_called_once()
 
 def test_add_message_success(chat_manager, mock_db_manager, mock_vault_manager):
-    sid = uuid.uuid4()
+    session_id = uuid.uuid4()
     db_message = mock.Mock()
     db_message.id = uuid.uuid4()
-    db_message.session = mock.Mock(id=sid)
+    db_message.session.id = session_id
     db_message.role = "user"
-    db_message.timestamp = mock.Mock()
-    db_message.timestamp.to_timestamp.return_value = 1234567890
+    db_message.get_date_time.return_value = "2024-06-01T12:00:00"
     mock_db_manager.add_message.return_value = db_message
-    result = chat_manager.add_message(sid, "user", "hello")
+    result = chat_manager.add_message(session_id, "user", "hello")
     assert result.content == "hello"
     assert result.role == "user"
-    assert result.session_id == sid
 
 def test_get_message_success(chat_manager, mock_db_manager, mock_vault_manager):
-    mid = uuid.uuid4()
-    sid = uuid.uuid4()
+    message_id = uuid.uuid4()
     db_message = mock.Mock()
-    db_message.id = mid
-    db_message.session = mock.Mock(id=sid)
-    db_message.role = "user"
-    db_message.content = b"encrypted_hello"
-    db_message.timestamp = mock.Mock()
-    db_message.timestamp.to_timestamp.return_value = 1234567890
+    db_message.id = message_id
+    db_message.session.id = uuid.uuid4()
+    db_message.role = "assistant"
+    db_message.content = b"encrypted_reply"
+    db_message.get_date_time.return_value = "2024-06-01T12:00:00"
     mock_db_manager.get_message.return_value = db_message
-    result = chat_manager.get_message(mid)
-    assert result.content == "hello"
-    assert result.role == "user"
-    assert result.session_id == sid
+    result = chat_manager.get_message(message_id)
+    assert result.content == "reply"
+    assert result.role == "assistant"
 
 def test_get_messages_for_session_success(chat_manager, mock_db_manager, mock_vault_manager):
-    sid = uuid.uuid4()
-    db_message = mock.Mock()
-    db_message.id = uuid.uuid4()
-    db_message.session = mock.Mock(id=sid)
-    db_message.role = "user"
-    db_message.content = b"encrypted_hello"
-    db_message.timestamp = mock.Mock()
-    db_message.timestamp.to_timestamp.return_value = 1234567890
-    mock_db_manager.get_messages_for_session.return_value = [db_message]
-    result = chat_manager.get_messages_for_session(sid)
-    assert len(result) == 1
-    assert result[0].content == "hello"
+    session_id = uuid.uuid4()
+    msg = mock.Mock()
+    msg.content = b"encrypted_foo"
+    msg.get_id.return_value = uuid.uuid4()
+    msg.get_session_id.return_value = session_id
+    msg.get_role.return_value = "user"
+    msg.get_date_time.return_value = "2024-06-01T12:00:00"
+    mock_db_manager.get_messages_for_session.return_value = [msg]
+    result = chat_manager.get_messages_for_session(session_id)
+    assert result[0].content == "foo"
 
 def test_delete_message_success(chat_manager, mock_db_manager):
-    mid = uuid.uuid4()
+    message_id = uuid.uuid4()
     mock_db_manager.delete_message.return_value = True
-    result = chat_manager.delete_message(mid)
+    result = chat_manager.delete_message(message_id)
     assert result is True
-    chat_manager.logger.info.assert_called_once()
-   

@@ -215,18 +215,18 @@ class TestVaultEdgeCases:
     def test_initialize_vault_invalid_payload(self, client):
         payload = {} 
         response = client.post("/api/v1/vault/initialize", json=payload)
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY, f"Expected 422, got {response.status_code} with message: {response.text}"
 
     def test_reinitialize_vault_invalid_payload(self, client):
         payload = {}  
         response = client.post("/api/v1/vault/reinitialize", json=payload)
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY, f"Expected 422, got {response.status_code} with message: {response.text}"
 
     def test_unlock_invalid_payload(self, client):
         payload = {} 
         response = client.post("/api/v1/vault/unlock", json=payload)
 
-        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY, f"Expected 422, got {response.status_code} with message: {response.text}"
 
     def test_initialize_vault_exception(self, client):
         mock_orch = MagicMock()

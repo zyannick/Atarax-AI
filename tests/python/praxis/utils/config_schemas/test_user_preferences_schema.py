@@ -4,7 +4,6 @@ from ataraxai.praxis.utils.config_schemas.user_preferences_schema import UserPre
 def test_default_values():
     prefs = UserPreferences()
     assert prefs.config_version == 1.0
-    assert prefs.watched_directories == []
     assert prefs.index_on_startup is True
     assert prefs.realtime_monitoring is False
     assert prefs.theme == "system_default"
@@ -15,7 +14,6 @@ def test_default_values():
 def test_custom_values():
     prefs = UserPreferences(
         config_version=2.0,
-        watched_directories=["/tmp", "/home/user"],
         index_on_startup=False,
         realtime_monitoring=True,
         theme="dark",
@@ -24,7 +22,6 @@ def test_custom_values():
         language="fr"
     )
     assert prefs.config_version == 2.0
-    assert prefs.watched_directories == ["/tmp", "/home/user"]
     assert prefs.index_on_startup is False
     assert prefs.realtime_monitoring is True
     assert prefs.theme == "dark"

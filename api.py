@@ -13,6 +13,7 @@ from ataraxai.praxis.katalepsis import Katalepsis
 from ataraxai.routes.rag_api.rag import router_rag
 from ataraxai.routes.vault_api.vault import router_vault
 from ataraxai.routes.chat_api.chat import router_chat
+from ataraxai.routes.models_manager_api.models_manager import router_models_manager
 from ataraxai.routes.dependency_api import get_orchestrator
 
 os.environ.setdefault("ENVIRONMENT", "development")  # Default to development if not set
@@ -77,3 +78,4 @@ async def get_health(orch: AtaraxAIOrchestrator = Depends(get_orchestrator)) -> 
 app.include_router(router_vault)
 app.include_router(router_chat)
 app.include_router(router_rag)
+app.include_router(router_models_manager)

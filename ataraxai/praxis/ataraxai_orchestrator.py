@@ -6,7 +6,7 @@ import shutil
 from ataraxai import __version__  # type: ignore
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
 
-from ataraxai.praxis.modules.models_manager.model_manager import ModelManager
+from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
@@ -367,14 +367,18 @@ class AtaraxAIOrchestrator:
                 )
             return self.services.rag_manager
         
+
+        
     @property
-    def model_manager(self) -> ModelManager:
+    def models_manager(self) -> ModelsManager:
         with self._state_lock:
             if self.state != AppState.UNLOCKED or self.services is None:
                 raise AtaraxAIError(
-                    "Application is locked. Model management operations are not available."
+                    "Application is locked. Models management operations are not available."
                 )
-            return self.services.model_manager
+            return self.services.models_manager
+
+
 
     def shutdown(self) -> None:
         self.services.shutdown()
@@ -413,12 +417,12 @@ class AtaraxAIOrchestratorFactory:
             db_path=directories.data / app_config.database_filename
         )
 
-        chat_context = ChatContextManager(db_manager=db_manager)
+        chat_context = ChatContextManager(db_manager=db_manager, vault_manager=vault_manager)
         chat_manager = ChatManager(
             db_manager=db_manager, logger=logger, vault_manager=vault_manager
         )
         
-        model_manager = ModelManager(
+        model_manager = ModelsManager(
             directories=directories,
             logger=logger
         )
@@ -432,7 +436,7 @@ class AtaraxAIOrchestratorFactory:
             config_manager=config_manager,
             app_config=app_config,
             vault_manager=vault_manager,
-            model_manager=model_manager
+            models_manager=model_manager
         )
 
         orchestrator = AtaraxAIOrchestrator(

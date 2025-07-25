@@ -3,7 +3,7 @@ from unittest import mock
 from pathlib import Path
 import json
 import threading
-from ataraxai.praxis.modules.models_manager.model_manager import ModelManager, ModelDownloadStatus
+from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager, ModelDownloadStatus
 import hashlib
 from datetime import datetime, timedelta
 
@@ -24,7 +24,7 @@ def mock_logger():
 @pytest.fixture
 def model_manager(mock_directories, mock_logger):
     with mock.patch("ataraxai.praxis.modules.models_manager.model_manager.HfApi"):
-        return ModelManager(mock_directories, mock_logger)
+        return ModelsManager(mock_directories, mock_logger)
 
 
 def test_init_creates_models_dir_and_manifest(model_manager, mock_directories):

@@ -6,10 +6,11 @@ from ataraxai.praxis.modules.chat.chat_database_manager import (
     ChatDatabaseManager,
     Message,
 )
+from ataraxai.praxis.utils.vault_manager import VaultManager
 
 
 class ChatContextManager:
-    def __init__(self, db_manager: ChatDatabaseManager, model_name: str = "gpt2"):
+    def __init__(self, db_manager: ChatDatabaseManager, vault_manager: VaultManager, model_name: str = "gpt2"):
         """
         Initializes the ChatContextManager with a database manager and a specified model tokenizer.
 
@@ -26,6 +27,7 @@ class ChatContextManager:
             Prints a warning if the tokenizer cannot be loaded and sets tokenizer to None.
         """
         self.db_manager = db_manager
+        self.vault_manager = vault_manager
 
         try:
             self.tokenizer: Optional[AutoTokenizer] = AutoTokenizer.from_pretrained(model_name)  # type: ignore
@@ -49,7 +51,8 @@ class ChatContextManager:
         Returns:
             None
         """
-        self.db_manager.add_message(session_id, role, content)
+        encrypted_content = self.vault_manager.encrypt(content.encode("utf-8"))
+        self.db_manager.add_message(session_id, role, encrypted_content)
 
     def get_messages_for_session(self, session_id: uuid.UUID) -> List[Dict[str, Any]]:
         """
@@ -62,11 +65,11 @@ class ChatContextManager:
             List[Dict[str, Any]]: A list of dictionaries, each representing a message with keys:
                 - 'role': The role of the message sender (e.g., 'user', 'assistant').
                 - 'content': The content of the message.
-                - 'timestamp': The time the message was sent.
+                - 'date_time': The time the message was sent.
         """
         messages: List[Message] = self.db_manager.get_messages_for_session(session_id)
         dict_messages: List[Dict[str, Any]] = [
-            {"role": msg.role, "content": msg.content, "timestamp": msg.date_time}
+            {"role": msg.role, "content": self.vault_manager.decrypt(bytes(msg.content)).decode("utf-8"), "date_time": msg.date_time}
             for msg in messages
         ]
         return dict_messages
@@ -81,7 +84,7 @@ class ChatContextManager:
             session_id (uuid.UUID): The unique identifier for the chat session.
 
         Returns:
-            List[Dict[str, Any]]: A list of message dictionaries, each containing the role, content, and timestamp,
+            List[Dict[str, Any]]: A list of message dictionaries, each containing the role, content, and date_time,
             ordered chronologically and truncated to fit within the maximum token limit.
 
         Notes:
@@ -94,16 +97,19 @@ class ChatContextManager:
         current_token_count = 0
 
         for msg in reversed(messages):
+            decrypted_content = self.vault_manager.decrypt(bytes(msg.content)).decode("utf-8")
+            if not decrypted_content:
+                continue
             message_dict: Dict[str, Any] = {
                 "role": msg.role,
-                "content": msg.content,
-                "timestamp": msg.date_time,
+                "content": decrypted_content,
+                "date_time": msg.date_time,
             }
 
             if self.tokenizer:
-                message_token_count = len(self.tokenizer.encode(str(msg.content)))  # type: ignore
+                message_token_count = len(self.tokenizer.encode(str(decrypted_content)))  # type: ignore
             else:
-                message_token_count = len(str(msg.content).split())
+                message_token_count = len(str(decrypted_content).split())
 
             if current_token_count + message_token_count > self.max_tokens:
                 print(

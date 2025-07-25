@@ -18,6 +18,9 @@ from datetime import datetime
 from huggingface_hub import hf_hub_url
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
 import logging
+import re
+from pydantic import BaseModel, Field, field_validator
+
 
 class ModelDownloadStatus(Enum):
     STARTING = auto()
@@ -27,7 +30,48 @@ class ModelDownloadStatus(Enum):
     CANCELLED = auto()
 
 
-class ModelManager:
+class ModelInfo(BaseModel):
+    organization: str
+    repo_id: str
+    filename: str
+    local_path: str
+    downloaded_at: str
+    file_size: int
+    quantization_bit: str = "default"
+    quantization_scheme: str = "default"
+    quantization_modifier: str = "default"
+    created_at: datetime
+    downloads: int
+    likes: int
+
+    class Config:
+        from_attributes = True
+
+
+class ModelDownloadInfo(BaseModel):
+    task_id: str
+    status: ModelDownloadStatus
+    percentage: float = 0.0
+    repo_id: str
+    filename: str
+    message: str = "Download task started."
+    created_at: datetime = Field(default_factory=datetime.now)
+    error: Optional[str] = None
+    file_size: Optional[int] = None
+    downloaded_bytes: int = 0
+    model_info: Optional[ModelInfo] = None
+    model_path : Optional[str] = None
+    completed_at: Optional[datetime] = None
+    failed_at: Optional[datetime] = None
+    cancelled_at : Optional[datetime] = None
+
+    @field_validator("status")
+    def validate_status(cls, v):
+        if not isinstance(v, ModelDownloadStatus):
+            raise ValueError("Invalid status type")
+        return v
+
+class ModelsManager:
     def __init__(self, directories: AppDirectories, logger: logging.Logger):
         """
         Initializes the ModelManager instance.
@@ -53,11 +97,17 @@ class ModelManager:
         self.models_dir.mkdir(exist_ok=True)
         self.manifest_path = self.models_dir / "models.json"
         self.hf_api = HfApi()
-        self._download_tasks: Dict[str, Any] = {}
+        self._download_tasks: Dict[str, ModelDownloadInfo] = {}
         self._lock = threading.Lock()
         self._load_manifest()
 
-    def _download_with_progress(self, repo_id : str, filename : str, local_dir : str, callback : Optional[Callable[[int, int], None]] = None):
+    def _download_with_progress(
+        self,
+        repo_id: str,
+        filename: str,
+        local_dir: str,
+        callback: Optional[Callable[[int, int], None]] = None,
+    ):
         """
         Downloads a file from the Hugging Face Hub with a progress bar and optional callback.
 
@@ -170,7 +220,6 @@ class ModelManager:
         try:
             model_info = self.hf_api.model_info(repo_id=repo_id, files_metadata=True)
             for sibling in model_info.siblings or []:
-                print(f"Checking sibling: {sibling.rfilename}")
                 if sibling.rfilename == filename:
                     if sibling.lfs:
                         return sibling.lfs.get("sha256")
@@ -184,7 +233,7 @@ class ModelManager:
 
     def _verify_file_integrity(
         self, file_path: Path, repo_id: str, filename: str
-    ) -> bool:        
+    ) -> bool:
         """
         Verifies the integrity of a local file by comparing its SHA256 hash with the expected hash.
 
@@ -222,7 +271,7 @@ class ModelManager:
 
     def search_models(
         self, query: str, limit: int = 50, filter_tags: Optional[List[str]] = None
-    ) -> List[Dict]:
+    ) -> List[ModelInfo]:
         """
         Searches for models matching the given query and optional filter tags, returning a list of model dictionaries.
 
@@ -266,7 +315,33 @@ class ModelManager:
                     )
                     model_dict["gguf_files"] = []
 
-                result.append(model_dict)
+                for gguf_file in model_dict["gguf_files"]:
+                    organization = model.id.split("/")[0]
+                    match = re.search(r"Q(\d+)_([A-Z])(?:_([A-Z]))?", gguf_file)
+                    if match:
+                        bits = str(match.group(1))
+                        scheme = match.group(2)
+                        modifier = match.group(3) or None
+                    model_info = ModelInfo(
+                        organization=organization,
+                        repo_id=model.id,
+                        filename=gguf_file,
+                        local_path=str(self.models_dir / model.id / gguf_file),
+                        downloaded_at=datetime.now().isoformat(),
+                        file_size=0,  # Will be set after download
+                        created_at=model_dict.get(
+                            "created_at", datetime.now().isoformat()
+                        ),
+                        downloads=model_dict.get("downloads", 0),
+                        likes=model_dict.get("likes", 0),
+                        quantization_bit=f"Q{bits}" if bits else "default",
+                        quantization_scheme=scheme if scheme else "default",
+                        quantization_modifier=modifier if modifier else "default",
+                    )
+
+                    result.append(model_info)
+
+                # result.append(model_dict)
 
             return result
 
@@ -301,7 +376,7 @@ class ModelManager:
             return []
 
     def start_download_task(
-        self, repo_id: str, filename: str, progress_callback: Optional[Callable] = None
+        self, task_id, model_info: ModelInfo, progress_callback: Optional[Callable] = None
     ) -> str:
         """
         Starts a background task to download a file from the specified repository.
@@ -314,23 +389,26 @@ class ModelManager:
         Returns:
             str: A unique task ID representing the download task.
         """
-        task_id = str(ulid.ULID())
+
+
+        repo_id = model_info.repo_id
+        filename = model_info.filename
 
         with self._lock:
-            self._download_tasks[task_id] = {
-                "status": ModelDownloadStatus.STARTING,
-                "progress": 0.0,
-                "repo_id": repo_id,
-                "filename": filename,
-                "created_at": datetime.now().isoformat(),
-                "error": None,
-                "file_size": None,
-                "downloaded_bytes": 0,
-            }
+            self._download_tasks[task_id] = ModelDownloadInfo(
+                task_id=task_id,
+                status=ModelDownloadStatus.STARTING,
+                percentage=0.0,
+                repo_id=repo_id,
+                filename=filename,
+                created_at=datetime.now(),
+                message="Download task started.",
+                model_info=model_info,
+            )
 
         thread = threading.Thread(
             target=self._download_worker,
-            args=(task_id, repo_id, filename, progress_callback),
+            args=(task_id, repo_id, filename, model_info, progress_callback),
             daemon=True,
         )
         thread.start()
@@ -345,17 +423,18 @@ class ModelManager:
         Args:
             task_id (str): Unique identifier for the download task.
             user_callback (Optional[Callable], optional): A user-defined callback function that takes two arguments (downloaded, total).
-        
+
         Returns:
             Callable: A callback function that updates the internal progress state and calls the user-provided callback if given.
         """
+
         def callback(downloaded: int, total: int):
             progress = downloaded / total if total > 0 else 0.0
             with self._lock:
                 if task_id in self._download_tasks:
-                    self._download_tasks[task_id]["progress"] = progress
-                    self._download_tasks[task_id]["downloaded_bytes"] = downloaded
-                    self._download_tasks[task_id]["file_size"] = total
+                    self._download_tasks[task_id].percentage = progress
+                    self._download_tasks[task_id].downloaded_bytes = downloaded
+                    self._download_tasks[task_id].file_size = total
 
             if user_callback:
                 user_callback(downloaded, total)
@@ -367,6 +446,7 @@ class ModelManager:
         task_id: str,
         repo_id: str,
         filename: str,
+        model_info: ModelInfo,
         progress_callback: Optional[Callable] = None,
     ):
         """
@@ -389,9 +469,7 @@ class ModelManager:
         """
         try:
             with self._lock:
-                self._download_tasks[task_id][
-                    "status"
-                ] = ModelDownloadStatus.DOWNLOADING
+                self._download_tasks[task_id].status = ModelDownloadStatus.DOWNLOADING
 
             self.logger.info(f"Starting download: {repo_id}/{filename}")
 
@@ -407,26 +485,26 @@ class ModelManager:
             if self._verify_file_integrity(Path(model_path), repo_id, filename):
                 self.logger.info(f"File integrity verified for {filename}")
 
-            self._add_to_manifest(repo_id, filename, model_path)
+            self._add_to_manifest(repo_id, filename, model_path, model_info)
 
             with self._lock:
-                self._download_tasks[task_id]["status"] = ModelDownloadStatus.COMPLETED
-                self._download_tasks[task_id]["progress"] = 1.0
-                self._download_tasks[task_id]["model_path"] = str(model_path)
-                self._download_tasks[task_id][
-                    "completed_at"
-                ] = datetime.now().isoformat()
+                self._download_tasks[task_id].status = ModelDownloadStatus.COMPLETED
+                self._download_tasks[task_id].percentage = 1.0
+                self._download_tasks[task_id].model_path = str(model_path)
+                self._download_tasks[task_id].completed_at = datetime.now()
 
             self.logger.info(f"Download completed: {repo_id}/{filename}")
 
         except Exception as e:
             self.logger.error(f"Download failed for {repo_id}/{filename}: {e}")
             with self._lock:
-                self._download_tasks[task_id]["status"] = ModelDownloadStatus.FAILED
-                self._download_tasks[task_id]["error"] = str(e)
-                self._download_tasks[task_id]["failed_at"] = datetime.now().isoformat()
+                self._download_tasks[task_id].status = ModelDownloadStatus.FAILED
+                self._download_tasks[task_id].error = str(e)
+                self._download_tasks[task_id].failed_at = datetime.now()
 
-    def _add_to_manifest(self, repo_id: str, filename: str, model_path: str):
+    def _add_to_manifest(
+        self, repo_id: str, filename: str, model_path: str, model_info: ModelInfo
+    ):
         """
         Adds or updates model information in the manifest.
 
@@ -441,23 +519,18 @@ class ModelManager:
         The model information includes repository ID, filename, local path, download timestamp,
         and file size. The manifest is saved after modification.
         """
-        model_info = {
-            "repo_id": repo_id,
-            "filename": filename,
-            "local_path": str(model_path),
-            "downloaded_at": datetime.now().isoformat(),
-            "file_size": (
-                Path(model_path).stat().st_size if Path(model_path).exists() else None
-            ),
-        }
+        model_info.file_size = (
+            Path(model_path).stat().st_size if Path(model_path).exists() else 0
+        )
+        model_info.downloaded_at = datetime.now().isoformat()
 
         for i, existing in enumerate(self.manifest["models"]):
             if existing["repo_id"] == repo_id and existing["filename"] == filename:
-                self.manifest["models"][i] = model_info
+                self.manifest["models"][i] = model_info.model_dump()
                 self._save_manifest()
                 return
 
-        self.manifest["models"].append(model_info)
+        self.manifest["models"].append(model_info.model_dump())
         self._save_manifest()
 
     def get_download_status(self, task_id: str) -> Optional[Dict]:
@@ -472,11 +545,12 @@ class ModelManager:
                             or None if the task ID does not exist.
         """
         with self._lock:
-            return (
-                self._download_tasks.get(task_id, {}).copy()
-                if task_id in self._download_tasks
-                else None
-            )
+            model_download_info = self._download_tasks.get(task_id)
+            if model_download_info:
+                return model_download_info.model_dump()
+            else:
+                self.logger.warning(f"Download task {task_id} not found.")
+                return None
 
     def cancel_download(self, task_id: str) -> bool:
         """
@@ -490,10 +564,8 @@ class ModelManager:
         """
         with self._lock:
             if task_id in self._download_tasks:
-                self._download_tasks[task_id]["status"] = ModelDownloadStatus.CANCELLED
-                self._download_tasks[task_id][
-                    "cancelled_at"
-                ] = datetime.now().isoformat()
+                self._download_tasks[task_id].status = ModelDownloadStatus.CANCELLED
+                self._download_tasks[task_id].cancelled_at = datetime.now()
                 return True
         return False
 
@@ -556,12 +628,10 @@ class ModelManager:
         with self._lock:
             to_remove = []
             for task_id, task_data in self._download_tasks.items():
-                created_at = datetime.fromisoformat(
-                    task_data.get("created_at", current_time.isoformat())
-                )
+                created_at = task_data.created_at
                 age_hours = (current_time - created_at).total_seconds() / 3600
-                
-                if age_hours > max_age_hours and task_data["status"] in [
+
+                if age_hours > max_age_hours and task_data.status in [
                     ModelDownloadStatus.COMPLETED,
                     ModelDownloadStatus.FAILED,
                     ModelDownloadStatus.CANCELLED,
@@ -577,39 +647,40 @@ if __name__ == "__main__":
     directories = AppDirectories.create_default(settings)
 
     logger = AtaraxAILogger().get_logger()
-    model_manager = ModelManager(directories, logger)
+    model_manager = ModelsManager(directories, logger)
 
-    models = model_manager.search_models("llama", limit=10)
+    models = model_manager.search_models("llama", limit=100)
     print(f"Found {len(models)} models matching 'llama'.")
 
     if models:
         model_to_download = random.choice(models)
-        print(f"Selected model to download: {model_to_download['id']}")
+        print(f"Selected model to download: {model_to_download}")
 
-        files = model_manager.list_available_files(model_to_download["id"])
-        print(f"Available files: {files}")
+        # files = model_manager.list_available_files(model_to_download["id"])
+        # print(f"Available files: {files}")
 
-        if files:
-            filename = files[0]
-            task_id = model_manager.start_download_task(
-                model_to_download["id"], filename
-            )
-            print(f"Download started with task ID: {task_id}")
+        # if model_to_download:
+        #     filename = model_to_download.filename
+        #     print(f"Downloading {filename} from {model_to_download.repo_id}...")
+        #     task_id = model_manager.start_download_task(
+        #         model_to_download.repo_id, filename, model_info=model_to_download
+        #     )
+        #     print(f"Download started with task ID: {task_id}")
 
-            while True:
-                status = model_manager.get_download_status(task_id)
-                if status:
-                    print(
-                        f"Status: {status['status']}, Progress: {status['progress']:.2%}"
-                    )
-                    if status["status"] in [
-                        ModelDownloadStatus.COMPLETED,
-                        ModelDownloadStatus.FAILED,
-                    ]:
-                        break
-                time.sleep(2)
+        #     while True:
+        #         status = model_manager.get_download_status(task_id)
+        #         if status:
+        #             # print(
+        #             #     f"Status: {status['status']}, Progress: {status['progress']:.2%}"
+        #             # )
+        #             if status["status"] in [
+        #                 ModelDownloadStatus.COMPLETED,
+        #                 ModelDownloadStatus.FAILED,
+        #             ]:
+        #                 break
+        #         time.sleep(2)
 
-            downloaded = model_manager.list_downloaded_models()
-            print(f"Downloaded models: {len(downloaded)}")
+        #     downloaded = model_manager.list_downloaded_models()
+        #     print(f"Downloaded models: {len(downloaded)}")
     else:
         print("No models found.")
