@@ -15,6 +15,8 @@ from ataraxai.routes.vault_route.vault import router_vault
 from ataraxai.routes.chat_route.chat import router_chat
 from ataraxai.routes.models_manager_route.models_manager import router_models_manager
 from ataraxai.routes.configs_routes.user_preferences_route.user_preferences import router_user_preferences
+from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config import llama_cpp_router
+from ataraxai.routes.configs_routes.rag_config_route.rag_config_route import rag_config_router
 from ataraxai.routes.dependency_api import get_orchestrator
 
 os.environ.setdefault("ENVIRONMENT", "development")  # Default to development if not set
@@ -81,3 +83,5 @@ app.include_router(router_chat)
 app.include_router(router_rag)
 app.include_router(router_models_manager)
 app.include_router(router_user_preferences)
+app.include_router(llama_cpp_router)
+app.include_router(rag_config_router)

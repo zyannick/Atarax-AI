@@ -33,10 +33,10 @@ class ConfigurationManager:
             ServiceInitializationError: If any configuration manager fails to initialize.
         """
         try:
-            self.preferences = UserPreferencesManager(config_path=self.config_dir)
-            self.llama_config = LlamaConfigManager(config_path=self.config_dir)
-            self.whisper_config = WhisperConfigManager(config_path=self.config_dir)
-            self.rag_config = RAGConfigManager(config_path=self.config_dir)
+            self.preferences_manager = UserPreferencesManager(config_path=self.config_dir)
+            self.llama_config_manager = LlamaConfigManager(config_path=self.config_dir)
+            self.whisper_config_manager = WhisperConfigManager(config_path=self.config_dir)
+            self.rag_config_manager = RAGConfigManager(config_path=self.config_dir)
             self.logger.info("Configuration managers initialized successfully")
         except Exception as e:
             self.logger.error(f"Failed to initialize configuration managers: {e}")
@@ -51,7 +51,7 @@ class ConfigurationManager:
         Returns:
             Optional[List[str]]: A list of directory paths being watched, or None if not specified in the configuration.
         """
-        config = self.rag_config.get_config()
+        config = self.rag_config_manager.get_config()
         return getattr(config, "rag_watched_directories", None)
 
     def add_watched_directory(self, directory: str) -> None:
@@ -69,4 +69,4 @@ class ConfigurationManager:
             watched_dirs = []
         if directory not in watched_dirs:
             watched_dirs.append(directory)
-            self.rag_config.set("rag_watched_directories", watched_dirs)
+            self.rag_config_manager.set("rag_watched_directories", watched_dirs)

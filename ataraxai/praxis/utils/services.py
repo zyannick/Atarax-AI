@@ -140,7 +140,7 @@ class Services:
         and assigns it to `self.rag_manager`. It also logs a message indicating successful initialization.
         """
         self.rag_manager = AtaraxAIRAGManager(
-            rag_config_manager=self.config_manager.rag_config,
+            rag_config_manager=self.config_manager.rag_config_manager,
             app_data_root_path=self.directories.data,
             core_ai_service=None,
         )
@@ -160,7 +160,7 @@ class Services:
 
         self.prompt_manager = PromptManager(prompts_directory=prompts_dir)
         self.context_manager = ContextManager(
-            config=self.config_manager.rag_config.get_config().model_dump(),
+            config=self.config_manager.rag_config_manager.get_config().model_dump(),
             rag_manager=self.rag_manager,
         )
         self.task_manager = TaskManager()

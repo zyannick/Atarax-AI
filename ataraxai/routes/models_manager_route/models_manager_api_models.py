@@ -29,11 +29,11 @@ class ModelInfoResponse(BaseModel):
         ...,
         description="The creation date of the model.",
     )
-    downloads = int = Field(
+    downloads : int = Field(
         ...,
         description="The number of times the model has been downloaded.",
     )
-    likes = int = Field(
+    likes: int = Field(
         ...,
         description="The number of likes the model has received.",
     )
@@ -75,11 +75,11 @@ class DownloadModelRequest(BaseModel):
         ...,
         description="The creation date of the model.",
     )
-    downloads = int = Field(
+    downloads: int = Field(
         ...,
         description="The number of times the model has been downloaded.",
     )
-    likes = int = Field(
+    likes: int = Field(
         ...,
         description="The number of likes the model has received.",
     )

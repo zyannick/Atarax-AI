@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from fastapi.params import Depends
 
 
-from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config_api import (
+from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config_api_models import (
     LlamaCPPConfigAPI,
     LlamaCPPConfigResponse,
     LlamaCPPGenerationParamsAPI,
@@ -39,7 +39,7 @@ async def get_llama_cpp_config(
     Returns:
         LlamaCPPConfigResponse: The current Llama CPP configuration.
     """
-    config = orch.config_manager.llama_config.get_llama_cpp_params()
+    config = orch.config_manager.llama_config_manager.get_llama_cpp_params()
     if not config:
         return LlamaCPPConfigResponse(
             status=Status.FAILURE,
@@ -69,7 +69,7 @@ async def update_llama_cpp_config(
     Returns:
         LlamaCPPConfigResponse: The updated Llama CPP configuration.
     """
-    orch.config_manager.llama_config.set_llama_cpp_params(
+    orch.config_manager.llama_config_manager.set_llama_cpp_params(
         LlamaModelParams(**config.model_dump())
     )
     return LlamaCPPConfigResponse(
@@ -95,7 +95,7 @@ async def get_llama_cpp_generation_params(
     Returns:
         LlamaCPPGenerationParamsAPI: The current Llama CPP generation parameters.
     """
-    generation_params = orch.config_manager.llama_config.get_generation_params()
+    generation_params = orch.config_manager.llama_config_manager.get_generation_params()
     if not generation_params:
         return LlamaCPPGenerationParamsResponse(
             status=Status.FAILURE,
@@ -128,7 +128,7 @@ async def update_llama_cpp_generation_params(
     Returns:
         LlamaCPPGenerationParamsAPI: The updated Llama CPP generation parameters.
     """
-    orch.config_manager.llama_config.set_generation_params(
+    orch.config_manager.llama_config_manager.set_generation_params(
         GenerationParams(**generation_params.model_dump())
     )
     return LlamaCPPGenerationParamsResponse(
