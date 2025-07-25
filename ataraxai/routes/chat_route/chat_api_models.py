@@ -58,37 +58,36 @@ class ChatMessageRequestAPI(BaseModel):
 
 
 class MessageResponseAPI(BaseModel):
-    id: uuid.UUID
-    session_id: uuid.UUID
-    role: str
-    content: str
-    date_time: datetime.datetime
+    id: uuid.UUID = Field(..., description="Unique identifier for the message.")
+    session_id: uuid.UUID = Field(..., description="Unique identifier for the session.")
+    role: str = Field(..., description="Role of the message sender.")
+    content: str = Field(..., description="Content of the message.")
+    date_time: datetime.datetime = Field(..., description="Date and time when the message was sent.")
 
     class Config:
         from_attributes = True
 
 
 class ProjectResponseAPI(BaseModel):
-    project_id: uuid.UUID
-    name: str
-    description: str
+    project_id: uuid.UUID = Field(..., description="Unique identifier for the project.")
+    name: str = Field(..., description="Name of the project.")
+    description: str = Field(..., description="Description of the project.")
 
 
 class DeleteProjectResponseAPI(BaseModel):
-    project_id: uuid.UUID
-    name: str
-    description: str
+    project_id: uuid.UUID = Field(..., description="Unique identifier for the project.")
+    name: str = Field(..., description="Name of the project.")
+    description: str = Field(..., description="Description of the project.")
     status: str = Field(..., description="Status of the project deletion operation.")
 
 
 class SessionResponseAPI(BaseModel):
-    session_id: uuid.UUID
-    title: str
-    project_id: uuid.UUID
-
+    session_id: uuid.UUID = Field(..., description="Unique identifier for the session.")
+    title: str = Field(..., description="Title of the session.")
+    project_id: uuid.UUID = Field(..., description="Unique identifier for the project.")
 
 class DeleteSessionResponseAPI(BaseModel):
-    session_id: uuid.UUID
-    title: str
-    project_id: uuid.UUID
+    session_id: uuid.UUID = Field(..., description="Unique identifier for the session.")
+    title: str = Field(..., description="Title of the session.")
+    project_id: uuid.UUID = Field(..., description="Unique identifier for the project.")
     status: str = Field(..., description="Status of the session deletion operation.")

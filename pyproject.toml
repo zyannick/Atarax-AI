@@ -99,6 +99,7 @@ exclude = [
 
 [tool.mypy]
 exclude = '(?x)(ataraxai/hegemonikon/third_party/|build/|dist/|\.venv/)'
+plugins = ["pydantic.mypy"]
 [[tool.mypy.overrides]]
 module = [
     "fitz",

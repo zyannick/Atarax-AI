@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 from typing import List
 import uuid
-from ataraxai.routes.chat_api.chat_api_models import (
+from ataraxai.routes.chat_route.chat_api_models import (
     CreateProjectRequestAPI,
     ProjectResponseAPI,
     CreateSessionRequestAPI,

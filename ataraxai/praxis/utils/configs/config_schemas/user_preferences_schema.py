@@ -10,15 +10,15 @@ class AppTheme(str, Enum):
 
 
 class UserPreferences(BaseModel):
-    config_version: float = 1.0
+    config_version: float = Field(1.0, description="Version of the user preferences configuration.")
 
-    index_on_startup: bool = True
-    realtime_monitoring: bool = False
-    font_size: int = 12
-    notifications_enabled: bool = True
-    shortcuts: Dict[str, str] = Field(default_factory=dict)
-    theme: AppTheme = AppTheme.SYSTEM_DEFAULT
-    language: str = "en"
+    index_on_startup: bool = Field(True, description="Whether to index on startup.")
+    realtime_monitoring: bool = Field(False, description="Whether to enable real-time monitoring.")
+    font_size: int = Field(12, description="Font size for the application.")
+    notifications_enabled: bool = Field(True, description="Whether to enable notifications.")
+    shortcuts: Dict[str, str] = Field(default_factory=dict, description="Keyboard shortcuts.")
+    theme: AppTheme = Field(AppTheme.SYSTEM_DEFAULT, description="Application theme.")
+    language: str = Field("en", description="Language for the application.")
 
     def is_setup_complete(self) -> bool:
         return True
