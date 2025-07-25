@@ -2,6 +2,10 @@ from pydantic import BaseModel, Field, computed_field
 from typing import List, Optional
 from ataraxai.praxis.modules.models_manager.models_manager import ModelInfo
 
+from typing import Literal, Optional
+from enum import Enum, auto
+
+
 class LlamaModelParams(BaseModel):
     config_version: float = Field(1.0, description="Version of the model configuration.")
     model_info : Optional[ModelInfo] = Field(
@@ -27,7 +31,7 @@ class LlamaModelParams(BaseModel):
 class GenerationParams(BaseModel):
     config_version: float = Field(1.0, description="Version of the generation parameters schema.")
     n_predict: int = Field(128, description="Number of tokens to predict.")
-    temp: float = Field(0.8, description="Temperature for sampling.")
+    temperature: float = Field(0.8, description="Temperature for sampling.")
     top_k: int = Field(40, description="Top-k sampling parameter.")
     top_p: float = Field(0.95, description="Top-p sampling parameter.")
     repeat_penalty: float = Field(1.2, description="Penalty for repeated tokens.")
@@ -39,7 +43,7 @@ class GenerationParams(BaseModel):
     n_threads: int = Field(4, description="Number of threads to use for generation.")
 
     def is_setup_complete(self) -> bool:
-        return self.n_predict > 0 and self.temp >= 0.0 and self.top_k >= 0 and self.top_p >= 0.0
+        return self.n_predict > 0 and self.temperature >= 0.0 and self.top_k >= 0 and self.top_p >= 0.0
 
 
 class LlamaConfig(BaseModel):

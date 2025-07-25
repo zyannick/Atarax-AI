@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter
 from fastapi.params import Depends
 
