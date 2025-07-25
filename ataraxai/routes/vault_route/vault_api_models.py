@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field, field_validator, SecretStr
-from typing import Dict, Any    
 from ataraxai.routes.status import Status
 
 class ConfirmationPhaseRequest(BaseModel):

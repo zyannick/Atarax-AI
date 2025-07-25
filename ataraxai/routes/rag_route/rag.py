@@ -1,6 +1,6 @@
 from fastapi import APIRouter, BackgroundTasks
 from fastapi.params import Depends
-from ataraxai.routes.rag_api.rag_api_models import (
+from ataraxai.routes.rag_route.rag_api_models import (
     DirectoriesToAddRequest,
     DirectoriesToRemoveRequest,
     RebuildIndexResponse,

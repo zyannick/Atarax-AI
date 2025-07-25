@@ -10,10 +10,11 @@ from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from ataraxai.praxis.katalepsis import Katalepsis
-from ataraxai.routes.rag_api.rag import router_rag
-from ataraxai.routes.vault_api.vault import router_vault
-from ataraxai.routes.chat_api.chat import router_chat
-from ataraxai.routes.models_manager_api.models_manager import router_models_manager
+from ataraxai.routes.rag_route.rag import router_rag
+from ataraxai.routes.vault_route.vault import router_vault
+from ataraxai.routes.chat_route.chat import router_chat
+from ataraxai.routes.models_manager_route.models_manager import router_models_manager
+from ataraxai.routes.configs_routes.user_preferences_route.user_preferences import router_user_preferences
 from ataraxai.routes.dependency_api import get_orchestrator
 
 os.environ.setdefault("ENVIRONMENT", "development")  # Default to development if not set
@@ -79,3 +80,4 @@ app.include_router(router_vault)
 app.include_router(router_chat)
 app.include_router(router_rag)
 app.include_router(router_models_manager)
+app.include_router(router_user_preferences)

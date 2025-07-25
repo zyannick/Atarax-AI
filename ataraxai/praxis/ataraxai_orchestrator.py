@@ -28,8 +28,8 @@ from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 from ataraxai.praxis.utils.chat_manager import ChatManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
+from ataraxai.praxis.utils.user_preferences_manager import UserPreferencesManager
 from ataraxai.praxis.utils.services import Services
-
 
 
 class AtaraxAIOrchestrator:
@@ -47,8 +47,9 @@ class AtaraxAIOrchestrator:
         config_manager: ConfigurationManager,
         core_ai_manager: CoreAIServiceManager,
         services: Services,
+        user_preferences_manager: UserPreferencesManager
     ):
-        
+
         self.app_config = app_config
         self.logger = logger
         self.settings = settings
@@ -59,6 +60,7 @@ class AtaraxAIOrchestrator:
         self.config_manager = config_manager
         self.core_ai_manager = core_ai_manager
         self.services = services
+        self.user_preferences_manager = user_preferences_manager
 
         self._state_lock = threading.RLock()
         self._state: AppState = AppState.LOCKED
@@ -148,7 +150,7 @@ class AtaraxAIOrchestrator:
             self.logger.error(f"Failed during base initialization: {e}")
             self._set_state(AppState.ERROR)
             raise
-        
+
     # def _clear_internal_refs(self):
     #     """
     #     Clears internal references to services and managers to help with garbage collection.
@@ -161,7 +163,7 @@ class AtaraxAIOrchestrator:
     #     self.setup_manager = None
     #     self.config_manager = None
     #     self.core_ai_manager = None
-    
+
     def _reset_state(self):
         """
         Resets the internal state of the orchestrator to its initial state.
@@ -308,7 +310,7 @@ class AtaraxAIOrchestrator:
             )
             return self._state == AppState.UNLOCKED
 
-        unlock_result = self.vault_manager.unlock_vault(password) # type: ignore
+        unlock_result = self.vault_manager.unlock_vault(password)  # type: ignore
         if unlock_result.status == VaultUnlockStatus.SUCCESS:
             self._state = AppState.UNLOCKED
             self.logger.info("Application unlocked successfully.")
@@ -348,7 +350,6 @@ class AtaraxAIOrchestrator:
             chain_definition=chain_definition, initial_user_query=initial_user_query
         )
 
-
     @property
     def chat(self) -> ChatManager:
         with self._state_lock:
@@ -366,9 +367,7 @@ class AtaraxAIOrchestrator:
                     "Application is locked. RAG operations are not available."
                 )
             return self.services.rag_manager
-        
 
-        
     @property
     def models_manager(self) -> ModelsManager:
         with self._state_lock:
@@ -377,8 +376,16 @@ class AtaraxAIOrchestrator:
                     "Application is locked. Models management operations are not available."
                 )
             return self.services.models_manager
-
-
+        
+        
+    @property
+    def user_preferences(self) -> UserPreferencesManager:
+        with self._state_lock:
+            if self.state != AppState.UNLOCKED or self.services is None:
+                raise AtaraxAIError(
+                    "Application is locked. User preferences operations are not available."
+                )
+            return self.user_preferences_manager
 
     def shutdown(self) -> None:
         self.services.shutdown()
@@ -400,7 +407,7 @@ class AtaraxAIOrchestratorFactory:
     @staticmethod
     def create_orchestrator() -> AtaraxAIOrchestrator:
         app_config = AppConfig()
-        logger : logging.Logger = AtaraxAILogger().get_logger()
+        logger: logging.Logger = AtaraxAILogger().get_logger()
         settings = AtaraxAISettings()
         directories = AppDirectories.create_default(settings)
 
@@ -409,6 +416,9 @@ class AtaraxAIOrchestratorFactory:
             check_path=str(directories.data / "vault.check"),
         )
 
+        user_preferences_manager = UserPreferencesManager(
+            config_path=directories.config
+        )
         setup_manager = SetupManager(directories, app_config, logger)
         config_manager = ConfigurationManager(directories.config, logger)
         core_ai_manager = CoreAIServiceManager(config_manager, logger)
@@ -417,15 +427,14 @@ class AtaraxAIOrchestratorFactory:
             db_path=directories.data / app_config.database_filename
         )
 
-        chat_context = ChatContextManager(db_manager=db_manager, vault_manager=vault_manager)
+        chat_context = ChatContextManager(
+            db_manager=db_manager, vault_manager=vault_manager
+        )
         chat_manager = ChatManager(
             db_manager=db_manager, logger=logger, vault_manager=vault_manager
         )
-        
-        model_manager = ModelsManager(
-            directories=directories,
-            logger=logger
-        )
+
+        model_manager = ModelsManager(directories=directories, logger=logger)
 
         services = Services(
             directories=directories,
@@ -436,7 +445,7 @@ class AtaraxAIOrchestratorFactory:
             config_manager=config_manager,
             app_config=app_config,
             vault_manager=vault_manager,
-            models_manager=model_manager
+            models_manager=model_manager,
         )
 
         orchestrator = AtaraxAIOrchestrator(
@@ -449,6 +458,7 @@ class AtaraxAIOrchestratorFactory:
             config_manager=config_manager,
             core_ai_manager=core_ai_manager,
             services=services,
+            user_preferences_manager=user_preferences_manager,
         )
 
         return orchestrator

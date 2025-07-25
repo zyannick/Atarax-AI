@@ -53,8 +53,8 @@ class RAGConfigManager:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     return RAGConfig(**yaml.safe_load(f))
             except Exception as e:
-                print(f"[ERROR] Failed to load YAML config: {e}")
-        print(f"[INFO] Creating default RAG config at: {self.config_path}")
+                print(f"Failed to load YAML config: {e}")
+        print(f"Creating default RAG config at: {self.config_path}")
         default = RAGConfig()
         self._save(default)
         return default

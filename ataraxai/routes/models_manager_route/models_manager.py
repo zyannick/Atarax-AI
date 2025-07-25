@@ -1,6 +1,5 @@
 import asyncio
 import json
-import uuid
 from fastapi import APIRouter, BackgroundTasks
 from fastapi.params import Depends
 import ulid
@@ -10,7 +9,7 @@ from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.dependency_api import get_unlocked_orchestrator
 from ataraxai.praxis.katalepsis import katalepsis_monitor
-from ataraxai.routes.models_manager_api.models_manager_api_models import (
+from ataraxai.routes.models_manager_route.models_manager_api_models import (
     DownloadModelResponse,
     DownloadTaskStatus,
     ModelInfoResponse,

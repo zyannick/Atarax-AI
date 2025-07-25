@@ -49,8 +49,7 @@ class WhisperConfigManager:
                 with open(self.config_path, "r", encoding="utf-8") as f:
                     return WhisperConfig(**yaml.safe_load(f))
             except Exception as e:
-                print(f"[ERROR] Failed to load YAML config: {e}")
-        print(f"[INFO] Creating default Whisper config: {self.config_path}")
+                print(f"Failed to load YAML config: {e}")
         default = self._default_config()
         self._save(default)
         return default
@@ -73,7 +72,7 @@ class WhisperConfigManager:
                     default_flow_style=False,
                 )
         except Exception as e:
-            print(f"[ERROR] Failed to save config: {e}")
+            print(f"Failed to save config: {e}")
 
     def _default_config(self) -> WhisperConfig:
         """

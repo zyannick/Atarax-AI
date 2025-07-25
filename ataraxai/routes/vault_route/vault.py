@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
-from ataraxai.routes.vault_api.vault_api_models import (
+from ataraxai.routes.vault_route.vault_api_models import (
     ConfirmationPhaseRequest,
     ConfirmationPhaseResponse,
     VaultPasswordRequest,

@@ -1,6 +1,6 @@
 import yaml
 from pathlib import Path
-from ataraxai.praxis.utils.config_schemas.user_preferences_schema import (
+from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import (
     UserPreferences,
 )
 from typing_extensions import Optional
@@ -9,7 +9,7 @@ from typing import Dict, Any, Union
 PREFERENCES_FILENAME = "user_preferences.yaml"
 
 
-class PreferencesManager:
+class UserPreferencesManager:
 
     def __init__(self, config_path: Optional[Path] = None):
         """

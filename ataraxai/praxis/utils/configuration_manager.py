@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import List, Optional
 from ataraxai.praxis.utils.exceptions import ServiceInitializationError
-from ataraxai.praxis.preferences_manager import PreferencesManager
-from ataraxai.praxis.utils.llama_config_manager import LlamaConfigManager
-from ataraxai.praxis.utils.whisper_config_manager import WhisperConfigManager
-from ataraxai.praxis.utils.rag_config_manager import RAGConfigManager
+from ataraxai.praxis.utils.user_preferences_manager import UserPreferencesManager
+from ataraxai.praxis.utils.configs.llama_config_manager import LlamaConfigManager
+from ataraxai.praxis.utils.configs.whisper_config_manager import WhisperConfigManager
+from ataraxai.praxis.utils.configs.rag_config_manager import RAGConfigManager
 import logging
 
 class ConfigurationManager:
@@ -33,7 +33,7 @@ class ConfigurationManager:
             ServiceInitializationError: If any configuration manager fails to initialize.
         """
         try:
-            self.preferences = PreferencesManager(config_path=self.config_dir)
+            self.preferences = UserPreferencesManager(config_path=self.config_dir)
             self.llama_config = LlamaConfigManager(config_path=self.config_dir)
             self.whisper_config = WhisperConfigManager(config_path=self.config_dir)
             self.rag_config = RAGConfigManager(config_path=self.config_dir)
