@@ -1,8 +1,8 @@
 import logging
 from ataraxai import hegemonikon_py  # type: ignore
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from ataraxai.praxis.utils.config_schemas.llama_config_schema import LlamaModelParams
-from ataraxai.praxis.utils.config_schemas.whisper_config_schema import (
+# from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import LlamaModelParams
+from ataraxai.praxis.utils.configs.config_schemas.whisper_config_schema import (
     WhisperModelParams,
 )
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
@@ -129,16 +129,16 @@ class CoreAIServiceManager:
         }
 
         try:
-            llama_params = self.config_manager.llama_config.get_llama_cpp_params()
-            status["llama_model_path"] = llama_params.model_path
-            status["llama_configured"] = bool(llama_params.model_path)
-            if llama_params.model_path:
-                status["llama_path_exists"] = Path(llama_params.model_path).exists()
+            llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
+            status["llama_model_path"] = llama_params.model_path()
+            status["llama_configured"] = bool(llama_params.model_path())
+            if len(llama_params.model_path()) > 0:
+                status["llama_path_exists"] = Path(llama_params.model_path()).exists()
         except Exception as e:
             self.logger.warning(f"Could not get Llama configuration: {e}")
 
         try:
-            whisper_params = self.config_manager.whisper_config.get_whisper_params()
+            whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
             status["whisper_model_path"] = whisper_params.model
             status["whisper_configured"] = bool(whisper_params.model)
             if whisper_params.model:
@@ -155,15 +155,15 @@ class CoreAIServiceManager:
         Raises:
             ValidationError: If the Llama or Whisper model path is not configured or does not exist.
         """
-        llama_params = self.config_manager.llama_config.get_llama_cpp_params()
-        whisper_params = self.config_manager.whisper_config.get_whisper_params()
+        llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
+        whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
 
-        if not llama_params.model_path:
+        if not llama_params.model_path():
             raise ValidationError("Llama model path not configured")
 
-        if not Path(llama_params.model_path).exists():
+        if not Path(llama_params.model_path()).exists():
             raise ValidationError(
-                f"Llama model path does not exist: {llama_params.model_path}"
+                f"Llama model path does not exist: {llama_params.model_path()}"
             )
 
         if not whisper_params.model:
@@ -186,8 +186,8 @@ class CoreAIServiceManager:
         Returns:
             None
         """
-        llama_params = self.config_manager.llama_config.get_llama_cpp_params()
-        whisper_params = self.config_manager.whisper_config.get_whisper_params()
+        llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
+        whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
 
         (
             llama_model_params_cc,
@@ -222,7 +222,7 @@ class CoreAIServiceManager:
         )
 
         llama_generation_params_cc: Any = hegemonikon_py.GenerationParams.from_dict(  # type: ignore
-            self.config_manager.llama_config.get_generation_params().model_dump()
+            self.config_manager.llama_config_manager.get_generation_params().model_dump()
         )
 
         whisper_model_params_cc: Any = hegemonikon_py.WhisperModelParams.from_dict(  # type: ignore
@@ -230,7 +230,7 @@ class CoreAIServiceManager:
         )
 
         whisper_transcription_params_cc: Any = hegemonikon_py.WhisperGenerationParams.from_dict(  # type: ignore
-            self.config_manager.whisper_config.get_transcription_params().model_dump()
+            self.config_manager.whisper_config_manager.get_transcription_params().model_dump()
         )
 
         return (

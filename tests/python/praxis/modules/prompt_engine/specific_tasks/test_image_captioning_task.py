@@ -1,4 +1,4 @@
-import pytest
+# import pytest
 import torch
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.image_captioning_task import (
     ImageCaptioningTask,

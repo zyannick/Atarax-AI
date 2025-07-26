@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 from ataraxai.routes.status import Status
 
-from ataraxai.routes.vault_api.vault_api_models import (
+from ataraxai.routes.vault_route.vault_api_models import (
     ConfirmationPhaseRequest,
     ConfirmationPhaseResponse,
     VaultPasswordRequest,
@@ -29,7 +29,7 @@ def test_confirmation_phase_response_missing_fields():
 
 def test_vault_password_request_valid():
     req = VaultPasswordRequest(password="supersecret123")
-    assert req.password == "supersecret123"
+    assert req.password.get_secret_value() == "supersecret123"
 
 def test_vault_password_request_too_short():
     with pytest.raises(ValidationError):

@@ -16,7 +16,7 @@ from ataraxai.praxis.utils.exceptions import (
     ValidationError,
     ServiceInitializationError,
 )
-from ataraxai.praxis.modules.models_manager.model_manager import ModelManager
+from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
 from ataraxai.praxis.utils.chat_manager import ChatManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
@@ -35,7 +35,7 @@ class Services:
         config_manager: ConfigurationManager,
         app_config: AppConfig,
         vault_manager: VaultManager,
-        model_manager: ModelManager,
+        models_manager: ModelsManager,
     ):
         """
         Initializes the service with required managers, configuration, and logging utilities.
@@ -57,7 +57,7 @@ class Services:
         self.chat_manager = chat_manager
         self.config_manager = config_manager
         self.app_config = app_config
-        self.model_manager = model_manager
+        self.models_manager = models_manager
         self.core_ai_service = None
         self.vault_manager = vault_manager
 
@@ -128,7 +128,7 @@ class Services:
         """
         db_path = self.directories.data / self.app_config.database_filename
         self.db_manager = ChatDatabaseManager(db_path=db_path)
-        self.chat_context = ChatContextManager(db_manager=self.db_manager)
+        self.chat_context = ChatContextManager(db_manager=self.db_manager, vault_manager=self.vault_manager)
         self.chat_manager = ChatManager(self.db_manager, self.logger, self.vault_manager)
         self.logger.info("Database initialized successfully")
 
@@ -140,7 +140,7 @@ class Services:
         and assigns it to `self.rag_manager`. It also logs a message indicating successful initialization.
         """
         self.rag_manager = AtaraxAIRAGManager(
-            rag_config_manager=self.config_manager.rag_config,
+            rag_config_manager=self.config_manager.rag_config_manager,
             app_data_root_path=self.directories.data,
             core_ai_service=None,
         )
@@ -160,7 +160,7 @@ class Services:
 
         self.prompt_manager = PromptManager(prompts_directory=prompts_dir)
         self.context_manager = ContextManager(
-            config=self.config_manager.rag_config.get_config().model_dump(),
+            config=self.config_manager.rag_config_manager.get_config().model_dump(),
             rag_manager=self.rag_manager,
         )
         self.task_manager = TaskManager()
