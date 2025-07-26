@@ -1,3 +1,4 @@
+from datetime import datetime
 import uuid
 import pytest
 from unittest import mock
@@ -80,13 +81,13 @@ def test_get_session_success(chat_manager, mock_db_manager, mock_vault_manager):
     message.content = b"encrypted_hello"
     message.get_id.return_value = uuid.uuid4()
     message.get_role.return_value = "user"
-    message.get_date_time.return_value = "now"
+    message.get_date_time.return_value = datetime.now()
     db_session = mock.Mock()
     db_session.get_id.return_value = session_id
     db_session.get_project_id.return_value = uuid.uuid4()
     db_session.get_title.return_value = "title"
-    db_session.get_created_at.return_value = "created"
-    db_session.get_updated_at.return_value = "updated"
+    db_session.get_created_at.return_value = datetime.now()
+    db_session.get_updated_at.return_value = datetime.now()
     db_session.messages = [message]
     mock_db_manager.get_session.return_value = db_session
     result = chat_manager.get_session(session_id)

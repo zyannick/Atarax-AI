@@ -47,7 +47,6 @@ class AtaraxAIOrchestrator:
         config_manager: ConfigurationManager,
         core_ai_manager: CoreAIServiceManager,
         services: Services,
-        user_preferences_manager: UserPreferencesManager
     ):
 
         self.app_config = app_config
@@ -60,7 +59,6 @@ class AtaraxAIOrchestrator:
         self.config_manager = config_manager
         self.core_ai_manager = core_ai_manager
         self.services = services
-        self.user_preferences_manager = user_preferences_manager
 
         self._state_lock = threading.RLock()
         self._state: AppState = AppState.LOCKED
@@ -385,10 +383,11 @@ class AtaraxAIOrchestrator:
                 raise AtaraxAIError(
                     "Application is locked. User preferences operations are not available."
                 )
-            return self.user_preferences_manager
+            return self.config_manager.preferences_manager
 
     def shutdown(self) -> None:
-        self.services.shutdown()
+        if self.services is not None:
+            self.services.shutdown()
 
     def __enter__(self) -> "AtaraxAIOrchestrator":
         return self
@@ -414,10 +413,6 @@ class AtaraxAIOrchestratorFactory:
         vault_manager = VaultManager(
             salt_path=str(directories.data / "vault.salt"),
             check_path=str(directories.data / "vault.check"),
-        )
-
-        user_preferences_manager = UserPreferencesManager(
-            config_path=directories.config
         )
         setup_manager = SetupManager(directories, app_config, logger)
         config_manager = ConfigurationManager(directories.config, logger)
@@ -458,7 +453,6 @@ class AtaraxAIOrchestratorFactory:
             config_manager=config_manager,
             core_ai_manager=core_ai_manager,
             services=services,
-            user_preferences_manager=user_preferences_manager,
         )
 
         return orchestrator

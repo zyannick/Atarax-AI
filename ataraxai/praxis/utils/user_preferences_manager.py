@@ -1,5 +1,4 @@
 import logging
-import threading
 import yaml
 from pathlib import Path
 from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import (
@@ -38,7 +37,7 @@ class UserPreferencesManager:
         self.config_path = config_path / PREFERENCES_FILENAME
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.logger = logger or logging.getLogger(__name__)
-        self._lock = threading.Lock()
+        self._preferences: UserPreferences = self._load_or_create()
 
     def _load_or_create(self) -> UserPreferences:
         """
@@ -72,10 +71,9 @@ class UserPreferencesManager:
         Returns:
             UserPreferences: The current user preferences object.
         """
-        with self._lock:
-            if not hasattr(self, "_preferences"):
-                self._preferences = self._load_or_create()
-            return self._preferences
+        if not hasattr(self, "_preferences"):
+            self._preferences = self._load_or_create()
+        return self._preferences
 
     def _save(self):
         """
@@ -103,11 +101,10 @@ class UserPreferencesManager:
         Side Effects:
             Updates the internal preferences attribute and persists the changes by calling the _save() method.
         """
-        with self._lock:
-            if not isinstance(new_prefs, UserPreferences):
-                raise TypeError("new_prefs must be an instance of UserPreferences")
-            self._preferences = new_prefs
-            self._save()
+        if not isinstance(new_prefs, UserPreferences):
+            raise TypeError("new_prefs must be an instance of UserPreferences")
+        self._preferences = new_prefs
+        self._save()
 
     def get(self, key: str, default=None) -> Any:  # type: ignore
         """
@@ -147,5 +144,4 @@ class UserPreferencesManager:
 
         This method updates the `preferences` attribute with the latest preferences data.
         """
-        with self._lock:
-            self._preferences = self._load_or_create()
+        self._preferences = self._load_or_create()

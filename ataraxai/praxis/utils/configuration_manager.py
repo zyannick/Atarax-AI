@@ -34,7 +34,7 @@ class ConfigurationManager:
         """
         try:
             self.preferences_manager = UserPreferencesManager(config_path=self.config_dir)
-            self.llama_config_manager = LlamaConfigManager(config_path=self.config_dir)
+            self.llama_config_manager = LlamaConfigManager(config_dir=self.config_dir)
             self.whisper_config_manager = WhisperConfigManager(config_path=self.config_dir)
             self.rag_config_manager = RAGConfigManager(config_path=self.config_dir)
             self.logger.info("Configuration managers initialized successfully")

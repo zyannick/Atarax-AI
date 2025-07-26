@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from pydantic import ValidationError
 import pytest
@@ -36,9 +37,10 @@ def test_chat_message_request_fields():
 
 def test_message_response_fields():
     sid = uuid.uuid4()
-    resp = MessageResponseAPI(assistant_response="Hi!", session_id=sid)
-    assert resp.assistant_response == "Hi!"
-    assert resp.session_id == sid
+    mid = uuid.uuid4()
+    resp = MessageResponseAPI(id=mid, role="user", content="Hi!", date_time=datetime.datetime.now(), session_id=sid)
+    assert resp.content == "Hi!"
+    assert resp.id == mid
 
 def test_project_response_fields():
     pid = uuid.uuid4()

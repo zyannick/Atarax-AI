@@ -1,3 +1,4 @@
+import logging
 import yaml
 from pathlib import Path
 from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
@@ -12,7 +13,7 @@ LLAMA_CONFIG_FILENAME = "llama_config.yaml"
 
 
 class LlamaConfigManager:
-    def __init__(self, config_path: Path):
+    def __init__(self, config_dir: Path, logger: Optional[logging.Logger] = None):
         """
         Initializes the configuration manager with the given configuration directory path.
 
@@ -27,10 +28,13 @@ class LlamaConfigManager:
             - Creates the parent directories for the configuration file if they do not exist.
             - Loads or initializes the LlamaConfig instance and assigns it to self.config.
         """
-        if config_path.is_dir():
-            self.config_path = config_path / LLAMA_CONFIG_FILENAME
-        else:
-            raise ValueError(f"Invalid config path: {config_path}")
+        try:
+            config_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            raise ValueError(f"Failed to create config directory: {config_dir}") from e
+        
+        self.config_path = config_dir / LLAMA_CONFIG_FILENAME
+        self.logger = logger or logging.getLogger(__name__)
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.config: LlamaConfig = self._load_or_initialize()
 
@@ -49,8 +53,8 @@ class LlamaConfigManager:
                     raw_data = yaml.safe_load(f)
                 return LlamaConfig(**raw_data)
             except Exception as e:
-                print(f"[ERROR] Failed to parse config: {e}")
-        print(f"[INFO] Creating default LLM config at: {self.config_path}")
+                self.logger.error(f"Failed to parse config: {e}")
+        self.logger.info(f"Creating default LLM config at: {self.config_path}")
         config = LlamaConfig()
         self._save(config)
         return config

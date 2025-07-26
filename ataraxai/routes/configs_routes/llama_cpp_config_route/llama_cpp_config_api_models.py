@@ -1,11 +1,11 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
-from ataraxai.praxis.modules.models_manager.models_manager import ModelInfo
+from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo
 from ataraxai.routes.status import Status
 
 
 class LlamaCPPConfigAPI(BaseModel):
-    model_info : Optional[ModelInfo] = Field(
+    model_info : Optional[LlamaCPPModelInfo] = Field(
         None, description="Model information including local path and metadata."
     )
     n_ctx: int = Field(2048, description="Context size for the model.")
@@ -18,7 +18,7 @@ class LlamaCPPConfigAPI(BaseModel):
 
     @field_validator("model_info")
     @classmethod
-    def validate_model_info(cls, v: ModelInfo) -> ModelInfo:
+    def validate_model_info(cls, v: LlamaCPPModelInfo) -> LlamaCPPModelInfo:
         if not v.local_path:
             raise ValueError("Model path cannot be empty.")
         return v

@@ -66,6 +66,7 @@ class MessageResponseAPI(BaseModel):
 
     class Config:
         from_attributes = True
+        
 
 
 class ProjectResponseAPI(BaseModel):

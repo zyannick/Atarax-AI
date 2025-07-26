@@ -18,7 +18,7 @@ from ataraxai.routes.models_manager_route.models_manager_api_models import (
     DownloadModelRequest,
 )
 from ataraxai.praxis.modules.models_manager.models_manager import (
-    ModelInfo,
+    LlamaCPPModelInfo,
 )
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -155,7 +155,7 @@ async def download_model(
         background_tasks.add_task(
             orch.models_manager.start_download_task,
             task_id=task_id,
-            model_info=ModelInfo(**request.model_dump()),
+            model_info=LlamaCPPModelInfo(**request.model_dump()),
         )
 
         return DownloadModelResponse(

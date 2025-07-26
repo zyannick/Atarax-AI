@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Dict
 from enum import Enum, auto
-import yaml
 
 class AppTheme(str, Enum):
     SYSTEM_DEFAULT = auto()

@@ -28,36 +28,36 @@ class ModelDownloadStatus(Enum):
     CANCELLED = auto()
 
 
-class ModelInfo(BaseModel):
-    organization: str
-    repo_id: str
-    filename: str
-    local_path: str
-    downloaded_at: str
-    file_size: int
-    quantization_bit: str = "default"
-    quantization_scheme: str = "default"
-    quantization_modifier: str = "default"
-    created_at: datetime
-    downloads: int
-    likes: int
+class LlamaCPPModelInfo(BaseModel):
+    organization: str = Field(..., description="Organization or user who owns the model.")
+    repo_id: str = Field(..., description="Repository ID of the model on Hugging Face Hub.")
+    filename: str = Field(..., description="Name of the model file.")
+    local_path: str = Field(..., description="Local path to the model file.")
+    downloaded_at: datetime = Field(default_factory=lambda: datetime.now(), description="Timestamp when the model was downloaded.")
+    file_size: int = Field(0, description="Size of the model file in bytes.")
+    quantization_bit: str = Field("default", description="Bit quantization level for the model.")
+    quantization_scheme: str = Field("default", description="Quantization scheme for the model.")
+    quantization_modifier: str = Field("default", description="Quantization modifier for the model.")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(), description="Timestamp when the model was created.")
+    downloads: int = Field(0, description="Number of times the model has been downloaded.")
+    likes: int = Field(0, description="Number of likes for the model.")
 
     class Config:
         from_attributes = True
 
 
 class ModelDownloadInfo(BaseModel):
-    task_id: str
-    status: ModelDownloadStatus
-    percentage: float = 0.0
-    repo_id: str
-    filename: str
-    message: str = "Download task started."
-    created_at: datetime = Field(default_factory=datetime.now)
+    task_id: str = Field(..., description="Unique identifier for the download task.")
+    status: ModelDownloadStatus = Field(..., description="Current status of the download task.")
+    percentage: float = Field(0.0, description="Download progress percentage.")
+    repo_id: str = Field(..., description="Repository ID of the model on Hugging Face Hub.")
+    filename: str = Field(..., description="Name of the model file.")
+    message: str = Field("Download task started.", description="Status message for the download task.")
+    created_at: datetime = Field(default_factory=lambda: datetime.now(), description="Timestamp when the download task was created.")
     error: Optional[str] = None
     file_size: Optional[int] = None
     downloaded_bytes: int = 0
-    model_info: Optional[ModelInfo] = None
+    model_info: Optional[LlamaCPPModelInfo] = None
     model_path : Optional[str] = None
     completed_at: Optional[datetime] = None
     failed_at: Optional[datetime] = None
@@ -269,7 +269,7 @@ class ModelsManager:
 
     def search_models(
         self, query: str, limit: int = 50, filter_tags: Optional[List[str]] = None
-    ) -> List[ModelInfo]:
+    ) -> List[LlamaCPPModelInfo]:
         """
         Searches for models matching the given query and optional filter tags, returning a list of model dictionaries.
 
@@ -320,7 +320,7 @@ class ModelsManager:
                         bits = str(match.group(1))
                         scheme = match.group(2)
                         modifier = match.group(3) or None
-                    model_info = ModelInfo(
+                    model_info = LlamaCPPModelInfo(
                         organization=organization,
                         repo_id=model.id,
                         filename=gguf_file,
@@ -374,7 +374,7 @@ class ModelsManager:
             return []
 
     def start_download_task(
-        self, task_id, model_info: ModelInfo, progress_callback: Optional[Callable] = None
+        self, task_id, model_info: LlamaCPPModelInfo, progress_callback: Optional[Callable] = None
     ) -> str:
         """
         Starts a background task to download a file from the specified repository.
@@ -444,7 +444,7 @@ class ModelsManager:
         task_id: str,
         repo_id: str,
         filename: str,
-        model_info: ModelInfo,
+        model_info: LlamaCPPModelInfo,
         progress_callback: Optional[Callable] = None,
     ):
         """
@@ -501,7 +501,7 @@ class ModelsManager:
                 self._download_tasks[task_id].failed_at = datetime.now()
 
     def _add_to_manifest(
-        self, repo_id: str, filename: str, model_path: str, model_info: ModelInfo
+        self, repo_id: str, filename: str, model_path: str, model_info: LlamaCPPModelInfo
     ):
         """
         Adds or updates model information in the manifest.
@@ -517,10 +517,10 @@ class ModelsManager:
         The model information includes repository ID, filename, local path, download timestamp,
         and file size. The manifest is saved after modification.
         """
-        model_info.file_size = (
-            Path(model_path).stat().st_size if Path(model_path).exists() else 0
-        )
-        model_info.downloaded_at = datetime.now().isoformat()
+        # model_info.file_size = (
+        #     Path(model_path).stat().st_size if Path(model_path).exists() else 0
+        # )
+        model_info.downloaded_at = datetime.now()
 
         for i, existing in enumerate(self.manifest["models"]):
             if existing["repo_id"] == repo_id and existing["filename"] == filename:

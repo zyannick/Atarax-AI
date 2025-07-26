@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 # Import your actual app and factory
 from api import app
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
+from ataraxai.praxis.utils.app_state import AppState
 
 def identity_decorator(func):
     """
@@ -28,4 +29,22 @@ def disable_all_instrumentation(monkeypatch):
     )
     
 
+
+@pytest.fixture
+def client(monkeypatch):
+    mock_orchestrator = MagicMock()
+
+    monkeypatch.setattr(
+        AtaraxAIOrchestratorFactory,
+        "create_orchestrator",
+        lambda: mock_orchestrator
+    )
+
+    with TestClient(app, base_url="http://test") as test_client:
+        test_client.orchestrator = mock_orchestrator
+        yield test_client
+
+    app.dependency_overrides.clear()
+    
+    
 

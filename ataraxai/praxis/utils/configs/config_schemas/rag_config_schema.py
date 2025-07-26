@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List
 from pathlib import Path
 
@@ -19,3 +19,4 @@ class RAGConfig(BaseModel):
 
     def is_setup_complete(self) -> bool:
         return Path(self.rag_model_path).exists()
+    
