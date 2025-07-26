@@ -1,6 +1,6 @@
 import pytest
 
-from ataraxai.praxis.utils.config_schemas.llama_config_schema import (
+from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
     LlamaModelParams,
     GenerationParams,
     LlamaConfig,

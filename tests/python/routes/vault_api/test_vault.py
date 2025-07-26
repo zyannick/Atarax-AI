@@ -1,15 +1,15 @@
 import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
 from ataraxai.praxis.utils.app_state import AppState
-from ataraxai.routes.vault_api.vault import router_vault
+# from ataraxai.routes.vault_route.vault import router_vault
 from ataraxai.routes.status import Status
-from fastapi import FastAPI
-from ataraxai.routes.rag_api.rag import get_unlocked_orchestrator
-from ataraxai.routes.vault_api.vault import get_orchestrator
-from unittest import mock
+# from fastapi import FastAPI
+from ataraxai.routes.rag_route.rag import get_unlocked_orchestrator
+from ataraxai.routes.vault_route.vault import get_orchestrator
+# from unittest import mock
 from api import app
 
 

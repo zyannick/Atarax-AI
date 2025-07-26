@@ -2,10 +2,10 @@ import pytest
 import tempfile
 from pathlib import Path
 from unittest import mock
-from ataraxai.praxis.utils.llama_config_manager import LlamaConfigManager, LLAMA_CONFIG_FILENAME
+from ataraxai.praxis.utils.configs.llama_config_manager import LlamaConfigManager, LLAMA_CONFIG_FILENAME
 import yaml
 
-from ataraxai.praxis.utils.config_schemas.llama_config_schema import (
+from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
     LlamaConfig,
     LlamaModelParams,
     GenerationParams,

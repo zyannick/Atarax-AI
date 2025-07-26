@@ -1,22 +1,28 @@
+import logging
+import threading
 import yaml
 from pathlib import Path
 from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import (
     UserPreferences,
 )
 from typing_extensions import Optional
-from typing import Dict, Any, Union
+from typing import Any
 
 PREFERENCES_FILENAME = "user_preferences.yaml"
 
 
 class UserPreferencesManager:
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(
+        self,
+        config_path: Optional[Path] = None,
+        logger: Optional[logging.Logger] = None,
+    ):
         """
         Initializes the PreferencesManager instance.
 
         Args:
-            config_path (Optional[Path]): The directory path where the preferences file will be stored. 
+            config_path (Optional[Path]): The directory path where the preferences file will be stored.
                 If None, defaults to the user's home directory under ".ataraxai".
 
         Attributes:
@@ -31,7 +37,8 @@ class UserPreferencesManager:
             config_path = Path.home() / ".ataraxai"
         self.config_path = config_path / PREFERENCES_FILENAME
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
-        self.preferences: UserPreferences = self._load_or_create()
+        self.logger = logger or logging.getLogger(__name__)
+        self._lock = threading.Lock()
 
     def _load_or_create(self) -> UserPreferences:
         """
@@ -51,11 +58,24 @@ class UserPreferencesManager:
                     data = yaml.safe_load(f)
                 return UserPreferences(**data)
             except Exception as e:
-                print(f"[ERROR] Failed to load preferences: {e}")
-        print("[INFO] Using default user preferences.")
-        self.preferences = UserPreferences()
+                if self.logger:
+                    self.logger.error(f"Failed to load preferences: {e}")
+        self._preferences = UserPreferences()
         self._save()
-        return self.preferences
+        return self._preferences
+
+    @property
+    def preferences(self) -> UserPreferences:
+        """
+        Returns the current user preferences.
+
+        Returns:
+            UserPreferences: The current user preferences object.
+        """
+        with self._lock:
+            if not hasattr(self, "_preferences"):
+                self._preferences = self._load_or_create()
+            return self._preferences
 
     def _save(self):
         """
@@ -69,8 +89,9 @@ class UserPreferencesManager:
             OSError: If the file cannot be opened or written to.
             yaml.YAMLError: If serialization to YAML fails.
         """
+        data_to_save = self.preferences.model_dump(mode="json")
         with open(self.config_path, "w", encoding="utf-8") as f:
-            yaml.safe_dump(self.preferences.model_dump(), f)
+            yaml.safe_dump(data_to_save, f)
 
     def update_user_preferences(self, new_prefs: UserPreferences):
         """
@@ -82,11 +103,13 @@ class UserPreferencesManager:
         Side Effects:
             Updates the internal preferences attribute and persists the changes by calling the _save() method.
         """
-        self.preferences = new_prefs
-        self._save()
+        with self._lock:
+            if not isinstance(new_prefs, UserPreferences):
+                raise TypeError("new_prefs must be an instance of UserPreferences")
+            self._preferences = new_prefs
+            self._save()
 
-
-    def get(self, key: str, default=None) -> Union[int, str, bool]:  # type: ignore
+    def get(self, key: str, default=None) -> Any:  # type: ignore
         """
         Retrieve the value of a preference by key.
 
@@ -99,7 +122,7 @@ class UserPreferencesManager:
         """
         return getattr(self.preferences, key, default)  # type: ignore
 
-    def set(self, key: str, value: Union[str, int, bool, Dict[str, Any]]):
+    def set(self, key: str, value: Any) -> None:
         """
         Set a preference value for the given key and persist the change.
 
@@ -113,6 +136,8 @@ class UserPreferencesManager:
         Side Effects:
             Updates the preferences object and saves the changes to persistent storage.
         """
+        if not hasattr(self.preferences, key):
+            raise AttributeError(f"Preference '{key}' does not exist.")
         setattr(self.preferences, key, value)
         self._save()
 
@@ -122,4 +147,5 @@ class UserPreferencesManager:
 
         This method updates the `preferences` attribute with the latest preferences data.
         """
-        self.preferences = self._load_or_create()
+        with self._lock:
+            self._preferences = self._load_or_create()

@@ -2,7 +2,7 @@ import uuid
 from pydantic import ValidationError
 import pytest
 
-from ataraxai.routes.chat_api.chat_api_models import (
+from ataraxai.routes.chat_route.chat_api_models import (
     CreateProjectRequestAPI,
     DeleteProjectRequestAPI,
     CreateSessionRequestAPI,

@@ -1,8 +1,8 @@
 import logging
 from ataraxai import hegemonikon_py  # type: ignore
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from ataraxai.praxis.utils.config_schemas.llama_config_schema import LlamaModelParams
-from ataraxai.praxis.utils.config_schemas.whisper_config_schema import (
+# from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import LlamaModelParams
+from ataraxai.praxis.utils.configs.config_schemas.whisper_config_schema import (
     WhisperModelParams,
 )
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
@@ -130,10 +130,10 @@ class CoreAIServiceManager:
 
         try:
             llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
-            status["llama_model_path"] = llama_params.model_path
-            status["llama_configured"] = bool(llama_params.model_path)
-            if llama_params.model_path:
-                status["llama_path_exists"] = Path(llama_params.model_path).exists()
+            status["llama_model_path"] = llama_params.model_path()
+            status["llama_configured"] = bool(llama_params.model_path())
+            if len(llama_params.model_path()) > 0:
+                status["llama_path_exists"] = Path(llama_params.model_path()).exists()
         except Exception as e:
             self.logger.warning(f"Could not get Llama configuration: {e}")
 
@@ -158,12 +158,12 @@ class CoreAIServiceManager:
         llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
         whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
 
-        if not llama_params.model_path:
+        if not llama_params.model_path():
             raise ValidationError("Llama model path not configured")
 
-        if not Path(llama_params.model_path).exists():
+        if not Path(llama_params.model_path()).exists():
             raise ValidationError(
-                f"Llama model path does not exist: {llama_params.model_path}"
+                f"Llama model path does not exist: {llama_params.model_path()}"
             )
 
         if not whisper_params.model:

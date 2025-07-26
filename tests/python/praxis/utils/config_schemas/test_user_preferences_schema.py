@@ -1,5 +1,5 @@
 import pytest
-from ataraxai.praxis.utils.config_schemas.user_preferences_schema import UserPreferences
+from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import UserPreferences
 
 def test_default_values():
     prefs = UserPreferences()

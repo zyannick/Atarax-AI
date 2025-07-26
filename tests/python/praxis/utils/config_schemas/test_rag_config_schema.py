@@ -1,5 +1,5 @@
 import pytest
-from ataraxai.praxis.utils.config_schemas.rag_config_schema import RAGConfig
+from ataraxai.praxis.utils.configs.config_schemas.rag_config_schema import RAGConfig
 
 def test_default_values():
     config = RAGConfig()

@@ -17,7 +17,7 @@ import os
 import threading
 import logging
 from ataraxai.praxis.modules.rag.rag_updater import rag_update_worker
-from ataraxai.praxis.utils.rag_config_manager import RAGConfigManager
+from ataraxai.praxis.utils.configs.rag_config_manager import RAGConfigManager
 
 
 class AtaraxAIRAGManager:

@@ -5,11 +5,11 @@ from unittest import mock
 import uuid
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
 from ataraxai.praxis.utils.app_state import AppState
-from ataraxai.routes.chat_api.chat import router_chat
+# from ataraxai.routes.chat_route.chat import router_chat
 from ataraxai.routes.status import Status
-from fastapi import FastAPI
+# from fastapi import FastAPI
 from api import app
-from ataraxai.routes.chat_api.chat import get_unlocked_orchestrator
+# from ataraxai.routes.chat_route.chat import get_unlocked_orchestrator
 
 
 @pytest.fixture

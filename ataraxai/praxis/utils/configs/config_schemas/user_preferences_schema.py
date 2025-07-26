@@ -1,13 +1,12 @@
 from pydantic import BaseModel, Field, field_validator
 from typing import Dict
 from enum import Enum, auto
-
+import yaml
 
 class AppTheme(str, Enum):
     SYSTEM_DEFAULT = auto()
     LIGHT = auto()
     DARK = auto()
-
 
 class UserPreferences(BaseModel):
     config_version: float = Field(1.0, description="Version of the user preferences configuration.")

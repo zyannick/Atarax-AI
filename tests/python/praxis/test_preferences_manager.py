@@ -6,7 +6,7 @@ from ataraxai.praxis.utils.user_preferences_manager import (
     UserPreferencesManager,
     PREFERENCES_FILENAME,
 )
-from ataraxai.praxis.utils.config_schemas.user_preferences_schema import (
+from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import (
     UserPreferences,
 )
 from _pytest.monkeypatch import MonkeyPatch

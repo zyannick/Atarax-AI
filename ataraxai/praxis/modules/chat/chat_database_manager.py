@@ -7,7 +7,6 @@ import logging
 from peewee import (
     SqliteDatabase,
     Model,
-    TimestampField,
     UUIDField,
     CharField,
     TextField,

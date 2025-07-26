@@ -1,5 +1,5 @@
 import pytest
-from ataraxai.praxis.utils.config_schemas.sound_recording_schema import SoundRecordingParams
+from ataraxai.praxis.utils.configs.config_schemas.sound_recording_schema import SoundRecordingParams
 
 def test_default_values():
     params = SoundRecordingParams()

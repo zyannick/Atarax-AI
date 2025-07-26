@@ -2,7 +2,7 @@ import pytest
 import yaml
 from pathlib import Path
 from unittest import mock
-from ataraxai.praxis.utils.rag_config_manager import RAGConfigManager, RAG_CONFIG_FILENAME
+from ataraxai.praxis.utils.configs.rag_config_manager import RAGConfigManager, RAG_CONFIG_FILENAME
 
 
 class DummyRAGConfig:
@@ -17,7 +17,7 @@ class DummyRAGConfig:
 
 @pytest.fixture(autouse=True)
 def patch_rag_config(monkeypatch):
-    import ataraxai.praxis.utils.rag_config_manager as rag_config_manager_mod
+    import ataraxai.praxis.utils.configs.rag_config_manager as rag_config_manager_mod
     monkeypatch.setattr(rag_config_manager_mod, "RAGConfig", DummyRAGConfig)
     yield
 

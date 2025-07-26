@@ -3,9 +3,6 @@ import pytest
 from unittest.mock import MagicMock
 from fastapi import BackgroundTasks, status
 
-# --- Imports from your application ---
-# This is the critical import. The 'app' object MUST be the main,
-# fully configured FastAPI instance from your project.
 from api import app
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
 from ataraxai.praxis.utils.app_state import AppState

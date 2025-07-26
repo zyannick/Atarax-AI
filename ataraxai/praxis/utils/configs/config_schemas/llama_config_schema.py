@@ -2,8 +2,8 @@ from pydantic import BaseModel, Field, computed_field
 from typing import List, Optional
 from ataraxai.praxis.modules.models_manager.models_manager import ModelInfo
 
-from typing import Literal, Optional
-from enum import Enum, auto
+# from typing import Literal, Optional
+# from enum import Enum, auto
 
 
 class LlamaModelParams(BaseModel):

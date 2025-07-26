@@ -1,6 +1,6 @@
 import pytest
 
-from ataraxai.praxis.utils.config_schemas.whisper_config_schema import (
+from ataraxai.praxis.utils.configs.config_schemas.whisper_config_schema import (
     WhisperModelParams,
     WhisperTranscriptionParams,
     WhisperConfig,

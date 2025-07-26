@@ -4,7 +4,7 @@ import queue
 import numpy as np
 import datetime
 import threading
-from ataraxai.praxis.utils.config_schemas.sound_recording_schema import (
+from ataraxai.praxis.utils.configs.config_schemas.sound_recording_schema import (
     SoundRecordingParams,
 )
 
