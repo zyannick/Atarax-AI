@@ -83,8 +83,18 @@ CMAKE_ARGS_STR+=" -DBUILD_TESTING=ON -DPYTHON_EXECUTABLE=$(which python3)"
 export CMAKE_ARGS="${CMAKE_ARGS_STR}"
 echo "[i] CMake arguments for pip: ${CMAKE_ARGS}"
 
+PYTHON_EXECUTABLE=$(which python3)
+if [ -z "$PYTHON_EXECUTABLE" ]; then
+    echo "Error: python3 not found in PATH. Please ensure Python 3 is installed and available."
+    exit 1
+fi
+
+PYTHON_INCLUDE_DIR=$(python3 -c "import sysconfig; print(sysconfig.get_path('include'))")
+
 echo " Running CMake Configuration..."
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release ${CMAKE_ARGS_STR}
+cmake -S . -B build \
+    -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} \
+    -DPython_INCLUDE_DIR=${PYTHON_INCLUDE_DIR}
 
 echo " Building Main Dependencies..."
 cmake --build build --config Release

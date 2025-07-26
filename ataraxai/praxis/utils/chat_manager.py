@@ -1,5 +1,5 @@
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+import logging
 from ataraxai.praxis.utils.input_validator import InputValidator
 import uuid
 from typing import List
@@ -16,7 +16,7 @@ class ChatManager:
     def __init__(
         self,
         db_manager: ChatDatabaseManager,
-        logger: AtaraxAILogger,
+        logger: logging.Logger,
         vault_manager: VaultManager,
     ):
         """
@@ -165,8 +165,32 @@ class ChatManager:
         """
         self.validator.validate_uuid(session_id, "Session ID")
         try:
-            session = self.db_manager.get_session(session_id)
-            return ChatSessionResponse.model_validate(session)
+            db_session = self.db_manager.get_session(session_id)
+            if not db_session:
+                raise ValueError(f"Session not found with identifier {session_id}")
+            decrypted_messages: List[MessageResponse] = []
+            for msg in db_session.messages:
+                decrypted_content: str = self.vault_manager.decrypt(
+                    bytes(msg.content)
+                ).decode("utf-8")
+                decrypted_messages.append(
+                    MessageResponse(
+                        id=msg.get_id(),
+                        session_id=db_session.get_id(),
+                        role=msg.get_role(),
+                        content=decrypted_content,
+                        date_time=msg.get_date_time(),
+                    )
+                )
+
+            return ChatSessionResponse(
+                id=db_session.get_id(),
+                project_id=db_session.get_project_id(),
+                title=db_session.get_title(),
+                messages=decrypted_messages,
+                created_at=db_session.get_created_at(),
+                updated_at=db_session.get_updated_at(),
+            )
         except Exception as e:
             self.logger.error(f"Failed to get session {session_id}: {e}")
             raise
@@ -189,8 +213,10 @@ class ChatManager:
         """
         self.validator.validate_uuid(project_id, "Project ID")
         try:
-            sessions = self.db_manager.get_sessions_for_project(project_id)
-            return [ChatSessionResponse.model_validate(session) for session in sessions]
+            sessions_db = self.db_manager.get_sessions_for_project(project_id)
+            return [
+                ChatSessionResponse.model_validate(session) for session in sessions_db
+            ]
         except Exception as e:
             self.logger.error(f"Failed to list sessions for project {project_id}: {e}")
             raise
@@ -259,7 +285,7 @@ class ChatManager:
                 session_id=uuid.UUID(str(db_message.session.id)),
                 role=str(db_message.role),
                 content=content,
-                timestamp=db_message.timestamp.to_timestamp(),
+                date_time=db_message.get_date_time(),  # Assuming timestamp is a datetime object,
             )
 
             return response
@@ -283,20 +309,23 @@ class ChatManager:
         Logs:
             Logs an error message if message retrieval fails.
         """
+        self.logger.info(f"Retrieving message with ID: {message_id}")
         self.validator.validate_uuid(message_id, "Message ID")
         try:
             db_message = self.db_manager.get_message(message_id)
             if not db_message:
                 raise ValueError(f"Message with ID {message_id} not found.")
 
-            decrypted_content = self.vault_manager.decrypt(bytes(db_message.content)).decode("utf-8")
+            decrypted_content: str = self.vault_manager.decrypt(
+                bytes(db_message.content)
+            ).decode("utf-8")
 
             return MessageResponse(
                 id=uuid.UUID(str(db_message.id)),
                 session_id=uuid.UUID(str(db_message.session.id)),
                 role=str(db_message.role),
-                content=decrypted_content,  
-                timestamp=db_message.timestamp.to_timestamp()
+                content=decrypted_content,
+                date_time=db_message.get_date_time(),
             )
         except Exception as e:
             self.logger.error(f"Failed to get message {message_id}: {e}")
@@ -311,19 +340,23 @@ class ChatManager:
             encrypted_messages = self.db_manager.get_messages_for_session(session_id)
             decrypted_responses = []
             for msg in encrypted_messages:
-                decrypted_content = self.vault_manager.decrypt(bytes(msg.content)).decode("utf-8")
+                decrypted_content: str = self.vault_manager.decrypt(
+                    bytes(msg.content)
+                ).decode("utf-8")
                 decrypted_responses.append(
                     MessageResponse(
-                        id=uuid.UUID(str(msg.id)),
-                        session_id=uuid.UUID(str(msg.session.id)),
-                        role=str(msg.role),
+                        id=msg.get_id(),
+                        session_id=msg.get_session_id(),
+                        role=msg.get_role(),
                         content=decrypted_content,
-                        timestamp=msg.timestamp.to_timestamp()
+                        date_time=msg.get_date_time(),
                     )
                 )
             return decrypted_responses
         except Exception as e:
-            self.logger.error(f"Failed to get and decrypt messages for session {session_id}: {e}")
+            self.logger.error(
+                f"Failed to get and decrypt messages for session {session_id}: {e}"
+            )
             raise
 
     def delete_message(self, message_id: uuid.UUID) -> bool:

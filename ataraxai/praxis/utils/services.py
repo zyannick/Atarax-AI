@@ -1,10 +1,9 @@
 from pathlib import Path
 from typing import Any, Dict, List
-
+import logging
 from typing import Optional
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.praxis.modules.prompt_engine.context_manager import ContextManager
@@ -17,10 +16,11 @@ from ataraxai.praxis.utils.exceptions import (
     ValidationError,
     ServiceInitializationError,
 )
-from ataraxai.praxis.modules.models_manager.model_manager import ModelManager
+from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
 from ataraxai.praxis.utils.chat_manager import ChatManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
+
 
 
 class Services:
@@ -28,21 +28,21 @@ class Services:
     def __init__(
         self,
         directories: AppDirectories,
-        logger: AtaraxAILogger,
+        logger: logging.Logger,
         db_manager: ChatDatabaseManager,
         chat_context: ChatContextManager,
         chat_manager: ChatManager,
         config_manager: ConfigurationManager,
         app_config: AppConfig,
         vault_manager: VaultManager,
-        model_manager: ModelManager,
+        models_manager: ModelsManager,
     ):
         """
         Initializes the service with required managers, configuration, and logging utilities.
 
         Args:
             directories (AppDirectories): Handles application directory paths.
-            logger (ArataxAILogger): Logger instance for logging events and errors.
+            logger (logging.Logger): Logger instance for logging events and errors.
             db_manager (ChatDatabaseManager): Manages chat-related database operations.
             chat_context (ChatContextManager): Maintains chat context and state.
             chat_manager (ChatManager): Handles chat session management.
@@ -57,7 +57,7 @@ class Services:
         self.chat_manager = chat_manager
         self.config_manager = config_manager
         self.app_config = app_config
-        self.model_manager = model_manager
+        self.models_manager = models_manager
         self.core_ai_service = None
         self.vault_manager = vault_manager
 
@@ -128,7 +128,7 @@ class Services:
         """
         db_path = self.directories.data / self.app_config.database_filename
         self.db_manager = ChatDatabaseManager(db_path=db_path)
-        self.chat_context = ChatContextManager(db_manager=self.db_manager)
+        self.chat_context = ChatContextManager(db_manager=self.db_manager, vault_manager=self.vault_manager)
         self.chat_manager = ChatManager(self.db_manager, self.logger, self.vault_manager)
         self.logger.info("Database initialized successfully")
 
@@ -140,7 +140,7 @@ class Services:
         and assigns it to `self.rag_manager`. It also logs a message indicating successful initialization.
         """
         self.rag_manager = AtaraxAIRAGManager(
-            rag_config_manager=self.config_manager.rag_config,
+            rag_config_manager=self.config_manager.rag_config_manager,
             app_data_root_path=self.directories.data,
             core_ai_service=None,
         )
@@ -160,7 +160,7 @@ class Services:
 
         self.prompt_manager = PromptManager(prompts_directory=prompts_dir)
         self.context_manager = ContextManager(
-            config=self.config_manager.rag_config.get_config().model_dump(),
+            config=self.config_manager.rag_config_manager.get_config().model_dump(),
             rag_manager=self.rag_manager,
         )
         self.task_manager = TaskManager()
@@ -233,9 +233,12 @@ class Services:
         """
         self.logger.info("Shutting down AtaraxAI...")
         try:
-            self.rag_manager.stop_file_monitoring()
-            self.db_manager.close()
-            self.core_ai_manager.shutdown()
+            if hasattr(self, 'rag_manager'):
+                self.rag_manager.stop_file_monitoring()
+            if hasattr(self, 'db_manager'):
+                self.db_manager.close()
+            if hasattr(self, 'core_ai_manager'):
+                self.core_ai_manager.shutdown()
             self.logger.info("AtaraxAI shutdown completed successfully")
         except Exception as e:
             self.logger.error(f"Error during shutdown: {e}")

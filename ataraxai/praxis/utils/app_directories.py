@@ -12,6 +12,7 @@ class AppDirectories:
     data: Path
     cache: Path
     logs: Path
+ 
 
     @classmethod
     def create_default(cls, settings: AtaraxAISettings) -> "AppDirectories":

@@ -12,7 +12,7 @@ from ataraxai.praxis.modules.rag.parser.document_base_parser import (
 )
 from ataraxai import hegemonikon_py  # type: ignore [attr-defined]
 from typing import Dict, Any
-from ataraxai.praxis.utils.config_schemas.whisper_config_schema import (
+from ataraxai.praxis.utils.configs.config_schemas.whisper_config_schema import (
     WhisperModelParams,
     WhisperTranscriptionParams,
 )

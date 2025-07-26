@@ -7,7 +7,7 @@ from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger, CustomFormatte
 @pytest.fixture
 def logger(tmp_path):
     log_file = tmp_path / "test.log"
-    return AtaraxAILogger(str(log_file)), log_file
+    return AtaraxAILogger(str(log_file)).get_logger(), log_file
 
 def test_logger_writes_to_file(logger):
     log, log_file = logger

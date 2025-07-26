@@ -17,7 +17,7 @@ import os
 import threading
 import logging
 from ataraxai.praxis.modules.rag.rag_updater import rag_update_worker
-from ataraxai.praxis.utils.rag_config_manager import RAGConfigManager
+from ataraxai.praxis.utils.configs.rag_config_manager import RAGConfigManager
 
 
 class AtaraxAIRAGManager:
@@ -194,7 +194,7 @@ class AtaraxAIRAGManager:
         """
         if not directories_to_scan or len(directories_to_scan) == 0:
             self.logger.info("No directories to scan.")
-            raise ValueError("No directories specified for scanning.")
+            return 0
 
         files_found = 0
         self.logger.info(

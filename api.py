@@ -10,15 +10,20 @@ from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from ataraxai.praxis.katalepsis import Katalepsis
-from ataraxai.routes.rag_api.rag import router_rag
-from ataraxai.routes.vault_api.vault import router_vault
-from ataraxai.routes.chat_api.chat import router_chat
+from ataraxai.routes.rag_route.rag import router_rag
+from ataraxai.routes.vault_route.vault import router_vault
+from ataraxai.routes.chat_route.chat import router_chat
+from ataraxai.routes.models_manager_route.models_manager import router_models_manager
+from ataraxai.routes.configs_routes.user_preferences_route.user_preferences import router_user_preferences
+from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config import llama_cpp_router
+from ataraxai.routes.configs_routes.rag_config_route.rag_config_route import rag_config_router
 from ataraxai.routes.dependency_api import get_orchestrator
 
+os.environ.setdefault("ENVIRONMENT", "development")  # Default to development if not set
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 
-logger = AtaraxAILogger("ataraxai.praxis.api")
+logger = AtaraxAILogger("ataraxai.praxis.api").get_logger()
 
 
 @asynccontextmanager
@@ -76,3 +81,7 @@ async def get_health(orch: AtaraxAIOrchestrator = Depends(get_orchestrator)) -> 
 app.include_router(router_vault)
 app.include_router(router_chat)
 app.include_router(router_rag)
+app.include_router(router_models_manager)
+app.include_router(router_user_preferences)
+app.include_router(llama_cpp_router)
+app.include_router(rag_config_router)

@@ -18,6 +18,10 @@ ataraxai.praxis.chat
 ataraxai.praxis.rag
 ataraxai.praxis.vault
 ataraxai.praxis.api
+ataraxai.praxis.llama_cpp
+ataraxai.praxis.models_manager
+ataraxai.praxis.rag_config
+ataraxai.praxis.user_preferences
 
 .coverage
 

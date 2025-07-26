@@ -30,7 +30,7 @@ class CustomFormatter(logging.Formatter):
 
 class AtaraxAILogger:
 
-    def __init__(self, log_file: str = "ataraxai.log"):
+    def __init__(self, log_file: str = "ataraxai.log", log_dir: str | None = None):
         """
         Initializes the AtaraxaiLogger instance.
 
@@ -41,9 +41,13 @@ class AtaraxAILogger:
 
         Args:
             log_file (str): Path to the log file. Defaults to "ataraxai.log".
+            log_dir (str | None): Directory to store log files. If None, uses the current directory.
         """
         self.logger = logging.getLogger("AtaraxaiLogger")
         self.logger.setLevel(logging.DEBUG)
+        
+        if log_dir is not None:
+            log_file = f"{log_dir}/{log_file}"
 
         file_handler = logging.FileHandler(log_file)
         file_handler.setLevel(logging.DEBUG)
@@ -59,18 +63,12 @@ class AtaraxAILogger:
 
         self.logger.addHandler(file_handler)
         self.logger.addHandler(console_handler)
+        
+    def get_logger(self) -> logging.Logger:
+        """
+        Returns the configured logger instance.
 
-    def debug(self, message: str):
-        self.logger.debug(message)
-
-    def info(self, message: str):
-        self.logger.info(message)
-
-    def warning(self, message: str):
-        self.logger.warning(message)
-
-    def error(self, message: str):
-        self.logger.error(message)
-
-    def critical(self, message: str):
-        self.logger.critical(message)
+        Returns:
+            logging.Logger: The logger instance configured with file and console handlers.
+        """
+        return self.logger

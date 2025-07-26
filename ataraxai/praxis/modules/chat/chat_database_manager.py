@@ -15,7 +15,7 @@ from peewee import (
     IntegrityError,
     DoesNotExist,
     Select,
-    BlobField
+    BlobField,
 )
 
 
@@ -37,8 +37,16 @@ class Project(BaseModel):
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)
 
+    sessions = List["ChatSession"]  # type: ignore
+
     def get_id(self) -> uuid.UUID:
         return uuid.UUID(str(self.id))
+    
+    def get_created_at(self) -> datetime:
+        return datetime(self.created_at.year, self.created_at.month, self.created_at.day, self.created_at.hour, self.created_at.minute, self.created_at.second)
+
+    def get_updated_at(self) -> datetime:
+        return datetime(self.updated_at.year, self.updated_at.month, self.updated_at.day, self.updated_at.hour, self.updated_at.minute, self.updated_at.second)
 
     def get_name(self) -> str:
         return str(self.name)
@@ -61,8 +69,16 @@ class ChatSession(BaseModel):
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)
 
+    messages: List["Message"] = []  # type: ignore
+
     def get_id(self) -> uuid.UUID:
         return uuid.UUID(str(self.id))
+
+    def get_created_at(self) -> datetime:
+        return datetime(self.created_at.year, self.created_at.month, self.created_at.day, self.created_at.hour, self.created_at.minute, self.created_at.second)  # type: ignore
+    
+    def get_updated_at(self) -> datetime:
+        return datetime(self.updated_at.year, self.updated_at.month, self.updated_at.day, self.updated_at.hour, self.updated_at.minute, self.updated_at.second)  # type: ignore
 
     def get_title(self) -> str:
         return str(self.title)
@@ -82,12 +98,15 @@ class Message(BaseModel):
     id = UUIDField(primary_key=True)
     session = ForeignKeyField(ChatSession, backref="messages", on_delete="CASCADE")
     role = CharField()
-    content = BlobField() 
-    timestamp = DateTimeField(default=datetime.now)
+    content = BlobField()
+    date_time = DateTimeField(default=datetime.now)
 
     def __str__(self):
         content_preview = self.content[:50] + "..." if len(self.content) > 50 else self.content  # type: ignore
         return f"Message(id={self.id}, role='{self.role}', content='{content_preview}')"
+    
+    def get_date_time(self) -> datetime:
+        return datetime(self.date_time.year, self.date_time.month, self.date_time.day, self.date_time.hour, self.date_time.minute, self.date_time.second)
 
     def get_id(self) -> uuid.UUID:
         return uuid.UUID(str(self.id))
@@ -98,11 +117,11 @@ class Message(BaseModel):
     def get_role(self) -> str:
         return str(self.role)
 
-    def get_content(self) -> str:
-        return str(self.content)
+    def get_content(self) -> bytes:
+        return bytes(self.content)
 
     def get_timestamp(self) -> datetime:
-        return self.timestamp  # type: ignore
+        return self.date_time  # type: ignore
 
 
 class DatabaseError(Exception):
@@ -273,7 +292,7 @@ class ChatSessionService(BaseService):
                 self.model.select()  # type: ignore
                 .where(self.model.project == project_id)  # type: ignore
                 .order_by(self.model.created_at.desc())  # type: ignore
-            ) 
+            )
 
             if limit:
                 query = query.limit(limit)  # type: ignore
@@ -360,6 +379,9 @@ class MessageService(BaseService):
             raise NotFoundError(
                 f"Message get failed: not found with identifier {message_id}"
             )
+        except Exception as e:
+            logger.error(f"Failed to get message: {e}")
+            raise DatabaseError(f"Failed to get message: {e}")
 
     def get_messages_for_session(
         self, session_id: uuid.UUID, limit: Optional[int] = None
@@ -368,7 +390,7 @@ class MessageService(BaseService):
             query = (
                 self.model.select()  # type: ignore
                 .where(self.model.session == session_id)  # type: ignore
-                .order_by(self.model.timestamp.asc())  # type: ignore
+                .order_by(self.model.date_time.asc())  # type: ignore
             )
 
             if limit:
@@ -536,7 +558,7 @@ class ChatDatabaseManager:
                     "id": str(msg.id),
                     "role": msg.role,
                     "content": msg.content,
-                    "timestamp": msg.timestamp.isoformat(),  # type: ignore
+                    "timestamp": msg.date_time.isoformat(),  # type: ignore
                 }
                 for msg in messages
             ]
@@ -613,4 +635,3 @@ class ChatDatabaseManager:
 
     def __exit__(self, exc_type, exc_val, exc_tb):  # type: ignore
         self.close()
-

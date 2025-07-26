@@ -3,11 +3,11 @@ import yaml
 from pathlib import Path
 from unittest import mock
 
-from ataraxai.praxis.utils.whisper_config_manager import (
+from ataraxai.praxis.utils.configs.whisper_config_manager import (
     WhisperConfigManager,
     WHISPER_CONFIG_FILENAME,
 )
-from ataraxai.praxis.utils.config_schemas.whisper_config_schema import (
+from ataraxai.praxis.utils.configs.config_schemas.whisper_config_schema import (
     WhisperConfig,
     WhisperModelParams,
     WhisperTranscriptionParams,
