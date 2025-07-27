@@ -406,10 +406,10 @@ class AtaraxAIOrchestratorFactory:
     @staticmethod
     def create_orchestrator() -> AtaraxAIOrchestrator:
         app_config = AppConfig()
-        logger: logging.Logger = AtaraxAILogger().get_logger()
+        
         settings = AtaraxAISettings()
         directories = AppDirectories.create_default(settings)
-
+        logger: logging.Logger = AtaraxAILogger(log_dir=str(directories.logs)).get_logger()
         vault_manager = VaultManager(
             salt_path=str(directories.data / "vault.salt"),
             check_path=str(directories.data / "vault.check"),
@@ -429,7 +429,7 @@ class AtaraxAIOrchestratorFactory:
             db_manager=db_manager, logger=logger, vault_manager=vault_manager
         )
 
-        model_manager = ModelsManager(directories=directories, logger=logger)
+        models_manager = ModelsManager(directories=directories, logger=logger)
 
         services = Services(
             directories=directories,
@@ -440,7 +440,7 @@ class AtaraxAIOrchestratorFactory:
             config_manager=config_manager,
             app_config=app_config,
             vault_manager=vault_manager,
-            models_manager=model_manager,
+            models_manager=models_manager,
         )
 
         orchestrator = AtaraxAIOrchestrator(
