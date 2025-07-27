@@ -1,14 +1,11 @@
 import pytest
-import functools
 from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 from pathlib import Path
 from typing import Generator
 
-# Import your actual app and factory
 from api import app
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
-from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
