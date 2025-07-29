@@ -1,7 +1,7 @@
 import asyncio
 import json
 from typing import Any, Dict, Optional
-from fastapi import APIRouter, BackgroundTasks, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.params import Depends
 from prometheus_client import Enum
 import ulid
@@ -22,6 +22,7 @@ from ataraxai.routes.models_manager_route.models_manager_api_models import (
 )
 from ataraxai.praxis.modules.models_manager.models_manager import (
     LlamaCPPModelInfo,
+    ModelDownloadStatus,
 )
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -44,10 +45,9 @@ async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator
         filter_tags=request.filters_tags,
     )
     if not models:
-        return SearchModelsResponse(
-            status=Status.SUCCESS,
-            message="No models found matching the search criteria.",
-            models=[],
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No models found matching the search criteria.",
         )
     return SearchModelsResponse(
         status=Status.SUCCESS,
@@ -103,29 +103,43 @@ async def get_download_status(
     task_id: str,
     orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
 ) -> DownloadModelResponse:
-    try:
-        progress = orch.models_manager.get_download_status(task_id)
-        if not progress:
-            return DownloadModelResponse(
-                status=DownloadTaskStatus.FAILED,
-                message="No download task found with the provided ID.",
-                percentage=0,
-                task_id=task_id,
-            )
+    progress = orch.models_manager.get_download_status(task_id)
+    print(progress)
+    if progress is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No download task found with the provided ID.",
+        )
 
+    return DownloadModelResponse(
+        status=progress.get("status", DownloadTaskStatus.PENDING),
+        message=progress.get("message", "No message available."),
+        percentage=progress.get("percentage", 0),
+        task_id=task_id,
+    )
+
+        
+
+@router_models_manager.post("/cancel_download/{task_id}")
+async def cancel_download(
+    task_id: str,
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+) -> DownloadModelResponse:
+    try:
+        orch.models_manager.cancel_download(task_id)
         return DownloadModelResponse(
-            status=progress.get("status", DownloadTaskStatus.PENDING),
-            message=progress.get("message", "No message available."),
-            percentage=progress.get("percentage", 0),
+            status=DownloadTaskStatus.CANCELLED,
+            message="Download task has been cancelled.",
             task_id=task_id,
+            percentage=0,
         )
     except Exception as e:
-        logger.error(f"Error getting download progress for task {task_id}: {str(e)}")
+        logger.error(f"Error cancelling download task {task_id}: {str(e)}")
         return DownloadModelResponse(
             status=DownloadTaskStatus.FAILED,
-            message=f"Error retrieving download status: {str(e)}",
-            percentage=0,
+            message=f"Error cancelling download task: {str(e)}",
             task_id=task_id,
+            percentage=0,
         )
 
 

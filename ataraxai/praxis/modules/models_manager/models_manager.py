@@ -30,7 +30,9 @@ class ModelDownloadStatus(Enum):
     COMPLETED = auto()
     FAILED = auto()
     CANCELLED = auto()
+    PAUSED = auto()
     NOT_FOUND = auto()
+    
 
 
 class LlamaCPPModelInfo(BaseModel):
@@ -109,6 +111,7 @@ class ModelDownloadInfo(BaseModel):
     completed_at: Optional[datetime] = None
     failed_at: Optional[datetime] = None
     cancelled_at: Optional[datetime] = None
+    pause_at: Optional[datetime] = None
     
     # def to_dict(self) -> Dict[str, Any]:
     #     """
@@ -204,6 +207,7 @@ class ModelsManager:
 
     def _download_with_progress(
         self,
+        task_id: str,
         repo_id: str,
         filename: str,
         local_dir: str,
@@ -230,6 +234,8 @@ class ModelsManager:
         
         self.logger.info(f"Downloading {filename} from {url} to {local_path}")
         response = requests.get(url, stream=True)
+        
+        response.raise_for_status()
 
         total_size = int(response.headers.get("content-length", 0))
         self.logger.info(f"Downloading {filename} from {url} to {local_path} ({total_size} bytes)")
@@ -248,6 +254,11 @@ class ModelsManager:
                         downloaded_size += len(chunk)
                         if callback:
                             callback(downloaded_size, total_size)
+                            
+                        with self._lock:
+                            if self._download_tasks[task_id].status == ModelDownloadStatus.CANCELLED:
+                                self.logger.info(f"Cancellation detected for task {task_id}. Aborting download.")
+                                return None 
 
         return local_path
 
@@ -611,11 +622,19 @@ class ModelsManager:
             callback = self._progress_callback_wrapper(task_id, progress_callback)
 
             model_path = self._download_with_progress(
+                task_id=task_id,
                 repo_id=repo_id,
                 filename=filename,
                 local_dir=str(self.models_dir / repo_id),
                 callback=callback,
             )
+            
+            if model_path is None:
+                partial_file = Path(self.models_dir / repo_id / filename)
+                if partial_file.exists():
+                    partial_file.unlink()
+                self.logger.info(f"Cleaned up partial file for cancelled task {task_id}.")
+                return
 
             if self._verify_file_integrity(Path(model_path), repo_id, filename):
                 self.logger.info(f"File integrity verified for {filename}")
@@ -691,16 +710,12 @@ class ModelsManager:
                             or None if the task ID does not exist.
         """
         with self._lock:
-            model_download_info = self._download_tasks.get(task_id)
+            model_download_info = self._download_tasks.get(task_id, None)
             if model_download_info:
                 return model_download_info.model_dump(mode="json")
             else:
                 self.logger.warning(f"Download task {task_id} not found.")
-                return {
-                    "task_id": task_id,
-                    "status": ModelDownloadStatus.NOT_FOUND.value,
-                    "message": "Download task not found.",
-                }
+                return None
 
     def cancel_download(self, task_id: str) -> bool:
         """
@@ -718,6 +733,7 @@ class ModelsManager:
                 self._download_tasks[task_id].cancelled_at = datetime.now()
                 return True
         return False
+    
 
     def list_downloaded_models(self) -> List[Dict]:
         """
@@ -730,6 +746,31 @@ class ModelsManager:
             List[Dict]: A list of dictionaries, each representing a downloaded model.
         """
         return self.manifest.get("models", [])
+    
+    def remove_all_models(self) -> bool:
+        """
+        Removes all models from the manifest and deletes their local files.
+
+        Returns:
+            bool: True if all models were successfully removed, False otherwise.
+
+        Side Effects:
+            - Deletes all model files from the local filesystem.
+            - Clears the manifest and saves it.
+            - Logs information and errors related to the removal process.
+        """
+        try:
+            for model in self.manifest["models"]:
+                if model.get("local_path") and Path(model["local_path"]).exists():
+                    Path(model["local_path"]).unlink()
+
+            self.manifest["models"] = []
+            self._save_manifest()
+            self.logger.info("Removed all models from manifest and local storage.")
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to remove all models: {e}")
+            return False
 
     def remove_model(self, repo_id: str, filename: str) -> bool:
         """
@@ -799,6 +840,9 @@ if __name__ == "__main__":
 
     logger = AtaraxAILogger().get_logger()
     model_manager = ModelsManager(directories, logger)
+    
+    model_manager.remove_all_models()  # Clear existing models for testing
+    model_manager.cleanup_old_tasks(max_age_hours=1)  # Clean up old tasks
 
     models = model_manager.search_models("llama", limit=100)
     print(f"Found {len(models)} models matching 'llama'.")

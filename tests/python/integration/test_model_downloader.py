@@ -85,13 +85,11 @@ def test_search_models_no_results(unlocked_client):
     )
 
     assert (
-        response.status_code == status.HTTP_200_OK
-    ), f"Expected 200 OK, got {response.text}"
+        response.status_code == status.HTTP_404_NOT_FOUND
+    ), f"Expected 404 Not Found, got {response.text}"
     data = response.json()
-
-    assert data["status"] == Status.SUCCESS
-    assert data["message"] == "No models found matching the search criteria."
-    assert data["models"] == []
+    assert data["detail"] == "No models found matching the search criteria."
+    
 
 
 def test_model_download_and_progress_flow(unlocked_client):
@@ -168,6 +166,7 @@ def test_model_download_and_progress_flow(unlocked_client):
             while time.time() < timeout:
                 message = websocket.receive_json()
                 final_status = message
+                # print(f"Received message: {message}")
                 if str(message.get("status")) in [DownloadTaskStatus.COMPLETED.value, DownloadTaskStatus.FAILED.value] :
                     break
     except WebSocketDisconnect as e:
@@ -208,3 +207,60 @@ def test_model_download_and_progress_flow(unlocked_client):
     
 
 
+def test_model_download_not_found(unlocked_client):
+    non_existent_task_id = str(ulid.ULID())
+
+    response = unlocked_client.get(
+        f"/api/v1/models_manager/download_status/{non_existent_task_id}"
+    )
+
+    assert (
+        response.status_code == status.HTTP_404_NOT_FOUND
+    ), f"Expected 404 Not Found, got {response.text}"
+    assert response.json()['detail'] == "No download task found with the provided ID."
+    
+    
+def test_cancel_download(unlocked_client):
+    search_model_request = SearchModelsRequest(
+        query="llama", limit=100, filters_tags=[]
+    )
+    response = unlocked_client.post(
+        "/api/v1/models_manager/search_models",
+        json=search_model_request.model_dump(mode="json"),
+    )
+
+    assert (
+        response.status_code == status.HTTP_200_OK
+    ), f"Expected 200 OK, got {response.text}"
+    data = response.json()
+
+    assert data["status"] == Status.SUCCESS
+    assert isinstance(data["models"], list)
+
+    model_to_download = sorted(data["models"], key=lambda x: x["file_size"])[0]
+
+    download_request = DownloadModelRequest(**model_to_download)
+
+    orchestrator = unlocked_client.app.state.orchestrator
+    assert orchestrator.state == AppState.UNLOCKED, "Orchestrator should be in UNLOCKED state."
+
+    response = unlocked_client.post(
+        "/api/v1/models_manager/download_model",
+        json=download_request.model_dump(mode="json"),
+    )
+
+    assert (
+        response.status_code == status.HTTP_202_ACCEPTED
+    ), f"Expected 202 Accepted, got {response.text}"
+    data = response.json()
+    task_id = data["task_id"]
+    
+    cancel_response = unlocked_client.post(f"/api/v1/models_manager/cancel_download/{task_id}")
+    
+    assert cancel_response.status_code == status.HTTP_200_OK, f"Expected 200 OK, got {cancel_response.text}"
+    
+    cancel_data = cancel_response.json()
+
+    assert str(cancel_data["status"]) == DownloadTaskStatus.CANCELLED.value
+    assert cancel_data["message"] == "Download task has been cancelled."
+    assert cancel_data["task_id"] == task_id
