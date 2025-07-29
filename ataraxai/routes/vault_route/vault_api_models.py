@@ -22,11 +22,12 @@ class ConfirmationPhaseResponse(BaseModel):
 
 class VaultPasswordRequest(BaseModel):
     password: SecretStr = Field(..., min_length=8, description="The user's master password.")
-    # class Config:
-    #     json_encoders: Dict[Any, Any] = {
-    #         SecretStr: lambda v: "***" if "password" in str(v) else v
-    #     }
-        
+    
+    class Config:
+        json_encoders = {
+            SecretStr: lambda v: v.get_secret_value() if v else None
+        }
+
     @field_validator("password")
     def validate_password(cls, v: SecretStr) -> SecretStr:
         if v.__len__() < 8:

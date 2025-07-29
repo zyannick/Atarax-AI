@@ -1,3 +1,4 @@
+from datetime import datetime
 from enum import Enum, auto
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
@@ -5,36 +6,27 @@ from ataraxai.routes.status import Status
 
 
 class ModelInfoResponse(BaseModel):
-    organization: str = Field(
-        ...,
-        description="The organization that owns the model.",
-    )
+    organization: str = Field(..., description="The organization or user who owns the model.")
     repo_id: str = Field(
         ...,
         description="The repository ID of the model.",
     )
-    file_name: str = Field(
-        ...,
-        description="The file name of the model.",
-    )
-    local_path: str = Field(
-        ...,
-        description="The local path where the model is stored.",
-    )
+    filename: str = Field(..., description="The file name of the model.")
+    local_path: str = Field(..., description="The local path where the model is stored.")
     file_size: int = Field(
-        ...,
+        0,
         description="The size of the model file in bytes.",
     )
-    create_at: str = Field(
-        ...,
+    create_at: datetime = Field(
+        default_factory=lambda: datetime.now(),
         description="The creation date of the model.",
     )
     downloads : int = Field(
-        ...,
+        0,
         description="The number of times the model has been downloaded.",
     )
     likes: int = Field(
-        ...,
+        0,
         description="The number of likes the model has received.",
     )
     quantization_bit: str = Field(
@@ -53,34 +45,34 @@ class ModelInfoResponse(BaseModel):
 class DownloadModelRequest(BaseModel):
     organization: str = Field(
         ...,
-        description="The organization that owns the model.",
+        description="The organization or user who owns the model.",
     )
     repo_id: str = Field(
         ...,
         description="The repository ID of the model.",
     )
-    file_name: str = Field(
+    filename: str = Field(
         ...,
         description="The file name of the model.",
     )
-    local_path: str = Field(
-        ...,
+    local_path: Optional[str] = Field(
+        None,
         description="The local path where the model is stored.",
     )
     file_size: int = Field(
-        ...,
+        0,
         description="The size of the model file in bytes.",
     )
-    create_at: str = Field(
-        ...,
+    create_at: datetime = Field(
+        default_factory=lambda: datetime.now(),
         description="The creation date of the model.",
     )
     downloads: int = Field(
-        ...,
+        0,
         description="The number of times the model has been downloaded.",
     )
     likes: int = Field(
-        ...,
+        0,
         description="The number of likes the model has received.",
     )
     quantization_bit: str = Field(

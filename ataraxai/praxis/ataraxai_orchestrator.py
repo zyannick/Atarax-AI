@@ -7,7 +7,7 @@ from ataraxai import __version__  # type: ignore
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
 
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
-from ataraxai.praxis.utils.vault_manager import VaultManager
+from ataraxai.praxis.utils.vault_manager import UnlockResult, VaultInitializationStatus, VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
@@ -149,19 +149,6 @@ class AtaraxAIOrchestrator:
             self._set_state(AppState.ERROR)
             raise
 
-    # def _clear_internal_refs(self):
-    #     """
-    #     Clears internal references to services and managers to help with garbage collection.
-
-    #     This method is called when the orchestrator is shutting down to ensure that all internal
-    #     references are cleared, allowing Python's garbage collector to reclaim memory.
-    #     """
-    #     self.services = None
-    #     self.vault_manager = None
-    #     self.setup_manager = None
-    #     self.config_manager = None
-    #     self.core_ai_manager = None
-
     def _reset_state(self):
         """
         Resets the internal state of the orchestrator to its initial state.
@@ -173,7 +160,7 @@ class AtaraxAIOrchestrator:
             self._state = AppState.LOCKED
             self.logger.info("Orchestrator state reset to LOCKED.")
 
-    def initialize_new_vault(self, master_password: SecureString) -> bool:
+    def initialize_new_vault(self, master_password: SecureString) -> VaultInitializationStatus:
         """
         Initializes a new vault with the provided master password.
 
@@ -194,18 +181,18 @@ class AtaraxAIOrchestrator:
 
         if self._state != AppState.FIRST_LAUNCH:
             self.logger.error("Attempted to initialize an existing vault.")
-            return False
+            return VaultInitializationStatus.ALREADY_INITIALIZED
 
         try:
             self.vault_manager.create_and_initialize_vault(master_password)
             self._set_state(AppState.UNLOCKED)
             self.logger.info("Vault successfully initialized and unlocked.")
             self._initialize_unlocked_services()
-            return True
+            return VaultInitializationStatus.SUCCESS
         except Exception as e:
             self.logger.error(f"Failed to initialize new vault: {e}")
             self._set_state(AppState.ERROR)
-            return False
+            return VaultInitializationStatus.FAILED
 
     def reinitialize_vault(self, confirmation_phrase: str) -> bool:
         """
@@ -286,7 +273,7 @@ class AtaraxAIOrchestrator:
             self.lock()
             raise
 
-    def unlock(self, password: SecureString) -> bool:
+    def unlock(self, password: SecureString) -> UnlockResult:
         """
         Attempts to unlock the application using the provided password.
 
@@ -306,17 +293,18 @@ class AtaraxAIOrchestrator:
             self.logger.warning(
                 f"Unlock attempt in non-locked state: {self._state.name}"
             )
-            return self._state == AppState.UNLOCKED
+            return UnlockResult(
+                status=VaultUnlockStatus.ALREADY_UNLOCKED,
+                error="Application is already unlocked.",
+            )
 
         unlock_result = self.vault_manager.unlock_vault(password)  # type: ignore
         if unlock_result.status == VaultUnlockStatus.SUCCESS:
             self._state = AppState.UNLOCKED
             self.logger.info("Application unlocked successfully.")
             self._initialize_unlocked_services()
-            return True
-        else:
-            self.logger.warning("Unlock failed: incorrect password.")
-            return False
+
+        return unlock_result
 
     def lock(self):
         """
@@ -325,10 +313,16 @@ class AtaraxAIOrchestrator:
         This method ensures that sensitive resources are secured by locking the vault, gracefully shuts down the application,
         sets the internal state to indicate the locked status, and records the event in the application logs.
         """
-        self.vault_manager.lock()
-        self.shutdown()
-        self._set_state(AppState.LOCKED)
-        self.logger.info("Vault locked.")
+        try:
+            self.vault_manager.lock()
+            self.shutdown()
+            self._set_state(AppState.LOCKED)
+            self.logger.info("Vault locked.")
+            return True
+        except Exception as e:
+            #TODO I will handle any exceptions that occur during the lock operation
+            self.logger.error(f"Failed to lock vault: {e}")
+            return False
 
     def run_task_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
@@ -409,7 +403,7 @@ class AtaraxAIOrchestratorFactory:
         
         settings = AtaraxAISettings()
         directories = AppDirectories.create_default(settings)
-        logger: logging.Logger = AtaraxAILogger(log_dir=str(directories.logs)).get_logger()
+        logger: logging.Logger = AtaraxAILogger(log_dir=directories.logs).get_logger()
         vault_manager = VaultManager(
             salt_path=str(directories.data / "vault.salt"),
             check_path=str(directories.data / "vault.check"),
@@ -456,3 +450,13 @@ class AtaraxAIOrchestratorFactory:
         )
 
         return orchestrator
+
+
+if __name__ == "__main__":
+    orchestrator = AtaraxAIOrchestratorFactory.create_orchestrator()
+    orchestrator.initialize_new_vault(SecureString("Saturate-Heave8-Unfasten-Squealing".encode("utf-8")))
+    print(f"Orchestrator state after initialization: {orchestrator.state.name}")
+    orchestrator.lock()
+    print(f"Orchestrator state after locking: {orchestrator.state.name}")
+    orchestrator.unlock(SecureString("Wrong-Password-123".encode("utf-8")))
+    print(f"Orchestrator state after unlock attempt with wrong password: {orchestrator.state.name}")

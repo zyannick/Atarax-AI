@@ -81,7 +81,8 @@ testpaths = [
     "tests/python",
 ]
 markers = [
-    "integration: marks tests as integration tests (can be slow)",
+    "unit: marks tests as unit tests (fast, isolated)",
+    "integration: marks tests as integration tests (slower, requires real components)",
 ]
 filterwarnings = [
     "ignore:.*builtin type SwigPy.*:DeprecationWarning",

@@ -1,14 +1,16 @@
 import os
 import random
+import time
 from huggingface_hub import HfApi
 from huggingface_hub.utils import HfHubHTTPError
 import hashlib
 import threading
 import json
-from typing import List, Dict, Optional, Callable
+from typing import Any, List, Dict, Optional, Callable, Tuple, Union
 from pathlib import Path
 import requests
 import tqdm
+import ulid
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from enum import Enum, auto
@@ -16,6 +18,8 @@ from datetime import datetime
 from huggingface_hub import hf_hub_url
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
 import logging
+from huggingface_hub import model_info as hf_model_info
+from huggingface_hub import list_repo_files, repo_info
 import re
 from pydantic import BaseModel, Field, field_validator
 
@@ -26,21 +30,55 @@ class ModelDownloadStatus(Enum):
     COMPLETED = auto()
     FAILED = auto()
     CANCELLED = auto()
+    NOT_FOUND = auto()
 
 
 class LlamaCPPModelInfo(BaseModel):
-    organization: str = Field(..., description="Organization or user who owns the model.")
-    repo_id: str = Field(..., description="Repository ID of the model on Hugging Face Hub.")
+    organization: str = Field(
+        ..., description="Organization or user who owns the model."
+    )
+    repo_id: str = Field(
+        ..., description="Repository ID of the model on Hugging Face Hub."
+    )
     filename: str = Field(..., description="Name of the model file.")
     local_path: str = Field(..., description="Local path to the model file.")
-    downloaded_at: datetime = Field(default_factory=lambda: datetime.now(), description="Timestamp when the model was downloaded.")
+    downloaded_at: datetime = Field(
+        default_factory=lambda: datetime.now(),
+        description="Timestamp when the model was downloaded.",
+    )
     file_size: int = Field(0, description="Size of the model file in bytes.")
-    quantization_bit: str = Field("default", description="Bit quantization level for the model.")
-    quantization_scheme: str = Field("default", description="Quantization scheme for the model.")
-    quantization_modifier: str = Field("default", description="Quantization modifier for the model.")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(), description="Timestamp when the model was created.")
-    downloads: int = Field(0, description="Number of times the model has been downloaded.")
+    quantization_bit: str = Field(
+        "default", description="Bit quantization level for the model."
+    )
+    quantization_scheme: str = Field(
+        "default", description="Quantization scheme for the model."
+    )
+    quantization_modifier: str = Field(
+        "default", description="Quantization modifier for the model."
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(),
+        description="Timestamp when the model was created.",
+    )
+    downloads: int = Field(
+        0, description="Number of times the model has been downloaded."
+    )
     likes: int = Field(0, description="Number of likes for the model.")
+
+    def is_valid(self) -> bool:
+        """
+        Validates the model information.
+
+        Returns:
+            bool: True if the model information is valid, False otherwise.
+        """
+        return (
+            bool(self.organization)
+            and bool(self.repo_id)
+            and bool(self.filename)
+            and bool(self.local_path)
+            and self.file_size >= 0
+        )
 
     class Config:
         from_attributes = True
@@ -48,26 +86,91 @@ class LlamaCPPModelInfo(BaseModel):
 
 class ModelDownloadInfo(BaseModel):
     task_id: str = Field(..., description="Unique identifier for the download task.")
-    status: ModelDownloadStatus = Field(..., description="Current status of the download task.")
+    status: ModelDownloadStatus = Field(
+        ..., description="Current status of the download task."
+    )
     percentage: float = Field(0.0, description="Download progress percentage.")
-    repo_id: str = Field(..., description="Repository ID of the model on Hugging Face Hub.")
+    repo_id: str = Field(
+        ..., description="Repository ID of the model on Hugging Face Hub."
+    )
     filename: str = Field(..., description="Name of the model file.")
-    message: str = Field("Download task started.", description="Status message for the download task.")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(), description="Timestamp when the download task was created.")
+    message: str = Field(
+        "Download task started.", description="Status message for the download task."
+    )
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(),
+        description="Timestamp when the download task was created.",
+    )
     error: Optional[str] = None
     file_size: Optional[int] = None
     downloaded_bytes: int = 0
     model_info: Optional[LlamaCPPModelInfo] = None
-    model_path : Optional[str] = None
+    model_path: Optional[str] = None
     completed_at: Optional[datetime] = None
     failed_at: Optional[datetime] = None
-    cancelled_at : Optional[datetime] = None
+    cancelled_at: Optional[datetime] = None
+    
+    # def to_dict(self) -> Dict[str, Any]:
+    #     """
+    #     Converts the ModelDownloadInfo instance to a dictionary.
+
+    #     Returns:
+    #         Dict[str, Any]: Dictionary representation of the ModelDownloadInfo instance.
+    #     """
+    #     return self.model_dump()
 
     @field_validator("status")
     def validate_status(cls, v):
         if not isinstance(v, ModelDownloadStatus):
             raise ValueError("Invalid status type")
         return v
+
+# Sometimes the file size is not available in the metadata, so we estimate it based on the model's repo_id and filename.
+def get_estimated_gguf_size_for_file(repo_id: str, filename: str) -> Optional[Union[int, Tuple[int, int]]]:
+    if re.search(r'-\d{5}-of-\d{5}', filename):
+        return None
+
+    precise_multipliers = {
+        'Q2_K': 0.36, 'Q3_K_S': 0.48, 'Q3_K_M': 0.52, 'Q3_K_L': 0.56,
+        'Q4_0': 0.64, 'Q4_K_S': 0.64, 'Q4_K_M': 0.68, 'Q5_0': 0.8,
+        'Q5_K_S': 0.8, 'Q5_K_M': 0.84, 'Q6_K': 0.96, 'Q8_0': 1.28,
+        'F16': 2.0, 'FP16': 2.0, # Handle both cases
+        'F32': 4.0, 'FP32': 4.0,
+    }
+
+    base_model_match = re.search(r'(\d+(\.\d+)?)B', repo_id, re.IGNORECASE)
+    if not base_model_match:
+        return None
+        
+    base_model_params = float(base_model_match.group(1))
+    
+    upper_filename_parts = filename.upper().replace('-', '.').split('.')
+    quant_level_found = None
+    for part in upper_filename_parts:
+        if part in precise_multipliers:
+            quant_level_found = part
+            break
+            
+    if quant_level_found:
+        multiplier = precise_multipliers[quant_level_found]
+        size_gb = base_model_params * multiplier
+        if isinstance(size_gb, tuple):
+            size_gb = size_gb[0]
+        return int(size_gb * 1024 * 1024 * 1024)
+
+
+    upper_filename = filename.upper()
+    heuristic_match = re.search(r'[IQ](\d)', upper_filename)
+    if heuristic_match:
+        num_bits = int(heuristic_match.group(1))
+
+        size_gb = base_model_params * (num_bits / 8) * 1.05 
+        if isinstance(size_gb, tuple):
+            size_gb = size_gb[0]
+        return int(size_gb * 1024 * 1024 * 1024)
+
+    return None
+
 
 class ModelsManager:
     def __init__(self, directories: AppDirectories, logger: logging.Logger):
@@ -124,8 +227,12 @@ class ModelsManager:
             local_path = os.path.join(local_dir, filename)
         else:
             local_path = filename
+        
+        self.logger.info(f"Downloading {filename} from {url} to {local_path}")
         response = requests.get(url, stream=True)
+
         total_size = int(response.headers.get("content-length", 0))
+        self.logger.info(f"Downloading {filename} from {url} to {local_path} ({total_size} bytes)")
         downloaded_size = 0
         with open(local_path, "wb") as f:
             with tqdm.tqdm(
@@ -219,9 +326,9 @@ class ModelsManager:
             model_info = self.hf_api.model_info(repo_id=repo_id, files_metadata=True)
             for sibling in model_info.siblings or []:
                 if sibling.rfilename == filename:
-                    if sibling.lfs:
+                    if sibling.lfs and sibling.lfs.get("sha256"):
                         return sibling.lfs.get("sha256")
-            self.logger.warning(
+            self.logger.error(
                 f"Could not find file '{filename}' in repo '{repo_id}' to get checksum."
             )
             return None
@@ -251,10 +358,10 @@ class ModelsManager:
         self.logger.info(f"Verifying integrity of {filename}...")
         expected_hash = self._get_expected_sha256(repo_id, filename)
         if not expected_hash:
-            self.logger.warning(
+            self.logger.error(
                 f"Could not retrieve expected checksum for {filename}. Skipping verification."
             )
-            return True
+            return False
 
         local_hash = self._calculate_sha256(file_path)
 
@@ -268,7 +375,12 @@ class ModelsManager:
             return False
 
     def search_models(
-        self, query: str, limit: int = 50, filter_tags: Optional[List[str]] = None
+        self,
+        query: str,
+        limit: int = 50,
+        filter_tags: Optional[List[str]] = None,
+        sort_by="downloads",
+        direction=-1,
     ) -> List[LlamaCPPModelInfo]:
         """
         Searches for models matching the given query and optional filter tags, returning a list of model dictionaries.
@@ -298,10 +410,15 @@ class ModelsManager:
                 limit=limit,
                 sort="downloads",
                 direction=-1,
+                library="gguf",
             )
 
-            result = []
+            result: List[LlamaCPPModelInfo] = []
             for model in models:
+
+                if len(result) == limit:
+                    break
+
                 model_dict = model.__dict__.copy()
                 try:
                     files = self.hf_api.list_repo_files(model.id)
@@ -313,9 +430,27 @@ class ModelsManager:
                     )
                     model_dict["gguf_files"] = []
 
+
+                estimated_files_sizes : Dict[str, Union[int, Tuple[int, int]]] = {}
+                for gguf_file in model_dict["gguf_files"]:
+                    if not gguf_file.endswith(".gguf"):
+                        continue
+                    estimated_files_sizes[gguf_file] = get_estimated_gguf_size_for_file(model.id, gguf_file) #type: ignore
+                    
+                # print(f"Estimated file sizes for {model.id}: {estimated_files_sizes}")
+
                 for gguf_file in model_dict["gguf_files"]:
                     organization = model.id.split("/")[0]
                     match = re.search(r"Q(\d+)_([A-Z])(?:_([A-Z]))?", gguf_file)
+                    estimate_size : Union[int, Tuple[int, int]] = estimated_files_sizes.get(gguf_file), # the real file size will be set after download #type: ignore
+                    if not estimate_size:
+                        continue
+                    
+                    if isinstance(estimate_size, tuple):
+                        if estimate_size[0] is None:
+                            continue
+                        estimate_size = estimate_size[0]
+
                     if match:
                         bits = str(match.group(1))
                         scheme = match.group(2)
@@ -326,7 +461,7 @@ class ModelsManager:
                         filename=gguf_file,
                         local_path=str(self.models_dir / model.id / gguf_file),
                         downloaded_at=datetime.now().isoformat(),
-                        file_size=0,  # Will be set after download
+                        file_size=estimate_size,
                         created_at=model_dict.get(
                             "created_at", datetime.now().isoformat()
                         ),
@@ -337,9 +472,11 @@ class ModelsManager:
                         quantization_modifier=modifier if modifier else "default",
                     )
 
-                    result.append(model_info)
+                    if model_info.is_valid():
+                        result.append(model_info)
 
-                # result.append(model_dict)
+                    if len(result) == limit:
+                        break
 
             return result
 
@@ -374,7 +511,10 @@ class ModelsManager:
             return []
 
     def start_download_task(
-        self, task_id, model_info: LlamaCPPModelInfo, progress_callback: Optional[Callable] = None
+        self,
+        task_id,
+        model_info: LlamaCPPModelInfo,
+        progress_callback: Optional[Callable] = None,
     ) -> str:
         """
         Starts a background task to download a file from the specified repository.
@@ -387,7 +527,6 @@ class ModelsManager:
         Returns:
             str: A unique task ID representing the download task.
         """
-
 
         repo_id = model_info.repo_id
         filename = model_info.filename
@@ -403,7 +542,7 @@ class ModelsManager:
                 message="Download task started.",
                 model_info=model_info,
             )
-
+            
         thread = threading.Thread(
             target=self._download_worker,
             args=(task_id, repo_id, filename, model_info, progress_callback),
@@ -469,19 +608,24 @@ class ModelsManager:
             with self._lock:
                 self._download_tasks[task_id].status = ModelDownloadStatus.DOWNLOADING
 
-            self.logger.info(f"Starting download: {repo_id}/{filename}")
-
             callback = self._progress_callback_wrapper(task_id, progress_callback)
 
             model_path = self._download_with_progress(
                 repo_id=repo_id,
                 filename=filename,
-                local_dir=str(self.models_dir),
+                local_dir=str(self.models_dir / repo_id),
                 callback=callback,
             )
 
             if self._verify_file_integrity(Path(model_path), repo_id, filename):
                 self.logger.info(f"File integrity verified for {filename}")
+            else:
+                self.logger.error(f"File integrity check failed for {filename}")
+                with self._lock:
+                    self._download_tasks[task_id].status = ModelDownloadStatus.FAILED
+                    self._download_tasks[task_id].error = "File integrity check failed."
+                    self._download_tasks[task_id].failed_at = datetime.now()
+                return
 
             self._add_to_manifest(repo_id, filename, model_path, model_info)
 
@@ -501,7 +645,11 @@ class ModelsManager:
                 self._download_tasks[task_id].failed_at = datetime.now()
 
     def _add_to_manifest(
-        self, repo_id: str, filename: str, model_path: str, model_info: LlamaCPPModelInfo
+        self,
+        repo_id: str,
+        filename: str,
+        model_path: str,
+        model_info: LlamaCPPModelInfo,
     ):
         """
         Adds or updates model information in the manifest.
@@ -517,18 +665,18 @@ class ModelsManager:
         The model information includes repository ID, filename, local path, download timestamp,
         and file size. The manifest is saved after modification.
         """
-        # model_info.file_size = (
-        #     Path(model_path).stat().st_size if Path(model_path).exists() else 0
-        # )
+        model_info.file_size = (
+            Path(model_path).stat().st_size if Path(model_path).exists() else 0
+        )
         model_info.downloaded_at = datetime.now()
 
         for i, existing in enumerate(self.manifest["models"]):
             if existing["repo_id"] == repo_id and existing["filename"] == filename:
-                self.manifest["models"][i] = model_info.model_dump()
+                self.manifest["models"][i] = model_info.model_dump(mode="json")
                 self._save_manifest()
                 return
 
-        self.manifest["models"].append(model_info.model_dump())
+        self.manifest["models"].append(model_info.model_dump(mode="json"))
         self._save_manifest()
 
     def get_download_status(self, task_id: str) -> Optional[Dict]:
@@ -545,10 +693,14 @@ class ModelsManager:
         with self._lock:
             model_download_info = self._download_tasks.get(task_id)
             if model_download_info:
-                return model_download_info.model_dump()
+                return model_download_info.model_dump(mode="json")
             else:
                 self.logger.warning(f"Download task {task_id} not found.")
-                return None
+                return {
+                    "task_id": task_id,
+                    "status": ModelDownloadStatus.NOT_FOUND.value,
+                    "message": "Download task not found.",
+                }
 
     def cancel_download(self, task_id: str) -> bool:
         """
@@ -641,6 +793,7 @@ class ModelsManager:
 
 
 if __name__ == "__main__":
+    random.seed(42)  # For reproducibility in random choices
     settings = AtaraxAISettings()
     directories = AppDirectories.create_default(settings)
 
@@ -654,31 +807,32 @@ if __name__ == "__main__":
         model_to_download = random.choice(models)
         print(f"Selected model to download: {model_to_download}")
 
-        # files = model_manager.list_available_files(model_to_download["id"])
-        # print(f"Available files: {files}")
+        files = model_manager.list_available_files(model_to_download.repo_id)
+        print(f"Available files: {files}")
 
-        # if model_to_download:
-        #     filename = model_to_download.filename
-        #     print(f"Downloading {filename} from {model_to_download.repo_id}...")
-        #     task_id = model_manager.start_download_task(
-        #         model_to_download.repo_id, filename, model_info=model_to_download
-        #     )
-        #     print(f"Download started with task ID: {task_id}")
+        if model_to_download:
+            filename = model_to_download.filename
+            print(f"Downloading {filename} from {model_to_download.repo_id}...")
+            task_id = str(ulid.ULID())
+            task_id = model_manager.start_download_task(
+                task_id, model_info=model_to_download
+            )
+            print(f"Download started with task ID: {task_id}")
 
-        #     while True:
-        #         status = model_manager.get_download_status(task_id)
-        #         if status:
-        #             # print(
-        #             #     f"Status: {status['status']}, Progress: {status['progress']:.2%}"
-        #             # )
-        #             if status["status"] in [
-        #                 ModelDownloadStatus.COMPLETED,
-        #                 ModelDownloadStatus.FAILED,
-        #             ]:
-        #                 break
-        #         time.sleep(2)
+            while True:
+                status = model_manager.get_download_status(task_id)
+                if status:
+                    print(
+                        f"Status: {status['status']}, Progress: {status['percentage']:.2%}"
+                    )
+                    if status["status"] in [
+                        ModelDownloadStatus.COMPLETED.value,
+                        ModelDownloadStatus.FAILED.value,
+                    ]:
+                        break
+                time.sleep(2)
 
-        #     downloaded = model_manager.list_downloaded_models()
-        #     print(f"Downloaded models: {len(downloaded)}")
+            downloaded = model_manager.list_downloaded_models()
+            print(f"Downloaded models: {len(downloaded)}")
     else:
         print("No models found.")

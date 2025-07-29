@@ -383,7 +383,6 @@ PYBIND11_MODULE(hegemonikon_py, m)
 
      m.def("derive_and_protect_key", [](const SecureString &secure_password, const py::bytes &salt_bytes)
            {
-               //  SecureString secure_password(password_str.c_str());
 
                 char *salt_buffer;
                 ssize_t salt_length;

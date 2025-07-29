@@ -4,7 +4,7 @@ from pathlib import Path
 from ataraxai.praxis.modules.rag.ataraxai_embedder import AtaraxAIEmbedder
 from ataraxai.praxis.modules.rag.rag_store import RAGStore
 
-@pytest.mark.integration
+# @pytest.mark.integration
 def test_rag_embedding_and_retrieval(tmp_path: Path):
 
     correct_model_name = "sentence-transformers/all-MiniLM-L6-v2"

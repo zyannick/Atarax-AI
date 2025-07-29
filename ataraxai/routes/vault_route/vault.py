@@ -2,6 +2,8 @@ from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
+from ataraxai.praxis.utils.vault_manager import UnlockResult, VaultUnlockStatus
+from ataraxai.praxis.utils.vault_manager import UnlockResult, VaultInitializationStatus, VaultManager
 from ataraxai.routes.vault_route.vault_api_models import (
     ConfirmationPhaseRequest,
     ConfirmationPhaseResponse,
@@ -44,17 +46,21 @@ async def initialize_vault(request: VaultPasswordRequest, orch: AtaraxAIOrchestr
         HTTPException: If a critical error occurs during vault initialization.
     """
     logger.info("Initializing vault with provided password.")
+    if orch.state != AppState.FIRST_LAUNCH:
+        logger.error("Vault is already initialized.")
+        return VaultPasswordResponse(
+            status=Status.ERROR, message="Vault is already initialized."
+        )
     password_bytes = request.password.get_secret_value().encode("utf-8")
-    success = orch.initialize_new_vault(SecureString(password_bytes))  # type: ignore
+    success : VaultInitializationStatus = orch.initialize_new_vault(SecureString(password_bytes))  # type: ignore
 
-    if success:
+    if success == VaultInitializationStatus.SUCCESS:
         return VaultPasswordResponse(
             status=Status.SUCCESS, message="Vault initialized and unlocked."
         )
-    else:
-        return VaultPasswordResponse(
-            status=Status.ERROR, message="Failed to initialize vault."
-        )
+    return VaultPasswordResponse(
+        status=Status.FAILURE, message="Failed to initialize vault."
+    )
 
 
 @router_vault.post("/reinitialize", response_model=ConfirmationPhaseResponse)
@@ -84,7 +90,7 @@ async def reinitialize_vault(
 
     if success:
         return ConfirmationPhaseResponse(
-            status=Status.SUCCESS, message="Vault reinitialized and unlocked."
+            status=Status.SUCCESS, message="Vault reinitialized for first launch. We need to set a new password."
         )
     else:
         return ConfirmationPhaseResponse(
@@ -118,15 +124,33 @@ async def unlock(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Dep
         )
 
     password_bytes = request.password.get_secret_value().encode("utf-8")
-    success = orch.unlock(SecureString(password_bytes))
+    unlock_result : UnlockResult = orch.unlock(SecureString(password_bytes))
 
-    if success:
+    if unlock_result.status == VaultUnlockStatus.SUCCESS:
         return VaultPasswordResponse(status=Status.SUCCESS, message="Vault unlocked.")
-    else:
-        return VaultPasswordResponse(
-            status=Status.ERROR, message="Failed to unlock vault. Incorrect password."
+    elif unlock_result.status == VaultUnlockStatus.INCORRECT_PASSWORD:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password provided for vault unlock.",
         )
-
+    elif unlock_result.status == VaultUnlockStatus.ALREADY_UNLOCKED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Vault is already unlocked.",
+        )
+    elif unlock_result.status == VaultUnlockStatus.UNINITIALIZED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vault is uninitialized. Please initialize it first.",
+        )
+    else:
+        logger.error("Failed to unlock vault due to an unexpected error.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unlock vault due to an unexpected error.",
+        )
+        
+        
 @router_vault.post("/lock", response_model=LockVaultResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Lock Vault", logger=logger)

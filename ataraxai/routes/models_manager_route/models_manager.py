@@ -1,13 +1,16 @@
 import asyncio
 import json
-from fastapi import APIRouter, BackgroundTasks
+from typing import Any, Dict, Optional
+from fastapi import APIRouter, BackgroundTasks, status
 from fastapi.params import Depends
+from prometheus_client import Enum
 import ulid
+from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.routes.status import Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator
+from ataraxai.routes.dependency_api import get_unlocked_orchestrator, get_unlocked_orchestrator_ws
 from ataraxai.praxis.katalepsis import katalepsis_monitor
 from ataraxai.routes.models_manager_route.models_manager_api_models import (
     DownloadModelResponse,
@@ -31,8 +34,8 @@ router_models_manager = APIRouter(
 )
 
 
-@router_models_manager.get("/search_models", response_model=SearchModelsResponse)
-@katalepsis_monitor.instrument_api("GET")  # type: ignore
+@router_models_manager.post("/search_models", response_model=SearchModelsResponse)
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Search Models", logger=logger)
 async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> SearchModelsResponse:  # type: ignore
     models = orch.models_manager.search_models(
@@ -51,68 +54,52 @@ async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator
         message="Models retrieved successfully.",
         models=[ModelInfoResponse(**model.model_dump()) for model in models],
     )
-
-
+    
+    
 @router_models_manager.websocket("/download_progress/{task_id}")
-async def download_progress_websocket(websocket: WebSocket, task_id: str):
+async def download_progress_websocket(
+    websocket: WebSocket,
+    task_id: str,
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator_ws) # type: ignore
+):
     await websocket.accept()
+    
     try:
         while True:
-            try:
-                progress_response = await get_download_progress(task_id)
+            status_data : Optional[Dict[Any, Any]]= orch.models_manager.get_download_status(task_id)
+            
+            if status_data:
+                status_data = {
+                    k: (v.value if isinstance(v, Enum) else v) #type: ignore
+                    for k, v in status_data.items()
+                }
 
-                if progress_response.status in [
-                    DownloadTaskStatus.COMPLETED,
-                    DownloadTaskStatus.FAILED,
-                ]:
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "task_id": task_id,
-                                "progress": progress_response.percentage,
-                                "status": progress_response.status,
-                                "message": progress_response.message,
-                            }
-                        )
-                    )
-                    break
+            await websocket.send_json(status_data)
 
-                await websocket.send_text(
-                    json.dumps(
-                        {
-                            "task_id": task_id,
-                            "progress": progress_response.percentage,
-                            "status": progress_response.status,
-                            "message": progress_response.message,
-                        }
-                    )
-                )
-
-                await asyncio.sleep(1)
-
-            except Exception as e:
-                await websocket.send_text(
-                    json.dumps(
-                        {
-                            "task_id": task_id,
-                            "progress": 0,
-                            "status": DownloadTaskStatus.FAILED,
-                            "message": f"Error retrieving progress: {str(e)}",
-                        }
-                    )
-                )
+            if status_data.get("status") == DownloadTaskStatus.COMPLETED.value: #type: ignore
                 break
+            
+            if status_data.get("status") == DownloadTaskStatus.FAILED.value: #type: ignore
+                await websocket.send_json({
+                    "task_id": task_id,
+                    "status": DownloadTaskStatus.FAILED.value,
+                    "message": "Download failed.",
+                    "percentage": 0,
+                })
+                break
+            
+
+            await asyncio.sleep(1)
 
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected for task {task_id}")
-    except Exception as e:
-        logger.error(f"WebSocket error for task {task_id}: {str(e)}")
+        print(f"Client disconnected from WebSocket for task: {task_id}")
     finally:
         await websocket.close()
 
 
-@router_models_manager.get("/download_progress/{task_id}")
-async def get_download_progress(
+
+@router_models_manager.get("/download_status/{task_id}")
+async def get_download_status(
     task_id: str,
     orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
 ) -> DownloadModelResponse:
@@ -142,7 +129,11 @@ async def get_download_progress(
         )
 
 
-@router_models_manager.post("/download_model", response_model=DownloadModelResponse)
+@router_models_manager.post(
+    "/download_model",
+    response_model=DownloadModelResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 @handle_api_errors("Download Models", logger=logger)
 async def download_model(
     background_tasks: BackgroundTasks,

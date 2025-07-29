@@ -5,7 +5,7 @@ from unittest import mock
 from ataraxai.praxis.utils.configs.rag_config_manager import RAGConfigManager, RAG_CONFIG_FILENAME
 
 
-class TestRAGConfig:
+class MockRAGConfig:
     def __init__(self, foo="bar"):
         self.foo = foo
 
@@ -13,12 +13,12 @@ class TestRAGConfig:
         return {"foo": self.foo}
 
     def __eq__(self, other):
-        return isinstance(other, TestRAGConfig) and self.foo == other.foo
+        return isinstance(other, MockRAGConfig) and self.foo == other.foo
 
 @pytest.fixture(autouse=True)
 def patch_rag_config(monkeypatch):
     import ataraxai.praxis.utils.configs.rag_config_manager as rag_config_manager_mod
-    monkeypatch.setattr(rag_config_manager_mod, "RAGConfig", TestRAGConfig)
+    monkeypatch.setattr(rag_config_manager_mod, "RAGConfig", MockRAGConfig)
     yield
 
 @pytest.fixture
@@ -27,7 +27,7 @@ def tmp_config_dir(tmp_path):
 
 def test_initializes_default_config(tmp_config_dir):
     manager = RAGConfigManager(tmp_config_dir)
-    assert manager.get_config() == TestRAGConfig()
+    assert manager.get_config() == MockRAGConfig()
     config_file = tmp_config_dir / RAG_CONFIG_FILENAME
     assert config_file.exists()
     with open(config_file) as f:
@@ -39,11 +39,11 @@ def test_loads_existing_config(tmp_config_dir):
     with open(config_file, "w") as f:
         yaml.dump({"foo": "baz"}, f)
     manager = RAGConfigManager(tmp_config_dir)
-    assert manager.get_config() == TestRAGConfig(foo="baz")
+    assert manager.get_config() == MockRAGConfig(foo="baz")
 
 def test_update_config_saves_to_disk(tmp_config_dir):
     manager = RAGConfigManager(tmp_config_dir)
-    new_config = TestRAGConfig(foo="updated")
+    new_config = MockRAGConfig(foo="updated")
     manager.update_config(new_config)
     assert manager.get_config() == new_config
     config_file = tmp_config_dir / RAG_CONFIG_FILENAME
@@ -57,5 +57,5 @@ def test_reload_reads_from_disk(tmp_config_dir):
     with open(config_file, "w") as f:
         yaml.dump({"foo": "reloaded"}, f)
     manager.reload()
-    assert manager.get_config() == TestRAGConfig(foo="reloaded")
+    assert manager.get_config() == MockRAGConfig(foo="reloaded")
 
