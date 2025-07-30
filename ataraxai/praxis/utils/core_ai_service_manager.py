@@ -29,7 +29,7 @@ class CoreAIServiceManager:
         """
         self.config_manager = config_manager
         self.logger = logger
-        self.service: Optional[Any] = None
+        self.core_ai_service: Optional[Any] = None
         self.status = ServiceStatus.NOT_INITIALIZED
 
     def get_service(self) -> Any:
@@ -53,7 +53,7 @@ class CoreAIServiceManager:
                 "Core AI service initialization previously failed"
             )
 
-        return self.service
+        return self.core_ai_service
 
     def initialize(self) -> None:
         """
@@ -196,7 +196,7 @@ class CoreAIServiceManager:
             whisper_transcription_params_cc,
         ) = self._convert_params(llama_params, whisper_params)
 
-        self.service = self._create_core_ai_service(
+        self.core_ai_service = self._create_core_ai_service(
             llama_model_params_cc, whisper_model_params_cc
         )
 
@@ -253,7 +253,10 @@ class CoreAIServiceManager:
         """
         service = hegemonikon_py.CoreAIService()  # type: ignore
         service.initialize_llama_model(llama_params)  # type: ignore
-        service.initialize_whisper_model(whisper_params)  # type: ignore
+        try:
+            service.initialize_whisper_model(whisper_params)  # type: ignore
+        except Exception as e:
+            self.logger.error(f"Error initializing Whisper model: {e}")
         return service  # type: ignore
 
     def shutdown(self) -> None:
@@ -264,14 +267,14 @@ class CoreAIServiceManager:
         Logs the outcome of the shutdown process, including any errors encountered.
         Resets the service reference and updates the service status to NOT_INITIALIZED.
         """
-        if self.service:
+        if self.core_ai_service:
             try:
                 # self.service.shutdown()
                 self.logger.info("Core AI services shut down successfully")
             except Exception as e:
                 self.logger.error(f"Error shutting down core AI services: {e}")
             finally:
-                self.service = None
+                self.core_ai_service = None
                 self.status = ServiceStatus.NOT_INITIALIZED
 
     @property

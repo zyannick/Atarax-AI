@@ -68,7 +68,7 @@ def test_initialization_success(monkeypatch, mock_config_manager, mock_logger, m
     manager.initialize()
     assert manager.status == ServiceStatus.INITIALIZED
     assert manager.is_initialized
-    assert manager.service is not None
+    assert manager.core_ai_service is not None
 
 def test_initialization_failure_llama_path(monkeypatch, mock_config_manager, mock_logger):
     mock_config_manager.llama_config_manager.get_llama_cpp_params.return_value.model_path.return_value = ""
@@ -107,8 +107,8 @@ def test_get_configuration_status(monkeypatch, mock_config_manager, mock_logger)
 
 def test_shutdown_resets_service_and_status(mock_config_manager, mock_logger):
     manager = CoreAIServiceManager(mock_config_manager, mock_logger)
-    manager.service = mock.Mock()
+    manager.core_ai_service = mock.Mock()
     manager.status = ServiceStatus.INITIALIZED
     manager.shutdown()
-    assert manager.service is None
+    assert manager.core_ai_service is None
     assert manager.status == ServiceStatus.NOT_INITIALIZED

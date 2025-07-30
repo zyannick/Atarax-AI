@@ -1,6 +1,6 @@
 import asyncio
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.params import Depends
 from prometheus_client import Enum
@@ -16,7 +16,9 @@ from ataraxai.routes.models_manager_route.models_manager_api_models import (
     DownloadModelResponse,
     DownloadTaskStatus,
     ModelInfoResponse,
-    SearchModelsResponse,
+    ModelInfoResponsePaginated,
+    SearchModelsManifestRequest,
+    SearchModelsResponsePaginated,
     SearchModelsRequest,
     DownloadModelRequest,
 )
@@ -35,10 +37,10 @@ router_models_manager = APIRouter(
 )
 
 
-@router_models_manager.post("/search_models", response_model=SearchModelsResponse)
+@router_models_manager.post("/search_models", response_model=SearchModelsResponsePaginated)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Search Models", logger=logger)
-async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> SearchModelsResponse:  # type: ignore
+async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> SearchModelsResponsePaginated:  # type: ignore
     models = orch.models_manager.search_models(
         query=request.query,
         limit=request.limit,
@@ -49,10 +51,19 @@ async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No models found matching the search criteria.",
         )
-    return SearchModelsResponse(
+    # the pagination will be handled by the frontend
+    # for now, we return all models found
+    # in the future, we can implement pagination if needed
+    return SearchModelsResponsePaginated(
         status=Status.SUCCESS,
         message="Models retrieved successfully.",
         models=[ModelInfoResponse(**model.model_dump()) for model in models],
+        total_count=len(models),
+        page=1,
+        page_size=len(models),
+        total_pages=1,
+        has_next=False,
+        has_previous=False,
     )
     
     
@@ -177,3 +188,30 @@ async def download_model(
             task_id=task_id,
             percentage=0,
         )
+
+
+@router_models_manager.post("/get_model_info_manifest", response_model=SearchModelsManifestRequest)
+@handle_api_errors("Get Model Info", logger=logger)
+async def get_model_info(
+    request: SearchModelsManifestRequest,
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+) -> ModelInfoResponsePaginated:
+    results = orch.models_manager.get_list_of_models_from_manifest(
+        search_infos=request.model_dump()
+    )
+    if not results:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No models found matching the search criteria.",
+        )
+    return ModelInfoResponsePaginated(
+        status=Status.SUCCESS,
+        message="Model information retrieved successfully.",
+        models=[ModelInfoResponse(**model) for model in results],
+        total_count=len(results),
+        page=1,
+        page_size=len(results),
+        total_pages=1,
+        has_next=False,
+        has_previous=False
+    )
