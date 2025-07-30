@@ -157,14 +157,14 @@ class SearchModelsResponsePaginated(BaseModel):
 
 class SearchModelsManifestRequest(BaseModel):
     repo_id: Optional[str] = Field(
-        None,
+        default=None,
         description="The repository ID of the model to search for.",
     )
     filename : Optional[str] = Field(
-        None,
+        default=None,
         description="The file name of the model to search for.",
     )
     organization: Optional[str] = Field(
-        None,
+        default=None,
         description="The organization or user who owns the model.",
     )

@@ -6,7 +6,7 @@ from fastapi.params import Depends
 from prometheus_client import Enum
 import ulid
 from ataraxai.praxis.utils.app_state import AppState
-from ataraxai.routes.status import Status
+from ataraxai.routes.status import Status, StatusResponse
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
@@ -190,14 +190,14 @@ async def download_model(
         )
 
 
-@router_models_manager.post("/get_model_info_manifest", response_model=SearchModelsManifestRequest)
+@router_models_manager.post("/get_model_info_manifest", response_model=ModelInfoResponsePaginated)
 @handle_api_errors("Get Model Info", logger=logger)
 async def get_model_info(
     request: SearchModelsManifestRequest,
     orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
 ) -> ModelInfoResponsePaginated:
     results = orch.models_manager.get_list_of_models_from_manifest(
-        search_infos=request.model_dump()
+        search_infos=request.model_dump(mode="json"),
     )
     if not results:
         raise HTTPException(
@@ -215,3 +215,21 @@ async def get_model_info(
         has_next=False,
         has_previous=False
     )
+
+
+@router_models_manager.post("/remove_all_models")
+async def remove_all_models(
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+) -> StatusResponse:
+    try:
+        orch.models_manager.remove_all_models()
+        return StatusResponse(
+            status=Status.SUCCESS,
+            message="Model manifests removed successfully.",
+        )
+    except Exception as e:
+        logger.error(f"Error removing model manifests: {str(e)}")
+        return StatusResponse(
+            status=Status.ERROR,
+            message=f"Failed to remove all model manifests: {str(e)}",
+        )

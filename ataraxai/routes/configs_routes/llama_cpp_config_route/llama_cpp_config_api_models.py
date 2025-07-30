@@ -19,6 +19,8 @@ class LlamaCPPConfigAPI(BaseModel):
     @field_validator("model_info")
     @classmethod
     def validate_model_info(cls, v: LlamaCPPModelInfo) -> LlamaCPPModelInfo:
+        if v is None:
+            return v
         if not v.local_path:
             raise ValueError("Model path cannot be empty.")
         return v

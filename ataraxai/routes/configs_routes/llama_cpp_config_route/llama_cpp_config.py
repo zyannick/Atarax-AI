@@ -2,6 +2,7 @@ from fastapi import APIRouter
 from fastapi.params import Depends
 
 
+from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo
 from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config_api_models import (
     LlamaCPPConfigAPI,
     LlamaCPPConfigResponse,
@@ -39,7 +40,7 @@ async def get_llama_cpp_config(
     Returns:
         LlamaCPPConfigResponse: The current Llama CPP configuration.
     """
-    config = orch.config_manager.llama_config_manager.get_llama_cpp_params()
+    config : LlamaModelParams = orch.config_manager.llama_config_manager.get_llama_cpp_params()
     if not config:
         return LlamaCPPConfigResponse(
             status=Status.FAILURE,
@@ -49,7 +50,7 @@ async def get_llama_cpp_config(
     return LlamaCPPConfigResponse(
         status=Status.SUCCESS,
         message="Llama CPP configuration retrieved successfully.",
-        config=LlamaCPPConfigAPI(**config.model_dump()),
+        config=LlamaCPPConfigAPI(model_info=config.model_info),
     )
 
 
@@ -69,8 +70,13 @@ async def update_llama_cpp_config(
     Returns:
         LlamaCPPConfigResponse: The updated Llama CPP configuration.
     """
+    llama_model_params = LlamaModelParams()
+    
+    llama_model_params.model_info = LlamaCPPModelInfo(**(config.model_dump()["model_info"])) # type: ignore
+    llama_model_params.n_ctx = config.n_ctx
+    llama_model_params.n_gpu_layers = config.n_gpu_layers
     orch.config_manager.llama_config_manager.set_llama_cpp_params(
-        LlamaModelParams(**config.model_dump())
+        llama_model_params
     )
     return LlamaCPPConfigResponse(
         status=Status.SUCCESS,

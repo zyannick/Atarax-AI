@@ -339,16 +339,28 @@ class ModelsManager:
         Returns:
             List[Dict[str, Any]]: A list of model dictionaries matching search criteria.
         """
-        results = [
-            model for model in self.manifest.get("models", [])
-            if (search_infos.get("repo_id") and model.get("repo_id") and 
-                search_infos.get("repo_id", "no_existing").lower() in model.get("repo_id").lower()) or
-            (search_infos.get("filename") and model.get("filename") and
-                search_infos.get("filename", "no_existing").lower() in model.get("filename").lower()) or
-            (search_infos.get("organization") and model.get("organization") and
-                search_infos.get("organization", "no_existing").lower() in model.get("organization").lower())
-        ]
-        return [LlamaCPPModelInfo(**model).model_dump(mode="json") for model in results]
+        results = []
+        
+        search_repo_id = search_infos.get("repo_id", "").lower() if search_infos.get("repo_id") else None
+        search_filename = search_infos.get("filename", "").lower() if search_infos.get("filename") else None
+        search_org = search_infos.get("organization", "").lower() if search_infos.get("organization") else None
+
+        is_searching = any([search_repo_id, search_filename, search_org])
+
+        for model in self.manifest.get("models", []):
+            if not is_searching:
+                results.append(model)
+                continue
+
+            
+            matches_repo = search_repo_id and search_repo_id in model.get("repo_id", "").lower()
+            matches_filename = search_filename and search_filename in model.get("filename", "").lower()
+            matches_org = search_org and search_org in model.get("organization", "").lower()
+
+            if matches_repo or matches_filename or matches_org:
+                results.append(model)
+
+        return results
 
 
     def _calculate_sha256(self, file_path: Path) -> str:

@@ -1,3 +1,4 @@
+from pydantic import SecretStr
 import pytest
 import datetime
 import time
@@ -6,6 +7,8 @@ from unittest.mock import MagicMock
 from fastapi.testclient import TestClient
 from pathlib import Path
 from typing import Generator
+from fastapi import status
+
 
 import requests
 
@@ -17,6 +20,7 @@ from ataraxai.praxis.ataraxai_orchestrator import (
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.app_directories import AppDirectories
+from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
 from ataraxai.praxis.utils.chat_manager import ChatManager
@@ -31,6 +35,8 @@ from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo
+from ataraxai.routes.status import Status
+from ataraxai.routes.vault_route.vault_api_models import VaultPasswordRequest
 
 
 def pytest_collection_modifyitems(config, items):
@@ -585,3 +591,4 @@ def integration_client(orchestrator: AtaraxAIOrchestrator):
         yield test_client
 
     app.dependency_overrides.clear()
+
