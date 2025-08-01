@@ -1,11 +1,6 @@
-import random
-import time
-from pydantic import SecretStr
-import pytest
-from fastapi import WebSocketDisconnect, status
+from pathlib import Path
+from fastapi import status
 import ulid
-from typing import Optional
-from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.routes.models_manager_route.models_manager_api_models import (
     DownloadModelRequest,
@@ -15,15 +10,17 @@ from ataraxai.routes.models_manager_route.models_manager_api_models import (
 )
 from ataraxai.routes.status import Status
 from helpers import (
-    monitor_download_progress,
-    clean_downloaded_models,
-    validate_model_structure,
     SEARCH_LIMIT,
-    MAX_MODELS_TO_DOWNLOAD
+    MAX_MODELS_TO_DOWNLOAD,
+    validate_model_structure,
+    monitor_download_progress,
+    clean_downloaded_models
 )
 
 
-def test_search_models(unlocked_client):
+from fastapi.testclient import TestClient
+
+def test_search_models(unlocked_client: TestClient):
     search_model_request = SearchModelsRequest(
         query="llama", limit=10, filters_tags=["llama"]
     )
@@ -46,7 +43,7 @@ def test_search_models(unlocked_client):
         validate_model_structure(model)
 
 
-def test_search_models_no_results(unlocked_client):
+def test_search_models_no_results(unlocked_client : TestClient):
     search_model_request = SearchModelsRequest(
         query="nonexistentmodel", limit=10, filters_tags=["nonexistent"]
     )
@@ -62,7 +59,7 @@ def test_search_models_no_results(unlocked_client):
     assert data["detail"] == "No models found matching the search criteria."
 
 
-def test_model_download_and_progress_flow(unlocked_client):
+def test_model_download_and_progress_flow(unlocked_client : TestClient):
     # Search for models
     search_model_request = SearchModelsRequest(
         query="llama", limit=SEARCH_LIMIT, filters_tags=[]
@@ -88,7 +85,7 @@ def test_model_download_and_progress_flow(unlocked_client):
 
     # Initiate download
     download_request = DownloadModelRequest(**model_to_download)
-    orchestrator = unlocked_client.app.state.orchestrator
+    orchestrator = unlocked_client.app.state.orchestrator # type: ignore
 
     response = unlocked_client.post(
         "/api/v1/models_manager/download_model",
@@ -112,17 +109,17 @@ def test_model_download_and_progress_flow(unlocked_client):
     final_status = monitor_download_progress(unlocked_client, task_id)
 
     # Verify download completion
-    expected_file_path = (
-        orchestrator.directories.data
+    expected_file_path : Path = ( # type: ignore
+        orchestrator.directories.data # type: ignore
         / "models"
         / model_to_download["repo_id"]
         / model_to_download["filename"]
     )
 
     assert (
-        expected_file_path.exists()
+        expected_file_path.exists() # type: ignore
     ), f"Downloaded file not found at {expected_file_path}"
-    assert expected_file_path.is_file()
+    assert expected_file_path.is_file() # type: ignore
 
     assert final_status is not None, "Test timed out waiting for download to complete."
     assert final_status["percentage"] == 1.0
@@ -131,7 +128,7 @@ def test_model_download_and_progress_flow(unlocked_client):
     clean_downloaded_models(unlocked_client)
 
 
-def test_model_download_not_found(unlocked_client):
+def test_model_download_not_found(unlocked_client : TestClient):
     non_existent_task_id = str(ulid.ULID())
 
     response = unlocked_client.get(
@@ -144,7 +141,7 @@ def test_model_download_not_found(unlocked_client):
     assert response.json()["detail"] == "No download task found with the provided ID."
 
 
-def test_cancel_download(unlocked_client):
+def test_cancel_download(unlocked_client : TestClient):
     # Search and select model
     search_model_request = SearchModelsRequest(
         query="llama", limit=SEARCH_LIMIT, filters_tags=[]
@@ -164,9 +161,9 @@ def test_cancel_download(unlocked_client):
     model_to_download = min(data["models"], key=lambda x: x["file_size"])
     download_request = DownloadModelRequest(**model_to_download)
 
-    orchestrator = unlocked_client.app.state.orchestrator
+    orchestrator = unlocked_client.app.state.orchestrator # type: ignore
     assert (
-        orchestrator.state == AppState.UNLOCKED
+        orchestrator.state == AppState.UNLOCKED # type: ignore
     ), "Orchestrator should be in UNLOCKED state."
 
     # Start download
@@ -202,7 +199,7 @@ def test_cancel_download(unlocked_client):
 
 
 def _test_manifest_search(
-    modified_client,
+    modified_client : TestClient,
     repo_id: str,
     filename: str,
     expected_count: int = MAX_MODELS_TO_DOWNLOAD,
@@ -229,28 +226,25 @@ def _test_manifest_search(
         validate_model_structure(model)
 
 
-def test_get_model_info_manifest(unlocked_client_with_filled_manifest):
+def test_get_model_info_manifest(unlocked_client_with_filled_manifest : TestClient):
     _test_manifest_search(
         unlocked_client_with_filled_manifest, repo_id="llama", filename="llama"
     )
-    clean_downloaded_models(unlocked_client_with_filled_manifest)
 
 
-def test_get_model_info_manifest_partial(unlocked_client_with_filled_manifest):
+def test_get_model_info_manifest_partial(unlocked_client_with_filled_manifest : TestClient):
     _test_manifest_search(
         unlocked_client_with_filled_manifest, repo_id="ll", filename="ma"
     )
-    clean_downloaded_models(unlocked_client_with_filled_manifest)
 
 
-def test_get_model_info_manifest_case_insensitive(unlocked_client_with_filled_manifest):
+def test_get_model_info_manifest_case_insensitive(unlocked_client_with_filled_manifest : TestClient):
     _test_manifest_search(
         unlocked_client_with_filled_manifest, repo_id="LL", filename="MA"
     )
-    clean_downloaded_models(unlocked_client_with_filled_manifest)
 
 
-def test_get_model_info_manifest_no_results(unlocked_client_with_filled_manifest):
+def test_get_model_info_manifest_no_results(unlocked_client_with_filled_manifest : TestClient):
     search_model_request = SearchModelsManifestRequest(
         repo_id="nonexistentmodel", filename="nonexistent"
     )
@@ -264,4 +258,3 @@ def test_get_model_info_manifest_no_results(unlocked_client_with_filled_manifest
     ), f"Expected 404 Not Found, got {response.text}"
     data = response.json()
     assert data["detail"] == "No models found matching the search criteria."
-    clean_downloaded_models(unlocked_client_with_filled_manifest)

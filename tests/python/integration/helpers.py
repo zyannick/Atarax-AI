@@ -1,4 +1,6 @@
+from typing import Any, Dict
 from fastapi import WebSocketDisconnect, status
+from fastapi.testclient import TestClient
 import pytest
 from ataraxai.routes.status import Status
 from ataraxai.routes.models_manager_route.models_manager_api_models import (
@@ -14,22 +16,21 @@ TEST_PASSWORD = "Saturate-Heave8-Unfasten-Squealing"
 SEARCH_LIMIT = 100
 
 
-def clean_downloaded_models(client_):
-    response = client_.post("/api/v1/models_manager/remove_all_models")
+def clean_downloaded_models(modified_client: TestClient):
+    response = modified_client.post("/api/v1/models_manager/remove_all_models")
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["status"] == Status.SUCCESS
     assert data["message"] == "Model manifests removed successfully."
 
-def monitor_download_progress(client_, task_id: str, timeout: int = DOWNLOAD_TIMEOUT):
-    orchestrator = client_.app.state.orchestrator
+def monitor_download_progress(modified_client: TestClient, task_id: str, timeout: int = DOWNLOAD_TIMEOUT):
+    orchestrator = modified_client.app.state.orchestrator # type: ignore
     final_status = None
     
     try:
         print(f"Attempting WebSocket connection for task_id: {task_id}")
-        print(f"Orchestrator state: {orchestrator.state}")
-        
-        with client_.websocket_connect(
+        print(f"Orchestrator state: {orchestrator.state}") # type: ignore
+        with modified_client.websocket_connect(
             f"/api/v1/models_manager/download_progress/{task_id}",
             headers={"Host": "test"},
         ) as websocket:
@@ -38,19 +39,14 @@ def monitor_download_progress(client_, task_id: str, timeout: int = DOWNLOAD_TIM
                 message = websocket.receive_json()
                 final_status = message
                 
-                if str(message.get("status")) in [
-                    DownloadTaskStatus.COMPLETED.value, 
-                    DownloadTaskStatus.FAILED.value
+                if int(message.get("status")) in [
+                    int(DownloadTaskStatus.COMPLETED.value),
+                    int(DownloadTaskStatus.FAILED.value)
                 ]:
                     break
                     
-    except WebSocketDisconnect as e:
-        pytest.fail(
-            "WebSocket connection was unexpectedly disconnected. "
-            f"Disconnection details: {e}"
-        )
     except WebSocketDenialResponse as e:
-        task_check = client_.get(f"/api/v1/models_manager/download_status/{task_id}")
+        task_check = modified_client.get(f"/api/v1/models_manager/download_status/{task_id}")
         print(
             f"Task status check: {task_check.status_code}, "
             f"{task_check.json() if task_check.status_code == 200 else task_check.text}"
@@ -58,6 +54,11 @@ def monitor_download_progress(client_, task_id: str, timeout: int = DOWNLOAD_TIM
         pytest.fail(
             "WebSocket connection was denied by the server. "
             f"Denial details: {e}"
+        )
+    except WebSocketDisconnect as e:
+        pytest.fail(
+            "WebSocket connection was unexpectedly disconnected. "
+            f"Disconnection details: {e}"
         )
     except Exception as e:
         pytest.fail(
@@ -68,7 +69,7 @@ def monitor_download_progress(client_, task_id: str, timeout: int = DOWNLOAD_TIM
     return final_status
 
 
-def validate_model_structure(model: dict):
+def validate_model_structure(model: Dict[str, Any]) -> None:
     required_fields = ["repo_id", "filename", "local_path", "file_size", "organization"]
     
     for field in required_fields:

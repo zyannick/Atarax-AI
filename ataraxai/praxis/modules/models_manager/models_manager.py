@@ -333,33 +333,38 @@ class ModelsManager:
             self.logger.error(f"Failed to save manifest: {e}")
 
     
-    def get_list_of_models_from_manifest(self, search_infos: Dict[str, str]) -> List[Dict[str, Any]]:
+    def get_list_of_models_from_manifest(self, search_infos: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
-        Retrieves a list of all models in the manifest.
+        Retrieves a list of all models in the manifest that match all provided search criteria.
+        This search is partial and case-insensitive.
+
+        Args:
+            search_infos (Dict[str, Any]): A dictionary with keys like 'repo_id', 
+                                           'filename', or 'organization' for filtering.
+
         Returns:
-            List[Dict[str, Any]]: A list of model dictionaries matching search criteria.
+            List[Dict[str, Any]]: A list of model dictionaries matching all search criteria.
         """
         results = []
         
+        # Convert search terms to lowercase once for efficiency
         search_repo_id = search_infos.get("repo_id", "").lower() if search_infos.get("repo_id") else None
         search_filename = search_infos.get("filename", "").lower() if search_infos.get("filename") else None
         search_org = search_infos.get("organization", "").lower() if search_infos.get("organization") else None
 
-        is_searching = any([search_repo_id, search_filename, search_org])
-
         for model in self.manifest.get("models", []):
-            if not is_searching:
-                results.append(model)
+            
+            if search_repo_id and search_repo_id not in model.get("repo_id", "").lower():
+                continue 
+
+            if search_filename and search_filename not in model.get("filename", "").lower():
+                continue 
+                
+            if search_org and search_org not in model.get("organization", "").lower():
                 continue
 
+            results.append(model)
             
-            matches_repo = search_repo_id and search_repo_id in model.get("repo_id", "").lower()
-            matches_filename = search_filename and search_filename in model.get("filename", "").lower()
-            matches_org = search_org and search_org in model.get("organization", "").lower()
-
-            if matches_repo or matches_filename or matches_org:
-                results.append(model)
-
         return results
 
 

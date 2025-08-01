@@ -82,6 +82,7 @@ class WhisperConfigManager:
             WhisperConfig: A configuration object initialized with default WhisperModelParams and WhisperTranscriptionParams.
         """
         return WhisperConfig(
+            config_version="1.0",
             whisper_model_params=WhisperModelParams(),
             whisper_transcription_params=WhisperTranscriptionParams(),
         )

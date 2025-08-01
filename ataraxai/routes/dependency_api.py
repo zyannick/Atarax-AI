@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 from fastapi import HTTPException, Request, WebSocketDisconnect
 from fastapi import WebSocket
 from fastapi.params import Depends

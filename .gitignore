@@ -2,6 +2,7 @@ ataraxai/hegemonikon/third_party
 build/
 models/
 .vscode/
+.venv/
 ataraxia/ataraxia
 *.egg-info/
 **.pyc

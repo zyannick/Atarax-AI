@@ -2,6 +2,7 @@ from pydantic import SecretStr
 import pytest
 from fastapi import status
 
+from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.routes.models_manager_route.models_manager_api_models import (
     DownloadModelRequest,
@@ -18,7 +19,34 @@ from helpers import (
 )
 
 
-@pytest.fixture
+
+
+@pytest.fixture(scope="module")
+def unlocked_client(module_integration_client):
+    """
+    Fixture to ensure the vault is unlocked before running tests.
+    """
+    orchestrator = module_integration_client.app.state.orchestrator
+    assert orchestrator.state == AppState.FIRST_LAUNCH
+
+    password_request = VaultPasswordRequest(
+        password=SecretStr("Saturate-Heave8-Unfasten-Squealing")
+    )
+
+    response = module_integration_client.post(
+        "/api/v1/vault/initialize", json=password_request.model_dump(mode="json")
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["status"] == Status.SUCCESS
+    assert data["message"] == "Vault initialized and unlocked."
+    assert orchestrator.state == AppState.UNLOCKED
+    return module_integration_client
+
+
+
+@pytest.fixture(scope="module")
 def unlocked_client_with_filled_manifest(unlocked_client):
     # Search for models
     search_model_request = SearchModelsRequest(
@@ -59,25 +87,3 @@ def unlocked_client_with_filled_manifest(unlocked_client):
     clean_downloaded_models(unlocked_client)
 
 
-@pytest.fixture
-def unlocked_client(integration_client):
-    """
-    Fixture to ensure the vault is unlocked before running tests.
-    """
-    orchestrator = integration_client.app.state.orchestrator
-    assert orchestrator.state == AppState.FIRST_LAUNCH
-
-    password_request = VaultPasswordRequest(
-        password=SecretStr("Saturate-Heave8-Unfasten-Squealing")
-    )
-
-    response = integration_client.post(
-        "/api/v1/vault/initialize", json=password_request.model_dump(mode="json")
-    )
-
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert data["status"] == Status.SUCCESS
-    assert data["message"] == "Vault initialized and unlocked."
-    assert orchestrator.state == AppState.UNLOCKED
-    return integration_client

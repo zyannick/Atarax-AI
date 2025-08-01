@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 import logging
 from typing import Optional
+from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
@@ -82,12 +83,12 @@ class Services:
             self.logger.error(f"Failed to initialize services: {e}")
             raise
 
-    def set_core_ai_manager(self, core_ai_manager: Any) -> None:
+    def set_core_ai_manager(self, core_ai_manager: CoreAIServiceManager) -> None:
         """
         Sets the core AI manager instance for the current object.
 
         Args:
-            core_ai_manager (Any): The core AI manager to be assigned.
+            core_ai_manager (CoreAIServiceManager): The core AI manager to be assigned.
 
         Returns:
             None

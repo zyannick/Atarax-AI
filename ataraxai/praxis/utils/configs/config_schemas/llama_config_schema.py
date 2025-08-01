@@ -66,7 +66,7 @@ class GenerationParams(BaseModel):
 
 class LlamaConfig(BaseModel):
     config_version: float = Field(
-        1.0, description="Version of the model configuration."
+        default_factory=lambda: 1.0, description="Version of the model configuration."
     )
     llama_cpp_model_params: LlamaModelParams = Field(default_factory=lambda: LlamaModelParams())  # type: ignore
     generation_params: GenerationParams = Field(default_factory=lambda: GenerationParams())  # type: ignore

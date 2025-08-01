@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import List
+from typing import List, Optional
 from ataraxai.routes.status import Status
 
 
@@ -29,8 +29,8 @@ class RagConfigResponse(BaseModel):
     message: str = Field(
         ..., description="Detailed message about the RAG configuration operation."
     )
-    config: RagConfigAPI = Field(
-        ..., description="RAG configuration data."
+    config: Optional[RagConfigAPI] = Field(
+        default_factory=lambda: None, description="RAG configuration data."
     )
 
     @field_validator("message")

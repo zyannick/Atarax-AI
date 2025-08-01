@@ -1,10 +1,11 @@
 import pytest
 from pydantic import SecretStr
 from fastapi import status
-# --- Imports from your application ---
 from ataraxai.routes.status import Status
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.routes.vault_route.vault_api_models import VaultPasswordRequest
+
+
 
 
 def test_initialise_vault_success(integration_client):

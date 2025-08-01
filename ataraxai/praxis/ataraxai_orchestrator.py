@@ -345,7 +345,7 @@ class AtaraxAIOrchestrator:
     @property
     def chat(self) -> ChatManager:
         with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None:
+            if self.state != AppState.UNLOCKED or self.services is None: 
                 raise AtaraxAIError(
                     "Application is locked. CRUD operations are not available."
                 )
@@ -354,7 +354,7 @@ class AtaraxAIOrchestrator:
     @property
     def rag(self) -> AtaraxAIRAGManager:
         with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None:
+            if self.state != AppState.UNLOCKED or self.services is None: 
                 raise AtaraxAIError(
                     "Application is locked. RAG operations are not available."
                 )
@@ -363,7 +363,7 @@ class AtaraxAIOrchestrator:
     @property
     def models_manager(self) -> ModelsManager:
         with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None:
+            if self.state != AppState.UNLOCKED or self.services is None: 
                 raise AtaraxAIError(
                     "Application is locked. Models management operations are not available."
                 )
@@ -452,11 +452,11 @@ class AtaraxAIOrchestratorFactory:
         return orchestrator
 
 
-if __name__ == "__main__":
-    orchestrator = AtaraxAIOrchestratorFactory.create_orchestrator()
-    orchestrator.initialize_new_vault(SecureString("Saturate-Heave8-Unfasten-Squealing".encode("utf-8")))
-    print(f"Orchestrator state after initialization: {orchestrator.state.name}")
-    orchestrator.lock()
-    print(f"Orchestrator state after locking: {orchestrator.state.name}")
-    orchestrator.unlock(SecureString("Wrong-Password-123".encode("utf-8")))
-    print(f"Orchestrator state after unlock attempt with wrong password: {orchestrator.state.name}")
+# if __name__ == "__main__":
+#     orchestrator = AtaraxAIOrchestratorFactory.create_orchestrator()
+#     orchestrator.initialize_new_vault(SecureString("Saturate-Heave8-Unfasten-Squealing".encode("utf-8")))
+#     print(f"Orchestrator state after initialization: {orchestrator.state.name}")
+#     orchestrator.lock()
+#     print(f"Orchestrator state after locking: {orchestrator.state.name}")
+#     orchestrator.unlock(SecureString("Wrong-Password-123".encode("utf-8")))
+#     print(f"Orchestrator state after unlock attempt with wrong password: {orchestrator.state.name}")
