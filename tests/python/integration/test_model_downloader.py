@@ -20,11 +20,11 @@ from helpers import (
 
 from fastapi.testclient import TestClient
 
-def test_search_models(unlocked_client: TestClient):
+def test_search_models(module_unlocked_client: TestClient):
     search_model_request = SearchModelsRequest(
         query="llama", limit=10, filters_tags=["llama"]
     )
-    response = unlocked_client.post(
+    response = module_unlocked_client.post(
         "/api/v1/models_manager/search_models",
         json=search_model_request.model_dump(mode="json"),
     )
@@ -43,11 +43,11 @@ def test_search_models(unlocked_client: TestClient):
         validate_model_structure(model)
 
 
-def test_search_models_no_results(unlocked_client : TestClient):
+def test_search_models_no_results(module_unlocked_client : TestClient):
     search_model_request = SearchModelsRequest(
         query="nonexistentmodel", limit=10, filters_tags=["nonexistent"]
     )
-    response = unlocked_client.post(
+    response = module_unlocked_client.post(
         "/api/v1/models_manager/search_models",
         json=search_model_request.model_dump(mode="json"),
     )
@@ -59,12 +59,12 @@ def test_search_models_no_results(unlocked_client : TestClient):
     assert data["detail"] == "No models found matching the search criteria."
 
 
-def test_model_download_and_progress_flow(unlocked_client : TestClient):
+def test_model_download_and_progress_flow(module_unlocked_client : TestClient):
     # Search for models
     search_model_request = SearchModelsRequest(
         query="llama", limit=SEARCH_LIMIT, filters_tags=[]
     )
-    response = unlocked_client.post(
+    response = module_unlocked_client.post(
         "/api/v1/models_manager/search_models",
         json=search_model_request.model_dump(mode="json"),
     )
@@ -85,9 +85,9 @@ def test_model_download_and_progress_flow(unlocked_client : TestClient):
 
     # Initiate download
     download_request = DownloadModelRequest(**model_to_download)
-    orchestrator = unlocked_client.app.state.orchestrator # type: ignore
+    orchestrator = module_unlocked_client.app.state.orchestrator # type: ignore
 
-    response = unlocked_client.post(
+    response = module_unlocked_client.post(
         "/api/v1/models_manager/download_model",
         json=download_request.model_dump(mode="json"),
     )
@@ -106,7 +106,7 @@ def test_model_download_and_progress_flow(unlocked_client : TestClient):
     ], f"Unexpected initial status: {download_data['status']}"
 
     # Monitor download progress
-    final_status = monitor_download_progress(unlocked_client, task_id)
+    final_status = monitor_download_progress(module_unlocked_client, task_id)
 
     # Verify download completion
     expected_file_path : Path = ( # type: ignore
@@ -125,13 +125,13 @@ def test_model_download_and_progress_flow(unlocked_client : TestClient):
     assert final_status["percentage"] == 1.0
     assert str(final_status["status"]) == DownloadTaskStatus.COMPLETED.value
 
-    clean_downloaded_models(unlocked_client)
+    clean_downloaded_models(module_unlocked_client)
 
 
-def test_model_download_not_found(unlocked_client : TestClient):
+def test_model_download_not_found(module_unlocked_client : TestClient):
     non_existent_task_id = str(ulid.ULID())
 
-    response = unlocked_client.get(
+    response = module_unlocked_client.get(
         f"/api/v1/models_manager/download_status/{non_existent_task_id}"
     )
 
@@ -141,12 +141,12 @@ def test_model_download_not_found(unlocked_client : TestClient):
     assert response.json()["detail"] == "No download task found with the provided ID."
 
 
-def test_cancel_download(unlocked_client : TestClient):
+def test_cancel_download(module_unlocked_client : TestClient):
     # Search and select model
     search_model_request = SearchModelsRequest(
         query="llama", limit=SEARCH_LIMIT, filters_tags=[]
     )
-    response = unlocked_client.post(
+    response = module_unlocked_client.post(
         "/api/v1/models_manager/search_models",
         json=search_model_request.model_dump(mode="json"),
     )
@@ -161,13 +161,13 @@ def test_cancel_download(unlocked_client : TestClient):
     model_to_download = min(data["models"], key=lambda x: x["file_size"])
     download_request = DownloadModelRequest(**model_to_download)
 
-    orchestrator = unlocked_client.app.state.orchestrator # type: ignore
+    orchestrator = module_unlocked_client.app.state.orchestrator # type: ignore
     assert (
         orchestrator.state == AppState.UNLOCKED # type: ignore
     ), "Orchestrator should be in UNLOCKED state."
 
     # Start download
-    response = unlocked_client.post(
+    response = module_unlocked_client.post(
         "/api/v1/models_manager/download_model",
         json=download_request.model_dump(mode="json"),
     )
@@ -179,7 +179,7 @@ def test_cancel_download(unlocked_client : TestClient):
     task_id = download_data["task_id"]
 
     # Cancel download
-    cancel_response = unlocked_client.post(
+    cancel_response = module_unlocked_client.post(
         f"/api/v1/models_manager/cancel_download/{task_id}"
     )
 
@@ -192,7 +192,7 @@ def test_cancel_download(unlocked_client : TestClient):
     assert cancel_data["message"] == "Download task has been cancelled."
     assert cancel_data["task_id"] == task_id
 
-    clean_downloaded_models(unlocked_client)
+    clean_downloaded_models(module_unlocked_client)
 
 
 
@@ -226,29 +226,29 @@ def _test_manifest_search(
         validate_model_structure(model)
 
 
-def test_get_model_info_manifest(unlocked_client_with_filled_manifest : TestClient):
+def test_get_model_info_manifest(module_unlocked_client_with_filled_manifest : TestClient):
     _test_manifest_search(
-        unlocked_client_with_filled_manifest, repo_id="llama", filename="llama"
+        module_unlocked_client_with_filled_manifest, repo_id="llama", filename="llama"
     )
 
 
-def test_get_model_info_manifest_partial(unlocked_client_with_filled_manifest : TestClient):
+def test_get_model_info_manifest_partial(module_unlocked_client_with_filled_manifest : TestClient):
     _test_manifest_search(
-        unlocked_client_with_filled_manifest, repo_id="ll", filename="ma"
+        module_unlocked_client_with_filled_manifest, repo_id="ll", filename="ma"
     )
 
 
-def test_get_model_info_manifest_case_insensitive(unlocked_client_with_filled_manifest : TestClient):
+def test_get_model_info_manifest_case_insensitive(module_unlocked_client_with_filled_manifest : TestClient):
     _test_manifest_search(
-        unlocked_client_with_filled_manifest, repo_id="LL", filename="MA"
+        module_unlocked_client_with_filled_manifest, repo_id="LL", filename="MA"
     )
 
 
-def test_get_model_info_manifest_no_results(unlocked_client_with_filled_manifest : TestClient):
+def test_get_model_info_manifest_no_results(module_unlocked_client_with_filled_manifest : TestClient):
     search_model_request = SearchModelsManifestRequest(
         repo_id="nonexistentmodel", filename="nonexistent"
     )
-    response = unlocked_client_with_filled_manifest.post(
+    response = module_unlocked_client_with_filled_manifest.post(
         "/api/v1/models_manager/get_model_info_manifest",
         json=search_model_request.model_dump(mode="json"),
     )

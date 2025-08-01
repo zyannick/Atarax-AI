@@ -11,10 +11,10 @@ from ataraxai.routes.models_manager_route.models_manager_api_models import (
 from ataraxai.routes.status import Status
 
 
-def test_llama_cpp_config(unlocked_client_with_filled_manifest: TestClient):
+def test_llama_cpp_config(module_unlocked_client_with_filled_manifest: TestClient):
 
     search_model_request = SearchModelsManifestRequest()
-    response = unlocked_client_with_filled_manifest.post(
+    response = module_unlocked_client_with_filled_manifest.post(
         "/api/v1/models_manager/get_model_info_manifest",
         json=search_model_request.model_dump(mode="json"),
     )
@@ -42,7 +42,7 @@ def test_llama_cpp_config(unlocked_client_with_filled_manifest: TestClient):
         use_mlock=False,
     )
 
-    response = unlocked_client_with_filled_manifest.put(
+    response = module_unlocked_client_with_filled_manifest.put(
         "/api/v1/llama_cpp_config/update_llama_cpp_config",
         json=llama_cpp_config.model_dump(mode="json"),
     )
@@ -57,7 +57,7 @@ def test_llama_cpp_config(unlocked_client_with_filled_manifest: TestClient):
     assert "config" in data
     assert isinstance(data["config"], dict)
 
-    response = unlocked_client_with_filled_manifest.get(
+    response = module_unlocked_client_with_filled_manifest.get(
         "/api/v1/llama_cpp_config/get_llama_cpp_config"
     )
     assert (
@@ -78,8 +78,8 @@ def test_llama_cpp_config(unlocked_client_with_filled_manifest: TestClient):
     assert data["config"]["use_mlock"] is False
 
 
-def test_llama_cpp_generation_params(unlocked_client_with_filled_manifest: TestClient):
-    response = unlocked_client_with_filled_manifest.get(
+def test_llama_cpp_generation_params(module_unlocked_client_with_filled_manifest: TestClient):
+    response = module_unlocked_client_with_filled_manifest.get(
         "/api/v1/llama_cpp_config/get_llama_cpp_generation_params"
     )
     assert (
@@ -105,7 +105,7 @@ def test_llama_cpp_generation_params(unlocked_client_with_filled_manifest: TestC
         n_threads=4,
     )
 
-    response = unlocked_client_with_filled_manifest.put(
+    response = module_unlocked_client_with_filled_manifest.put(
         "/api/v1/llama_cpp_config/update_llama_cpp_generation_params",
         json=new_generation_params.model_dump(mode="json"),
     )

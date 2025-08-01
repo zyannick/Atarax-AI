@@ -26,10 +26,10 @@ from ataraxai.routes.dependency_api import get_unlocked_orchestrator
 
 @pytest.fixture
 def unlock_client_with_llama_config_set(
-    unlocked_client_with_filled_manifest: TestClient,
+    module_unlocked_client_with_filled_manifest: TestClient,
 ):
     search_model_request = SearchModelsManifestRequest()
-    response = unlocked_client_with_filled_manifest.post(
+    response = module_unlocked_client_with_filled_manifest.post(
         "/api/v1/models_manager/get_model_info_manifest",
         json=search_model_request.model_dump(mode="json"),
     )
@@ -57,7 +57,7 @@ def unlock_client_with_llama_config_set(
         use_mlock=False,
     )
 
-    response = unlocked_client_with_filled_manifest.put(
+    response = module_unlocked_client_with_filled_manifest.put(
         "/api/v1/llama_cpp_config/update_llama_cpp_config",
         json=llama_cpp_config.model_dump(mode="json"),
     )
@@ -79,7 +79,7 @@ def unlock_client_with_llama_config_set(
         n_threads=4,
     )
 
-    response = unlocked_client_with_filled_manifest.put(
+    response = module_unlocked_client_with_filled_manifest.put(
         "/api/v1/llama_cpp_config/update_llama_cpp_generation_params",
         json=new_generation_params.model_dump(mode="json"),
     )
@@ -90,7 +90,7 @@ def unlock_client_with_llama_config_set(
     assert data["status"] == Status.SUCCESS
     assert data["message"] == "Llama CPP generation parameters updated successfully."
 
-    return unlocked_client_with_filled_manifest
+    return module_unlocked_client_with_filled_manifest
 
 
 def test_initialize_core_ai_service(unlock_client_with_llama_config_set: TestClient):
