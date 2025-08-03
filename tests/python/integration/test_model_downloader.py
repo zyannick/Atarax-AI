@@ -60,9 +60,8 @@ def test_search_models_no_results(module_unlocked_client : TestClient):
 
 
 def test_model_download_and_progress_flow(module_unlocked_client : TestClient):
-    # Search for models
     search_model_request = SearchModelsRequest(
-        query="llama", limit=SEARCH_LIMIT, filters_tags=[]
+        query="llama", limit=SEARCH_LIMIT, filters_tags=["llama"]
     )
     response = module_unlocked_client.post(
         "/api/v1/models_manager/search_models",
@@ -79,11 +78,9 @@ def test_model_download_and_progress_flow(module_unlocked_client : TestClient):
     assert isinstance(data["models"], list)
     assert len(data["models"]) <= SEARCH_LIMIT
 
-    # Select smallest model for faster testing
     model_to_download = min(data["models"], key=lambda x: x["file_size"])
     validate_model_structure(model_to_download)
 
-    # Initiate download
     download_request = DownloadModelRequest(**model_to_download)
     orchestrator = module_unlocked_client.app.state.orchestrator # type: ignore
 
@@ -105,10 +102,8 @@ def test_model_download_and_progress_flow(module_unlocked_client : TestClient):
         DownloadTaskStatus.COMPLETED.value,
     ], f"Unexpected initial status: {download_data['status']}"
 
-    # Monitor download progress
     final_status = monitor_download_progress(module_unlocked_client, task_id)
 
-    # Verify download completion
     expected_file_path : Path = ( # type: ignore
         orchestrator.directories.data # type: ignore
         / "models"
