@@ -77,9 +77,11 @@ def get_core_ai_service_manager(
 )
 def initialize_core_ai_service(
     service_manager: CoreAIServiceManager = Depends(get_core_ai_service_manager),  # type: ignore
+    orch : AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
 ) -> CoreAiServiceInitializationResponse:
     try:
         service_manager.initialize()
+        # orch.services.set_core_ai_manager(service_manager)
         logger.info("Core AI Service initialized successfully")
         return CoreAiServiceInitializationResponse(
             status=Status.SUCCESS, message="Core AI Service initialized successfully."

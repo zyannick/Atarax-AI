@@ -9,7 +9,7 @@ from ataraxai.routes.rag_route.rag_api_models import (
     DirectoriesRemovalResponse,
     CheckManifestResponse,
 )
-from ataraxai.routes.status import  Status
+from ataraxai.routes.status import Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
@@ -54,7 +54,6 @@ async def check_manifest(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orche
         )
 
 
-
 @router_rag.post("/rebuild_index", response_model=RebuildIndexResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Rebuild Index", logger=logger)
@@ -80,7 +79,6 @@ async def rebuild_index(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orches
     return RebuildIndexResponse(
         status=Status.SUCCESS, message="Index rebuilt successfully."
     )
-
 
 
 @router_rag.post("/scan_and_index", response_model=ScanAndIndexResponse)
@@ -141,7 +139,6 @@ async def add_directory(
     )
 
 
-
 @router_rag.post("/remove_directories", response_model=DirectoriesRemovalResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Remove Directories", logger=logger)
@@ -167,8 +164,7 @@ async def remove_directory(
     Raises:
         HTTPException: If an error occurs during the removal process, returns HTTP 500 with error details.
     """
-    for directory in request.directories:
-        background_tasks.add_task(orch.rag.remove_watch_directories, [directory])
+    background_tasks.add_task(orch.rag.remove_watch_directories, request.directories)
     return DirectoriesRemovalResponse(
         status=Status.SUCCESS,
         message=f"Directories '{', '.join(request.directories)}' removed from indexing.",

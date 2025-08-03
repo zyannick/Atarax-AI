@@ -24,6 +24,9 @@ public:
 
     std::string process_prompt(const std::string &prompt_text, const GenerationParams &llama_generation_params_);
 
+    std::vector<int32_t> tokenization(const std::string &text);
+    std::string detokenization(const std::vector<int32_t> &tokens) const;
+
     bool stream_prompt(const std::string &prompt_text,
                        const GenerationParams &llama_generation_params,
                        llama_token_callback callback);

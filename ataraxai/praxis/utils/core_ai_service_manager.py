@@ -8,7 +8,7 @@ from ataraxai.praxis.utils.configs.config_schemas.whisper_config_schema import (
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
 from ataraxai.praxis.utils.exceptions import ServiceInitializationError, ValidationError
 from ataraxai.praxis.utils.service_status import ServiceStatus
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 
 
@@ -31,8 +31,9 @@ class CoreAIServiceManager:
         self.logger = logger
         self.core_ai_service: Optional[Any] = None
         self.llama_cpp_status = ServiceStatus.NOT_INITIALIZED
-        # self.whisper_status = ServiceStatus.NOT_INITIALIZED
-        # self.status = ServiceStatus.NOT_INITIALIZED
+        self.llama_cpp_params_cc = None
+        self.llama_cpp_generation_params_cc = None
+
 
     def get_service(self) -> Any:
         """
@@ -57,6 +58,45 @@ class CoreAIServiceManager:
             )
 
         return self.core_ai_service
+    
+
+    def process_prompt(
+        self, prompt: str
+    ) -> str:
+        """
+        Processes a prompt using the core AI service.
+
+        Args:
+            prompt (str): The prompt to process.
+            generation_params (Any): The parameters for generation.
+
+        Returns:
+            str: The processed response from the core AI service.
+        """
+        if not self.core_ai_service:
+            raise ServiceInitializationError("Core AI service is not initialized")
+        
+        print(f"Processing prompt: {prompt}")
+        print(f"Using generation params: {self.llama_cpp_generation_params_cc}")
+
+        return self.core_ai_service.process_prompt(prompt.encode("utf-8"), self.llama_cpp_generation_params_cc)  # type: ignore
+        # return "Here is the response based on the provided prompt."  # Mock response for testing
+    
+
+    def get_llama_cpp_model_context_size(self) -> int:
+        """
+        Retrieves the context size of the Llama model from the core AI service.
+
+        Returns:
+            int: The context size of the Llama model.
+
+        Raises:
+            ServiceInitializationError: If the core AI service is not initialized.
+        """
+        if not self.core_ai_service:
+            raise ServiceInitializationError("Core AI service is not initialized")
+
+        return self.config_manager.llama_config_manager.get_llama_cpp_params().n_ctx
 
     def initialize(self) -> None:
         """
@@ -91,6 +131,7 @@ class CoreAIServiceManager:
             raise ServiceInitializationError(
                 f"Core AI service initialization failed: {e}"
             )
+        
 
     def is_configured(self) -> bool:
         """
@@ -193,11 +234,11 @@ class CoreAIServiceManager:
         llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
         whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
 
-        
-        llama_model_params_cc,_, = self._convert_params(llama_params, whisper_params)
+
+        self.llama_cpp_params_cc, self.llama_cpp_generation_params_cc  = self._convert_params(llama_params, whisper_params)
 
         self.core_ai_service = self._create_core_ai_service(
-            llama_model_params_cc, None
+            self.llama_cpp_params_cc, None
         )
 
     def _convert_params(
@@ -267,6 +308,27 @@ class CoreAIServiceManager:
         # except Exception as e:
         #     self.logger.error(f"Error initializing Whisper model: {e}")
         return service  # type: ignore
+    
+    def tokenize(self, text: str) -> List[int]:
+        if not self.core_ai_service:
+            raise ServiceInitializationError("Core AI service is not initialized")
+
+        return  self.core_ai_service.tokenization(text.encode("utf-8"))
+    
+    def decode(self, tokens: List[int]) -> str:
+        """
+        Decodes a list of tokens into a string using the core AI service.
+
+        Args:
+            tokens (List[int]): The list of tokens to decode.
+
+        Returns:
+            str: The decoded string.
+        """
+        if not self.core_ai_service:
+            raise ServiceInitializationError("Core AI service is not initialized")
+
+        return str(self.core_ai_service.detokenization(tokens))
 
     def shutdown(self) -> None:
         """

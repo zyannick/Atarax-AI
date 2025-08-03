@@ -22,7 +22,7 @@ def test_chain_runner_init_sets_attributes():
     assert runner.task_manager is mock_task_manager
     assert runner.context_manager is mock_context_manager
     assert runner.prompt_manager is mock_prompt_manager
-    assert runner.core_ai_service is mock_core_ai_service
+    assert runner.core_ai_service_manager is mock_core_ai_service
     assert runner.chat_context is mock_chat_context
     assert runner.rag_manager is mock_rag_manager
 

@@ -7,6 +7,7 @@ from ataraxai import __version__  # type: ignore
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
 
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
+from ataraxai.praxis.modules.prompt_engine.task_manager import TaskManager
 from ataraxai.praxis.utils.vault_manager import UnlockResult, VaultInitializationStatus, VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
@@ -17,6 +18,7 @@ from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.exceptions import (
     AtaraxAIError,
+    AtaraxAILockError,
     # ValidationError,
 )
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
@@ -346,7 +348,7 @@ class AtaraxAIOrchestrator:
     def chat(self) -> ChatManager:
         with self._state_lock:
             if self.state != AppState.UNLOCKED or self.services is None: 
-                raise AtaraxAIError(
+                raise AtaraxAILockError(
                     "Application is locked. CRUD operations are not available."
                 )
             return self.services.chat_manager
@@ -355,7 +357,7 @@ class AtaraxAIOrchestrator:
     def rag(self) -> AtaraxAIRAGManager:
         with self._state_lock:
             if self.state != AppState.UNLOCKED or self.services is None: 
-                raise AtaraxAIError(
+                raise AtaraxAILockError(
                     "Application is locked. RAG operations are not available."
                 )
             return self.services.rag_manager
@@ -364,17 +366,26 @@ class AtaraxAIOrchestrator:
     def models_manager(self) -> ModelsManager:
         with self._state_lock:
             if self.state != AppState.UNLOCKED or self.services is None: 
-                raise AtaraxAIError(
+                raise AtaraxAILockError(
                     "Application is locked. Models management operations are not available."
                 )
             return self.services.models_manager
+        
+    @property
+    def task_manager(self) -> TaskManager:
+        with self._state_lock:
+            if self.state != AppState.UNLOCKED or self.services is None:
+                raise AtaraxAILockError(
+                    "Application is locked. Task management operations are not available."
+                )
+            return self.services.task_manager
         
         
     @property
     def user_preferences(self) -> UserPreferencesManager:
         with self._state_lock:
             if self.state != AppState.UNLOCKED or self.services is None:
-                raise AtaraxAIError(
+                raise AtaraxAILockError(
                     "Application is locked. User preferences operations are not available."
                 )
             return self.config_manager.preferences_manager
@@ -435,6 +446,7 @@ class AtaraxAIOrchestratorFactory:
             app_config=app_config,
             vault_manager=vault_manager,
             models_manager=models_manager,
+            core_ai_service_manager=core_ai_manager,
         )
 
         orchestrator = AtaraxAIOrchestrator(

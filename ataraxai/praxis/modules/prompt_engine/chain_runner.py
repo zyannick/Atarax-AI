@@ -1,10 +1,12 @@
 from typing import Any, Dict, List
+
+from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 from .context_manager import ContextManager, TaskContext
 from ataraxai.praxis.modules.prompt_engine.prompt_manager import PromptManager
 from ataraxai.praxis.modules.prompt_engine.task_manager import TaskManager
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-
+from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import TaskDependencies
 
 class ChainRunner:
     def __init__(
@@ -12,41 +14,21 @@ class ChainRunner:
         task_manager: TaskManager,
         context_manager: ContextManager,
         prompt_manager: PromptManager,
-        core_ai_service: Any,  # type: ignore
+        core_ai_service_manager: CoreAIServiceManager,  
         chat_context: ChatContextManager,
         rag_manager: AtaraxAIRAGManager
     ):
-        """
-        Initializes the ChainRunner with required managers and services.
-
-        Args:
-            task_manager (TaskManager): Manages tasks within the chain.
-            context_manager (ContextManager): Handles context-related operations.
-            prompt_manager (PromptManager): Manages prompt templates and logic.
-            core_ai_service (Any): Core AI service used for processing (type ignored for flexibility).
-            chat_context (ChatContextManager): Manages chat-specific context and state.
-            rag_manager (AtaraxAIRAGManager): Handles retrieval-augmented generation (RAG) operations.
-
-        Attributes:
-            task_manager (TaskManager): Reference to the task manager.
-            context_manager (ContextManager): Reference to the context manager.
-            prompt_manager (PromptManager): Reference to the prompt manager.
-            core_ai_service (Any): Reference to the core AI service.
-            chat_context (ChatContextManager): Reference to the chat context manager.
-            rag_manager (AtaraxAIRAGManager): Reference to the RAG manager.
-            dependencies (Dict[str, Any]): Dictionary of dependencies for internal use.
-        """
         self.task_manager = task_manager
         self.context_manager = context_manager
         self.prompt_manager = prompt_manager
-        self.core_ai_service = core_ai_service
+        self.core_ai_service_manager = core_ai_service_manager
         self.chat_context = chat_context
         self.rag_manager = rag_manager
 
-        self.dependencies: Dict[str, Any] = {
+        self.dependencies: TaskDependencies = {
             "context_manager": self.context_manager,
             "prompt_manager": self.prompt_manager,
-            "core_ai_service": self.core_ai_service,
+            "core_ai_service_manager": self.core_ai_service_manager,
             "chat_context": self.chat_context,
             "rag_manager": self.rag_manager
         }

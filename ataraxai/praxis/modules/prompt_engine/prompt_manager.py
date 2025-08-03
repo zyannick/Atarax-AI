@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 class PromptManager:
 
@@ -26,7 +26,7 @@ class PromptManager:
         self._cache: Dict[str, str] = {}
         print(f"PromptManager initialized for directory: {self.prompts_dir}")
 
-    def load_template(self, template_name: str, **kwargs: Any) -> str:
+    def load_template(self, template_name: Optional[str], **kwargs: Any) -> str:
         """
         Loads a prompt template by name, formats it with provided keyword arguments, and caches it for future use.
         Args:

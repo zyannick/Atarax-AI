@@ -105,7 +105,6 @@ def unlock_client_core_ai_service(
     data = response.json()
     assert data["status"] == Status.SUCCESS
     assert data["message"] == "Core AI Service initialized successfully."
-    assert True, "This test is currently disabled due to initialization issues."
 
     return unlocked_client_with_filled_manifest
 
@@ -292,3 +291,35 @@ def test_create_session_with_long_title(
             project_id=project_id,
             title=long_title,
         )
+
+def test_create_many_sessions(
+    unlock_client_core_ai_service: TestClient,
+):
+    project_id = _test_project_creation(
+        unlock_client_core_ai_service,
+        project_name="Test Project for Many Sessions",
+        project_description="This project is for testing multiple session creation.",
+    )
+    nb_of_sessions = 10
+    for i in range(nb_of_sessions):
+        _test_create_session(
+            unlock_client_core_ai_service,
+            project_id=project_id,
+            session_title=f"Test Session {i}",
+        )
+
+    response = unlock_client_core_ai_service.get(f"/api/v1/chat/projects/{project_id}/sessions")
+    assert (
+        response.status_code == status.HTTP_200_OK
+    ), f"Expected 200 OK, got {response.text}"
+    data = response.json()
+    assert isinstance(data, list), "Expected a list of sessions."
+    assert len(data) == nb_of_sessions, f"Expected {nb_of_sessions} sessions, got {len(data)}."
+    for i, session in enumerate(data):
+        session_num = nb_of_sessions - i - 1
+        assert (
+            session["title"] == f"Test Session {session_num}"
+        ), f"Session title mismatch for index {i}. --> {session['title']}"
+        assert (
+            session["project_id"] == str(project_id)
+        ), f"Session project_id mismatch for index {i}. --> {session['project_id']}"

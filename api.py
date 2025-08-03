@@ -18,11 +18,13 @@ from ataraxai.routes.configs_routes.user_preferences_route.user_preferences impo
 from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config import router_llama_cpp
 from ataraxai.routes.configs_routes.rag_config_route.rag_config_route import router_rag_config
 from ataraxai.routes.core_ai_service.core_ai_service import router_core_ai_service_config
+from ataraxai.routes.chain_runner_route.chain_runner import router_chain_runner
 from ataraxai.routes.dependency_api import get_orchestrator
 
 os.environ.setdefault("ENVIRONMENT", "development")  # Default to development if not set
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 logger = AtaraxAILogger("ataraxai.praxis.api").get_logger()
 
@@ -87,3 +89,4 @@ app.include_router(router_user_preferences)
 app.include_router(router_llama_cpp)
 app.include_router(router_rag_config)
 app.include_router(router_core_ai_service_config)
+app.include_router(router_chain_runner)

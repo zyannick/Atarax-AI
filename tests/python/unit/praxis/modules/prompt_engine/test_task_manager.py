@@ -60,7 +60,7 @@ def test_list_tasks():
     tm.tasks = {}
     dummy = DummyTask()
     tm.register_task(dummy)
-    tasks = tm.list_tasks()
+    tasks = tm.list_available_tasks()
     assert isinstance(tasks, list)
     assert tasks[0]["id"] == "dummy"
 

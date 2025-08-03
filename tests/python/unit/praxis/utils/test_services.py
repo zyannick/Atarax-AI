@@ -16,6 +16,7 @@ def mock_dependencies():
         "app_config": mock.Mock(),
         "vault_manager": mock.Mock(),
         "models_manager": mock.Mock(),
+        "core_ai_service_manager": mock.Mock(),
     }
 
 

@@ -2,7 +2,7 @@ import os
 import random
 import time
 from huggingface_hub import HfApi
-from huggingface_hub.utils import HfHubHTTPError
+from huggingface_hub.errors import HfHubHTTPError
 import hashlib
 import threading
 import json
@@ -112,14 +112,6 @@ class ModelDownloadInfo(BaseModel):
     cancelled_at: Optional[datetime] = None
     pause_at: Optional[datetime] = None
 
-    # def to_dict(self) -> Dict[str, Any]:
-    #     """
-    #     Converts the ModelDownloadInfo instance to a dictionary.
-
-    #     Returns:
-    #         Dict[str, Any]: Dictionary representation of the ModelDownloadInfo instance.
-    #     """
-    #     return self.model_dump()
 
     @field_validator("status")
     def validate_status(cls, v):
@@ -127,64 +119,6 @@ class ModelDownloadInfo(BaseModel):
             raise ValueError("Invalid status type")
         return v
 
-
-# Sometimes the file size is not available in the metadata, so we estimate it based on the model's repo_id and filename.
-def get_estimated_gguf_size_for_file(
-    repo_id: str, filename: str
-) -> Optional[Union[int, Tuple[int, int]]]:
-    if re.search(r"-\d{5}-of-\d{5}", filename):
-        return None
-
-    precise_multipliers = {
-        "Q2_K": 0.36,
-        "Q3_K_S": 0.48,
-        "Q3_K_M": 0.52,
-        "Q3_K_L": 0.56,
-        "Q4_0": 0.64,
-        "Q4_K_S": 0.64,
-        "Q4_K_M": 0.68,
-        "Q5_0": 0.8,
-        "Q5_K_S": 0.8,
-        "Q5_K_M": 0.84,
-        "Q6_K": 0.96,
-        "Q8_0": 1.28,
-        "F16": 2.0,
-        "FP16": 2.0,  # Handle both cases
-        "F32": 4.0,
-        "FP32": 4.0,
-    }
-
-    base_model_match = re.search(r"(\d+(\.\d+)?)B", repo_id, re.IGNORECASE)
-    if not base_model_match:
-        return None
-
-    base_model_params = float(base_model_match.group(1))
-
-    upper_filename_parts = filename.upper().replace("-", ".").split(".")
-    quant_level_found = None
-    for part in upper_filename_parts:
-        if part in precise_multipliers:
-            quant_level_found = part
-            break
-
-    if quant_level_found:
-        multiplier = precise_multipliers[quant_level_found]
-        size_gb = base_model_params * multiplier
-        if isinstance(size_gb, tuple):
-            size_gb = size_gb[0]
-        return int(size_gb * 1024 * 1024 * 1024)
-
-    upper_filename = filename.upper()
-    heuristic_match = re.search(r"[IQ](\d)", upper_filename)
-    if heuristic_match:
-        num_bits = int(heuristic_match.group(1))
-
-        size_gb = base_model_params * (num_bits / 8) * 1.05
-        if isinstance(size_gb, tuple):
-            size_gb = size_gb[0]
-        return int(size_gb * 1024 * 1024 * 1024)
-
-    return None
 
 
 def get_file_size(repo_id: str, filename: str) -> int:
@@ -194,6 +128,8 @@ def get_file_size(repo_id: str, filename: str) -> int:
     response.raise_for_status()
 
     total_size = int(response.headers.get("content-length", 0))
+
+    # print(f"Downloading {filename} from {url} ({total_size / (1024 * 1024):.2f} MB)")
 
     return total_size
 
@@ -456,8 +392,6 @@ class ModelsManager:
         query: str,
         limit: int = 50,
         filter_tags: Optional[List[str]] = None,
-        sort_by="downloads",
-        direction=-1,
     ) -> List[LlamaCPPModelInfo]:
         """
         Searches for models matching the given query and optional filter tags, returning a list of model dictionaries.
@@ -476,6 +410,7 @@ class ModelsManager:
             - If listing '.gguf' files for a model fails, an empty list is assigned to 'gguf_files'.
             - Errors during the search process are logged and an empty list is returned.
         """
+        random.seed(42)
         try:
             filters = ["gguf"]
             if filter_tags:
@@ -504,19 +439,14 @@ class ModelsManager:
                 except Exception as e:
                     self.logger.warning(
                         f"Failed to list gguf files for {model.id}: {e}"
-                    )
+                    )   
                     model_dict["gguf_files"] = []
-
-                estimated_files_sizes: Dict[str, Union[int, Tuple[int, int]]] = {}
-                for gguf_file in model_dict["gguf_files"]:
-                    if not gguf_file.endswith(".gguf"):
-                        continue
-                    estimated_files_sizes[gguf_file] = get_estimated_gguf_size_for_file(model.id, gguf_file)  # type: ignore
-
-                # print(f"Estimated file sizes for {model.id}: {estimated_files_sizes}")
 
                 for gguf_file in model_dict["gguf_files"]:
                     organization = model.id.split("/")[0]
+                    bits = None
+                    scheme = None
+                    modifier = None
                     match = re.search(r"Q(\d+)_([A-Z])(?:_([A-Z]))?", gguf_file)
 
                     if match:
@@ -528,10 +458,10 @@ class ModelsManager:
                         repo_id=model.id,
                         filename=gguf_file,
                         local_path=str(self.models_dir / model.id / gguf_file),
-                        downloaded_at=datetime.now().isoformat(),
+                        downloaded_at=datetime.now(),
                         file_size=get_file_size(model.id, gguf_file),
                         created_at=model_dict.get(
-                            "created_at", datetime.now().isoformat()
+                            "created_at", datetime.now()
                         ),
                         downloads=model_dict.get("downloads", 0),
                         likes=model_dict.get("likes", 0),
@@ -892,49 +822,52 @@ class ModelsManager:
 
 
 if __name__ == "__main__":
-    random.seed(42)  # For reproducibility in random choices
+    random.seed(42)  
     settings = AtaraxAISettings()
     directories = AppDirectories.create_default(settings)
 
     logger = AtaraxAILogger().get_logger()
     model_manager = ModelsManager(directories, logger)
 
-    model_manager.remove_all_models()  # Clear existing models for testing
-    model_manager.cleanup_old_tasks(max_age_hours=1)  # Clean up old tasks
+    model_manager.remove_all_models()  
+    model_manager.cleanup_old_tasks(max_age_hours=1)  
+    models = model_manager.search_models("phi-2", limit=100)
+    # print(f"Found {len(models)} models matching 'phi-2'.")
 
-    models = model_manager.search_models("llama", limit=100)
-    print(f"Found {len(models)} models matching 'llama'.")
+    # print("Available models:")
+    # for model in models:
+    #     print(f" - {model}")
 
-    if models:
-        model_to_download = random.choice(models)
-        print(f"Selected model to download: {model_to_download}")
+    # if models:
+    #     model_to_download = random.choice(models)
+    #     print(f"Selected model to download: {model_to_download}")
 
-        files = model_manager.list_available_files(model_to_download.repo_id)
-        print(f"Available files: {files}")
+    #     files = model_manager.list_available_files(model_to_download.repo_id)
+    #     print(f"Available files: {files}")
 
-        if model_to_download:
-            filename = model_to_download.filename
-            print(f"Downloading {filename} from {model_to_download.repo_id}...")
-            task_id = str(ulid.ULID())
-            task_id = model_manager.start_download_task(
-                task_id, model_info=model_to_download
-            )
-            print(f"Download started with task ID: {task_id}")
+    #     if model_to_download:
+    #         filename = model_to_download.filename
+    #         print(f"Downloading {filename} from {model_to_download.repo_id}...")
+    #         task_id = str(ulid.ULID())
+    #         task_id = model_manager.start_download_task(
+    #             task_id, model_info=model_to_download
+    #         )
+    #         print(f"Download started with task ID: {task_id}")
 
-            while True:
-                status = model_manager.get_download_status(task_id)
-                if status:
-                    print(
-                        f"Status: {status['status']}, Progress: {status['percentage']:.2%}"
-                    )
-                    if status["status"] in [
-                        ModelDownloadStatus.COMPLETED.value,
-                        ModelDownloadStatus.FAILED.value,
-                    ]:
-                        break
-                time.sleep(2)
+    #         while True:
+    #             status = model_manager.get_download_status(task_id)
+    #             if status:
+    #                 print(
+    #                     f"Status: {status['status']}, Progress: {status['percentage']:.2%}"
+    #                 )
+    #                 if status["status"] in [
+    #                     ModelDownloadStatus.COMPLETED.value,
+    #                     ModelDownloadStatus.FAILED.value,
+    #                 ]:
+    #                     break
+    #             time.sleep(2)
 
-            downloaded = model_manager.list_downloaded_models()
-            print(f"Downloaded models: {len(downloaded)}")
-    else:
-        print("No models found.")
+    #         downloaded = model_manager.list_downloaded_models()
+    #         print(f"Downloaded models: {len(downloaded)}")
+    # else:
+    #     print("No models found.")

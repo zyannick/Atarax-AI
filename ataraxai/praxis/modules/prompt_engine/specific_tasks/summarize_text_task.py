@@ -1,9 +1,10 @@
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.base_task import BaseTask
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from ataraxai.praxis.modules.prompt_engine.context_manager import TaskContext
 from typing import List
+from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import TaskDependencies
 
 
 class SummarizeTextTask(BaseTask):
@@ -21,7 +22,7 @@ class SummarizeTextTask(BaseTask):
         self.id: str = "summarize_text"
         self.description: str = "Summarizes a given block of text."
         self.required_inputs: List[str] = ["text"]
-        self.prompt_template_name: str = "summarize_text"
+        self.prompt_template_name: Optional[str] = "summarize_text"
         super().__init__()
 
     def _load_resources(self) -> None:
@@ -38,7 +39,7 @@ class SummarizeTextTask(BaseTask):
         self,
         processed_input: Dict[str, Any],
         context: TaskContext,
-        dependencies: Dict[str, Any],
+        dependencies: TaskDependencies,
     ) -> str:
         """
         Executes the text summarization task using the provided input, context, and dependencies.

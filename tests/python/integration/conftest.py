@@ -24,9 +24,6 @@ from helpers import (
 
 @pytest.fixture(scope="module")
 def module_unlocked_client(module_integration_client):
-    """
-    Fixture to ensure the vault is unlocked before running tests.
-    """
     orchestrator = module_integration_client.app.state.orchestrator
     assert orchestrator.state == AppState.FIRST_LAUNCH
 
@@ -49,7 +46,6 @@ def module_unlocked_client(module_integration_client):
 
 @pytest.fixture(scope="module")
 def module_unlocked_client_with_filled_manifest(module_unlocked_client):
-    # Search for models
     search_model_request = SearchModelsRequest(
         query="llama", limit=SEARCH_LIMIT, filters_tags=["llama"]
     )
@@ -63,7 +59,6 @@ def module_unlocked_client_with_filled_manifest(module_unlocked_client):
     assert data["status"] == Status.SUCCESS
     assert isinstance(data["models"], list)
 
-    # Download smallest models for testing
     sorted_models = sorted(data["models"], key=lambda x: x["file_size"])
     nb_models_to_download = min(MAX_MODELS_TO_DOWNLOAD, len(sorted_models))
 
@@ -90,9 +85,6 @@ def module_unlocked_client_with_filled_manifest(module_unlocked_client):
 
 @pytest.fixture(scope="function")
 def unlocked_client(integration_client):
-    """
-    Fixture to ensure the vault is unlocked before running tests.
-    """
     orchestrator = integration_client.app.state.orchestrator
     assert orchestrator.state == AppState.FIRST_LAUNCH
 
@@ -104,7 +96,7 @@ def unlocked_client(integration_client):
         "/api/v1/vault/initialize", json=password_request.model_dump(mode="json")
     )
 
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_200_OK, f"Unexpected status code: {response.text}"
     data = response.json()
     assert data["status"] == Status.SUCCESS
     assert data["message"] == "Vault initialized and unlocked."
@@ -116,7 +108,7 @@ def unlocked_client(integration_client):
 @pytest.fixture(scope="function")
 def unlocked_client_with_filled_manifest(unlocked_client):
     search_model_request = SearchModelsRequest(
-        query="llama", limit=SEARCH_LIMIT, filters_tags=["llama"]
+        query="llama", limit=SEARCH_LIMIT
     )
     response = unlocked_client.post(
         "/api/v1/models_manager/search_models",

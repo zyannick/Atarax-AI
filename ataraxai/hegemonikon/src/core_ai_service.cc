@@ -146,6 +146,30 @@ std::string CoreAIService::process_prompt(const std::string &prompt_text, const 
     }
 }
 
+std::vector<int32_t> CoreAIService::tokenization(const std::string &text)
+{
+    if (is_llama_model_loaded())
+    {
+        return llama_interface_->tokenization(text);
+    }
+    else
+    {
+        return {};
+    }
+}
+
+std::string CoreAIService::detokenization(const std::vector<int32_t> &tokens) const
+{
+    if (is_llama_model_loaded())
+    {
+        return llama_interface_->detokenization(tokens);
+    }
+    else
+    {
+        return "[Error: Llama model not loaded]";
+    }
+}
+
 /**
  * @brief Streams a prompt to the Llama model and returns generated completions via a callback.
  *

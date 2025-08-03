@@ -129,7 +129,7 @@ class SearchModelsRequest(BaseModel):
     limit: int = Field(
         10,
         ge=1,
-        le=100,
+        le=10000,
         description="The maximum number of models to return.",
     )
     

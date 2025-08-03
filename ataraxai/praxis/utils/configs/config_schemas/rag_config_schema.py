@@ -16,6 +16,10 @@ class RAGConfig(BaseModel):
     rag_use_reranking: bool = Field(False, description="Whether to use reranking.")
     rag_cross_encoder_model: str = Field("cross-encoder/ms-marco-MiniLM-L-6-v2", description="Cross-encoder model.")
     cross_encoder_hits: int = Field(5, description="Number of hits for the cross-encoder.")
+    context_allocation_ratio: float = Field(
+        0.5,
+        description="Ratio of context allocated to RAG vs history in the prompt assembly.",
+    )
 
     def is_setup_complete(self) -> bool:
         return Path(self.rag_model_path).exists()

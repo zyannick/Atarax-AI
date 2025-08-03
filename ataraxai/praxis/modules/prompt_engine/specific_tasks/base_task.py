@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, List, Dict
 from ataraxai.praxis.modules.prompt_engine.context_manager import TaskContext
+from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import TaskDependencies
+
 
 
 class BaseTask(ABC):
@@ -44,7 +46,7 @@ class BaseTask(ABC):
         self,
         input_data: Dict[str, Any],
         context: TaskContext,
-        dependencies: Dict[str, Any],
+        dependencies: TaskDependencies,
     ) -> Any:
         """
         Executes the main logic of the task, handling input validation, preprocessing, execution, and postprocessing steps.
@@ -92,7 +94,7 @@ class BaseTask(ABC):
         self,
         processed_input: Dict[str, Any],
         context: TaskContext,
-        dependencies: Dict[str, Any],
+        dependencies: TaskDependencies,
     ) -> Any:
         pass
 

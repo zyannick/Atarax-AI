@@ -37,6 +37,7 @@ class Services:
         app_config: AppConfig,
         vault_manager: VaultManager,
         models_manager: ModelsManager,
+        core_ai_service_manager: CoreAIServiceManager,
     ):
         """
         Initializes the service with required managers, configuration, and logging utilities.
@@ -59,7 +60,7 @@ class Services:
         self.config_manager = config_manager
         self.app_config = app_config
         self.models_manager = models_manager
-        self.core_ai_service = None
+        self.core_ai_service_manager = core_ai_service_manager
         self.vault_manager = vault_manager
 
     def initialize(self) -> None:
@@ -169,7 +170,7 @@ class Services:
             task_manager=self.task_manager,
             context_manager=self.context_manager,
             prompt_manager=self.prompt_manager,
-            core_ai_service=None,
+            core_ai_service_manager=self.core_ai_service_manager,
             chat_context=self.chat_context,
             rag_manager=self.rag_manager,
         )
@@ -202,14 +203,14 @@ class Services:
         if not chain_definition:
             raise ValidationError("Chain definition cannot be empty")
 
-        try:
-            core_ai_service = self.core_ai_manager.get_service()
-        except ServiceInitializationError as e:
-            self.logger.error(f"Cannot run task chain: {e}")
-            raise
+        # try:
+        #     core_ai_service = self.core_ai_manager.get_service()
+        # except ServiceInitializationError as e:
+        #     self.logger.error(f"Cannot run task chain: {e}")
+        #     raise
 
-        if self.chain_runner.core_ai_service is None:
-            self.chain_runner.core_ai_service = core_ai_service
+        # if self.chain_runner.core_ai_service_manager is None:
+        #     self.chain_runner.core_ai_service_manager = core_ai_service
 
         self.logger.info(f"Executing chain for query: '{initial_user_query}'")
         try:

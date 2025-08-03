@@ -315,6 +315,7 @@ def services(
     app_config: AppConfig,
     vault_manager: VaultManager,
     models_manager: ModelsManager,
+    core_ai_manager: CoreAIServiceManager,
 ) -> Generator[Services, None, None]:
     """
     Creates and yields a `Services` instance initialized with the provided application components.
@@ -341,6 +342,7 @@ def services(
         app_config=app_config,
         vault_manager=vault_manager,
         models_manager=models_manager,
+        core_ai_service_manager=core_ai_manager,
     )
 
     yield services
