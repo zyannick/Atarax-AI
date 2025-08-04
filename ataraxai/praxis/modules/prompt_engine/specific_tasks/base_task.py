@@ -9,7 +9,7 @@ class BaseTask(ABC):
     id: str
     description: str
     required_inputs: List[str] = []
-    prompt_template_name: Optional[str] = None
+    prompt_template_name: str = ""
 
     def __init__(self):
         """

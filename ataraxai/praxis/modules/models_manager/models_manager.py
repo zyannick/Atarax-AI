@@ -6,11 +6,11 @@ from huggingface_hub.errors import HfHubHTTPError
 import hashlib
 import threading
 import json
-from typing import Any, List, Dict, Optional, Callable, Tuple, Union
+from typing import Any, List, Dict, Optional, Callable
 from pathlib import Path
 import requests
 import tqdm
-import ulid
+# import ulid
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from enum import Enum, auto
@@ -18,8 +18,8 @@ from datetime import datetime
 from huggingface_hub import hf_hub_url
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
 import logging
-from huggingface_hub import model_info as hf_model_info
-from huggingface_hub import list_repo_files, repo_info
+# from huggingface_hub import model_info as hf_model_info
+# from huggingface_hub import list_repo_files, repo_info
 import re
 from pydantic import BaseModel, Field, field_validator
 
@@ -283,7 +283,6 @@ class ModelsManager:
         """
         results = []
         
-        # Convert search terms to lowercase once for efficiency
         search_repo_id = search_infos.get("repo_id", "").lower() if search_infos.get("repo_id") else None
         search_filename = search_infos.get("filename", "").lower() if search_infos.get("filename") else None
         search_org = search_infos.get("organization", "").lower() if search_infos.get("organization") else None
