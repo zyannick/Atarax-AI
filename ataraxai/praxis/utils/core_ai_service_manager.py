@@ -123,10 +123,7 @@ class CoreAIServiceManager:
         try:
             self._validate_model_paths()
             self._initialize_services()
-            # self.llama_cpp_status = ServiceStatus.INITIALIZED
-            # self.logger.info("Core AI services initialized successfully")
         except Exception as e:
-            # self.llama_cpp_status = ServiceStatus.FAILED
             self.logger.error(f"Failed to initialize core AI services: {e}")
             raise ServiceInitializationError(
                 f"Core AI service initialization failed: {e}"
@@ -201,9 +198,9 @@ class CoreAIServiceManager:
         """
         self.logger.info("Validating model paths for Llama and Whisper models...")
         llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
-        whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
+        _ = self.config_manager.whisper_config_manager.get_whisper_params()
 
-        if not llama_params.model_path:
+        if llama_params.model_path is None:
             raise ValidationError("Llama model path not configured")
 
         if not Path(str(llama_params.model_path)).exists():
@@ -260,7 +257,7 @@ class CoreAIServiceManager:
         """
         llama_model_params_cc: Any = hegemonikon_py.LlamaModelParams.from_dict(  # type: ignore
             {
-                "model_path": str(llama_params.model_info.local_path),
+                "model_path": str(llama_params.model_info.local_path), # type: ignore
                 "n_ctx": llama_params.n_ctx,
                 "n_gpu_layers": llama_params.n_gpu_layers,
                 "main_gpu": llama_params.main_gpu,

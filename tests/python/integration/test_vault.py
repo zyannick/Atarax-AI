@@ -4,6 +4,7 @@ from fastapi import status
 from ataraxai.routes.status import Status
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.routes.vault_route.vault_api_models import VaultPasswordRequest
+from unittest import mock
 
 
 
@@ -158,3 +159,4 @@ def test_lock_fails_if_not_unlocked(integration_client):
 
     assert lock_response.status_code == status.HTTP_200_OK
     assert orchestrator.state == AppState.LOCKED
+    

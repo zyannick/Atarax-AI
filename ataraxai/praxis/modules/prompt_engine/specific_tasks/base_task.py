@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, List, Dict
+from typing import Any, List, Dict
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import (
     TaskDependencies,
 )

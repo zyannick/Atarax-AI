@@ -15,13 +15,11 @@ from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.input_validator import InputValidator
 from ataraxai.praxis.utils.exceptions import (
     ValidationError,
-    ServiceInitializationError,
 )
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
 from ataraxai.praxis.utils.chat_manager import ChatManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
-
 
 
 class Services:
@@ -130,8 +128,12 @@ class Services:
         """
         db_path = self.directories.data / self.app_config.database_filename
         self.db_manager = ChatDatabaseManager(db_path=db_path)
-        self.chat_context = ChatContextManager(db_manager=self.db_manager, vault_manager=self.vault_manager)
-        self.chat_manager = ChatManager(self.db_manager, self.logger, self.vault_manager)
+        self.chat_context = ChatContextManager(
+            db_manager=self.db_manager, vault_manager=self.vault_manager
+        )
+        self.chat_manager = ChatManager(
+            self.db_manager, self.logger, self.vault_manager
+        )
         self.logger.info("Database initialized successfully")
 
     def _init_rag_manager(self) -> None:
@@ -235,11 +237,11 @@ class Services:
         """
         self.logger.info("Shutting down AtaraxAI...")
         try:
-            if hasattr(self, 'rag_manager'):
+            if hasattr(self, "rag_manager"):
                 self.rag_manager.stop_file_monitoring()
-            if hasattr(self, 'db_manager'):
+            if hasattr(self, "db_manager"):
                 self.db_manager.close()
-            if hasattr(self, 'core_ai_manager'):
+            if hasattr(self, "core_ai_manager"):
                 self.core_ai_manager.shutdown()
             self.logger.info("AtaraxAI shutdown completed successfully")
         except Exception as e:
@@ -257,7 +259,9 @@ class Services:
         4. If the manifest is valid, performs an initial scan of the watched directories.
         5. Starts monitoring the watched directories for file changes.
         """
-        watched_dirs: Optional[List[str]] = self.config_manager.get_watched_directories()
+        watched_dirs: Optional[List[str]] = (
+            self.config_manager.get_watched_directories()
+        )
         is_valid = self.rag_manager.manifest.is_valid(self.rag_manager.rag_store)
         if not is_valid:
             self.rag_manager.rebuild_index_for_watches(watched_dirs)

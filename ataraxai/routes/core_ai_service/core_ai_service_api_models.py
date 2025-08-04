@@ -8,10 +8,10 @@ class CoreAiServiceInitializationResponse(BaseModel):
     message: str = Field(
         ..., description="Detailed message about the Core AI Service initialization operation."
     )
-    # data: Dict[str, Any] = Field(
-    #     default_factory=dict,
-    #     description="Additional data related to the Core AI Service initialization."
-    # )
+    data: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional data related to the Core AI Service initialization."
+    )
 
     @field_validator("message")
     def validate_message(cls, v: str) -> str:

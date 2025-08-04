@@ -1,16 +1,17 @@
 import asyncio
-import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.params import Depends
 from prometheus_client import Enum
 import ulid
-from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.routes.status import Status, StatusResponse
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator, get_unlocked_orchestrator_ws
+from ataraxai.routes.dependency_api import (
+    get_unlocked_orchestrator,
+    get_unlocked_orchestrator_ws,
+)
 from ataraxai.praxis.katalepsis import katalepsis_monitor
 from ataraxai.routes.models_manager_route.models_manager_api_models import (
     DownloadModelResponse,
@@ -24,7 +25,6 @@ from ataraxai.routes.models_manager_route.models_manager_api_models import (
 )
 from ataraxai.praxis.modules.models_manager.models_manager import (
     LlamaCPPModelInfo,
-    ModelDownloadStatus,
 )
 from fastapi import WebSocket, WebSocketDisconnect
 
@@ -37,7 +37,9 @@ router_models_manager = APIRouter(
 )
 
 
-@router_models_manager.post("/search_models", response_model=SearchModelsResponsePaginated)
+@router_models_manager.post(
+    "/search_models", response_model=SearchModelsResponsePaginated
+)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Search Models", logger=logger)
 async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> SearchModelsResponsePaginated:  # type: ignore
@@ -65,40 +67,43 @@ async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator
         has_next=False,
         has_previous=False,
     )
-    
-    
+
+
 @router_models_manager.websocket("/download_progress/{task_id}")
 async def download_progress_websocket(
     websocket: WebSocket,
     task_id: str,
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator_ws) # type: ignore
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator_ws),  # type: ignore
 ):
     await websocket.accept()
-    
+
     try:
         while True:
-            status_data : Optional[Dict[Any, Any]]= orch.models_manager.get_download_status(task_id)
-            
+            status_data: Optional[Dict[Any, Any]] = (
+                orch.models_manager.get_download_status(task_id)
+            )
+
             if status_data:
                 status_data = {
-                    k: (v.value if isinstance(v, Enum) else v) #type: ignore
+                    k: (v.value if isinstance(v, Enum) else v)  # type: ignore
                     for k, v in status_data.items()
                 }
 
             await websocket.send_json(status_data)
 
-            if status_data.get("status") == DownloadTaskStatus.COMPLETED.value: #type: ignore
+            if status_data.get("status") == DownloadTaskStatus.COMPLETED.value:  # type: ignore
                 break
-            
-            if status_data.get("status") == DownloadTaskStatus.FAILED.value: #type: ignore
-                await websocket.send_json({
-                    "task_id": task_id,
-                    "status": DownloadTaskStatus.FAILED.value,
-                    "message": "Download failed.",
-                    "percentage": 0,
-                })
+
+            if status_data.get("status") == DownloadTaskStatus.FAILED.value:  # type: ignore
+                await websocket.send_json(
+                    {
+                        "task_id": task_id,
+                        "status": DownloadTaskStatus.FAILED.value,
+                        "message": "Download failed.",
+                        "percentage": 0,
+                    }
+                )
                 break
-            
 
             await asyncio.sleep(1)
 
@@ -106,7 +111,6 @@ async def download_progress_websocket(
         print(f"Client disconnected from WebSocket for task: {task_id}")
     finally:
         await websocket.close()
-
 
 
 @router_models_manager.get("/download_status/{task_id}")
@@ -129,7 +133,6 @@ async def get_download_status(
         task_id=task_id,
     )
 
-        
 
 @router_models_manager.post("/cancel_download/{task_id}")
 async def cancel_download(
@@ -190,7 +193,9 @@ async def download_model(
         )
 
 
-@router_models_manager.post("/get_model_info_manifest", response_model=ModelInfoResponsePaginated)
+@router_models_manager.post(
+    "/get_model_info_manifest", response_model=ModelInfoResponsePaginated
+)
 @handle_api_errors("Get Model Info", logger=logger)
 async def get_model_info(
     request: SearchModelsManifestRequest,
@@ -213,7 +218,7 @@ async def get_model_info(
         page_size=len(results),
         total_pages=1,
         has_next=False,
-        has_previous=False
+        has_previous=False,
     )
 
 

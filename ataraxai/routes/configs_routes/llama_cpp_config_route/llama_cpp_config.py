@@ -65,7 +65,7 @@ async def get_llama_cpp_config(
             vocab_only=config.vocab_only,
             use_map=config.use_map,
             use_mlock=config.use_mlock,
-        ),  # type:
+        ),  # type: ignore
     )
 
 

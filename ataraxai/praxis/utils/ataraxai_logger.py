@@ -49,6 +49,7 @@ class AtaraxAILogger:
         
         if log_dir is None:
             log_dir = Path("logs")
+            
         log_dir.mkdir(parents=True, exist_ok=True)
 
 

@@ -8,7 +8,11 @@ from ataraxai.hegemonikon_py import SecureString  # type: ignore
 
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
 from ataraxai.praxis.modules.prompt_engine.task_manager import TaskManager
-from ataraxai.praxis.utils.vault_manager import UnlockResult, VaultInitializationStatus, VaultManager
+from ataraxai.praxis.utils.vault_manager import (
+    UnlockResult,
+    VaultInitializationStatus,
+    VaultManager,
+)
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
@@ -17,9 +21,7 @@ import threading
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.exceptions import (
-    AtaraxAIError,
     AtaraxAILockError,
-    # ValidationError,
 )
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
 from ataraxai.praxis.utils.vault_manager import (
@@ -162,7 +164,9 @@ class AtaraxAIOrchestrator:
             self._state = AppState.LOCKED
             self.logger.info("Orchestrator state reset to LOCKED.")
 
-    def initialize_new_vault(self, master_password: SecureString) -> VaultInitializationStatus:
+    def initialize_new_vault(
+        self, master_password: SecureString
+    ) -> VaultInitializationStatus:
         """
         Initializes a new vault with the provided master password.
 
@@ -322,7 +326,7 @@ class AtaraxAIOrchestrator:
             self.logger.info("Vault locked.")
             return True
         except Exception as e:
-            #TODO I will handle any exceptions that occur during the lock operation
+            # TODO I will handle any exceptions that occur during the lock operation
             self.logger.error(f"Failed to lock vault: {e}")
             return False
 
@@ -347,7 +351,7 @@ class AtaraxAIOrchestrator:
     @property
     def chat(self) -> ChatManager:
         with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None: 
+            if self.state != AppState.UNLOCKED or self.services is None:
                 raise AtaraxAILockError(
                     "Application is locked. CRUD operations are not available."
                 )
@@ -356,7 +360,7 @@ class AtaraxAIOrchestrator:
     @property
     def rag(self) -> AtaraxAIRAGManager:
         with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None: 
+            if self.state != AppState.UNLOCKED or self.services is None:
                 raise AtaraxAILockError(
                     "Application is locked. RAG operations are not available."
                 )
@@ -365,12 +369,12 @@ class AtaraxAIOrchestrator:
     @property
     def models_manager(self) -> ModelsManager:
         with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None: 
+            if self.state != AppState.UNLOCKED or self.services is None:
                 raise AtaraxAILockError(
                     "Application is locked. Models management operations are not available."
                 )
             return self.services.models_manager
-        
+
     @property
     def task_manager(self) -> TaskManager:
         with self._state_lock:
@@ -379,8 +383,7 @@ class AtaraxAIOrchestrator:
                     "Application is locked. Task management operations are not available."
                 )
             return self.services.task_manager
-        
-        
+
     @property
     def user_preferences(self) -> UserPreferencesManager:
         with self._state_lock:
@@ -411,7 +414,7 @@ class AtaraxAIOrchestratorFactory:
     @staticmethod
     def create_orchestrator() -> AtaraxAIOrchestrator:
         app_config = AppConfig()
-        
+
         settings = AtaraxAISettings()
         directories = AppDirectories.create_default(settings)
         logger: logging.Logger = AtaraxAILogger(log_dir=directories.logs).get_logger()

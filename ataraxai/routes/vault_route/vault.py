@@ -3,7 +3,7 @@ from fastapi.params import Depends
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
 from ataraxai.praxis.utils.vault_manager import UnlockResult, VaultUnlockStatus
-from ataraxai.praxis.utils.vault_manager import UnlockResult, VaultInitializationStatus, VaultManager
+from ataraxai.praxis.utils.vault_manager import VaultInitializationStatus
 from ataraxai.routes.vault_route.vault_api_models import (
     ConfirmationPhaseRequest,
     ConfirmationPhaseResponse,

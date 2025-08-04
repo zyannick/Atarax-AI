@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-from ataraxai.praxis.utils.vault_manager import VaultManager
+from ataraxai.praxis.utils.vault_manager import VaultInitializationStatus, VaultManager
 
 class DummySecureKey:
     def __init__(self, key_bytes):
@@ -52,8 +52,7 @@ def test_create_and_initialize_vault_raises_on_empty_password():
         salt_path = os.path.join(tmpdir, "salt.bin")
         check_path = os.path.join(tmpdir, "check.bin")
         vm = VaultManager(salt_path, check_path)
-        with pytest.raises(ValueError, match="Password cannot be empty"):
-            vm.create_and_initialize_vault("")
+        assert vm.create_and_initialize_vault("") == VaultInitializationStatus.FAILED
 
 def test_create_and_initialize_vault_sets_secure_key():
     with tempfile.TemporaryDirectory() as tmpdir:

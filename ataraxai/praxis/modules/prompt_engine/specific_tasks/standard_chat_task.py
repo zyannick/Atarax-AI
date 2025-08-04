@@ -1,12 +1,9 @@
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.base_task import BaseTask
-from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import (
     TaskDependencies,
 )
-from ataraxai.praxis.utils.configs.config_schemas.rag_config_schema import RAGConfig
-from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 
 
 class StandardChatTask(BaseTask):
@@ -41,7 +38,10 @@ class StandardChatTask(BaseTask):
         session_history = chat_context.get_messages_for_session(session_id)
 
         rag_results = context_manager.get_context(context_key="relevant_document_chunks", user_inputs=user_query)
-        rag_context_str = "\n".join(rag_results)
+        if not rag_results:
+            rag_context_str = ""
+        else:
+            rag_context_str = "\n".join(rag_results)
 
         prompt_template_str = prompt_manager.load_template(self.prompt_template_name)
 

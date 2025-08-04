@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 import logging
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.configs.config_schemas.rag_config_schema import RAGConfig
