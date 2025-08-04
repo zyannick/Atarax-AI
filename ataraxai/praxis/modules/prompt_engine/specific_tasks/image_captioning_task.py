@@ -3,9 +3,10 @@ from PIL import Image
 import torch
 from transformers import AutoProcessor, LlavaForConditionalGeneration
 
-from ataraxai.praxis.modules.prompt_engine.context_manager import TaskContext
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.base_task import BaseTask
 from typing import Optional
+
+from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import TaskDependencies
 
 
 class ImageCaptioningTask(BaseTask):
@@ -68,8 +69,7 @@ class ImageCaptioningTask(BaseTask):
     def execute(
         self,
         processed_input: Dict[str, Any],
-        context: TaskContext,
-        dependencies: Dict[str, Any],
+        dependencies: TaskDependencies,
     ) -> str:
         """
         Executes the image captioning task by generating a brief description of the main subjects in the provided image.
@@ -77,7 +77,7 @@ class ImageCaptioningTask(BaseTask):
         Args:
             processed_input (Dict[str, Any]): A dictionary containing the input data. Must include the key 'image_path' with the path to the image file.
             context (TaskContext): The context object for the current task execution.
-            dependencies (Dict[str, Any]): A dictionary of dependencies required for task execution.
+            dependencies (TaskDependencies): A dictionary of dependencies required for task execution.
 
         Returns:
             str: A one-sentence description of the main subjects in the image, or an error message if resources are unavailable.

@@ -4,43 +4,6 @@ from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from typing import Callable, List
 
 
-class TaskContext:
-
-    def __init__(
-        self,
-        user_query: str,
-        user_history: Optional[list[str]] = None,
-        task_info: Optional[Dict[str, Any]] = None,
-    ):
-        """
-        Initializes the context manager with the user's query, history, and task information.
-
-        Args:
-            user_query (str): The current query from the user.
-            user_history (Optional[list[str]], optional): A list of previous user queries or interactions. Defaults to an empty list if not provided.
-            task_info (Optional[Dict[str, Any]], optional): Additional information related to the current task. Defaults to an empty dictionary if not provided.
-        """
-        self.user_query = user_query
-        self.user_history = user_history if user_history is not None else []
-        self.task_info = task_info if task_info is not None else {}
-
-    def add_to_history(self, entry: str):
-        """
-        Add a new entry to the user's history.
-
-        Args:
-            entry (str): The entry to be added to the user history.
-        """
-        self.user_history.append(entry)
-
-    def get_context_summary(self) -> str:
-        """
-        Generates a summary string containing the user's query, conversation history, and task information.
-
-        Returns:
-            str: A formatted string summarizing the current context, including the user query, history, and task information.
-        """
-        return f"Query: {self.user_query}, History: {self.user_history}, Task Info: {self.task_info}"
 
 
 class ContextManager:

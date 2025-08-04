@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, List, Dict
-from ataraxai.praxis.modules.prompt_engine.context_manager import TaskContext
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import TaskDependencies
 
 
@@ -45,8 +44,7 @@ class BaseTask(ABC):
     def run(
         self,
         input_data: Dict[str, Any],
-        context: TaskContext,
-        dependencies: TaskDependencies,
+                        dependencies: TaskDependencies,
     ) -> Any:
         """
         Executes the main logic of the task, handling input validation, preprocessing, execution, and postprocessing steps.
@@ -65,11 +63,11 @@ class BaseTask(ABC):
         try:
             self.load_if_needed()
             self.validate_inputs(input_data)
-            processed_input = self.preprocess(input_data, context)
-            raw_output = self.execute(processed_input, context, dependencies)
-            return self.postprocess(raw_output, context)
+            processed_input = self.preprocess(input_data)
+            raw_output = self.execute(processed_input, dependencies)
+            return self.postprocess(raw_output)
         except Exception as e:
-            return self.handle_error(e, context)
+            return self.handle_error(e)
 
     @abstractmethod
     def _load_resources(self) -> None:
@@ -80,12 +78,12 @@ class BaseTask(ABC):
         if missing:
             raise ValueError(f"Task '{self.id}' missing required inputs: {missing}")
 
-    def handle_error(self, error: Exception, context: TaskContext) -> Any:
+    def handle_error(self, error: Exception, ) -> Any:
         print(f"ERROR during execution of task '{self.id}': {error}")
         raise error
 
     def preprocess(
-        self, input_data: Dict[str, Any], context: TaskContext
+        self, input_data: Dict[str, Any], 
     ) -> Dict[str, Any]:
         return input_data
 
@@ -93,12 +91,11 @@ class BaseTask(ABC):
     def execute(
         self,
         processed_input: Dict[str, Any],
-        context: TaskContext,
         dependencies: TaskDependencies,
     ) -> Any:
         pass
 
-    def postprocess(self, raw_output: Any, context: TaskContext) -> Any:
+    def postprocess(self, raw_output: Any, ) -> Any:
         return raw_output
 
     @property

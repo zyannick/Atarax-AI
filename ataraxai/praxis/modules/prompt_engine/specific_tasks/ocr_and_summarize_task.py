@@ -2,9 +2,10 @@ from typing import Any, Dict
 from PIL import Image
 import pytesseract
 
-from ataraxai.praxis.modules.prompt_engine.context_manager import TaskContext
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.base_task import BaseTask
 from typing import List
+
+from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import TaskDependencies
 
 
 class OCRandSummarizeTask(BaseTask):
@@ -47,8 +48,7 @@ class OCRandSummarizeTask(BaseTask):
     def execute(
         self,
         processed_input: Dict[str, Any],
-        context: TaskContext,
-        dependencies: Dict[str, Any],
+        dependencies: TaskDependencies,
     ) -> str:
         """
         Executes the OCR and summarization task on a given image.

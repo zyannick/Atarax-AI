@@ -1,7 +1,7 @@
 from typing import Any, Dict, List
 
 from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
-from .context_manager import ContextManager, TaskContext
+from .context_manager import ContextManager
 from ataraxai.praxis.modules.prompt_engine.prompt_manager import PromptManager
 from ataraxai.praxis.modules.prompt_engine.task_manager import TaskManager
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
@@ -54,7 +54,6 @@ class ChainRunner:
             Exception: 
                 If a task raises an exception and does not handle it internally, the exception is caught, error handling is invoked, and execution stops.
         """
-        context = TaskContext(user_query=initial_user_query)
         step_outputs: Dict[str, Any] = {}
         final_result = None
 
@@ -77,7 +76,7 @@ class ChainRunner:
             print(f"\n--- Running Step {i}: Task '{task_id}' ---")
 
             try:
-                final_result = task.run(input_data, context, self.dependencies)
+                final_result = task.run(input_data, self.dependencies)
 
                 step_outputs[f"step_{i}"] = {"output": final_result}
                 print(
@@ -86,7 +85,7 @@ class ChainRunner:
 
             except Exception as e:
                 print(f"--- Error in Step {i}, Task '{task_id}' ---")
-                final_result = task.handle_error(e, context)
+                final_result = task.handle_error(e)
                 break
 
         return final_result

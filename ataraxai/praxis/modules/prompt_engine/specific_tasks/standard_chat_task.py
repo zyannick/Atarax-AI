@@ -1,7 +1,6 @@
 from typing import Any, Dict, List
 
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.base_task import BaseTask
-from ataraxai.praxis.modules.prompt_engine.context_manager import TaskContext
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import (
     TaskDependencies,
@@ -24,7 +23,6 @@ class StandardChatTask(BaseTask):
     def execute(
         self,
         processed_input: Dict[str, Any],
-        context: TaskContext,
         dependencies: TaskDependencies,
     ) -> str:
 
@@ -35,13 +33,14 @@ class StandardChatTask(BaseTask):
         rag_manager = dependencies["rag_manager"]
         prompt_manager = dependencies["prompt_manager"]
         core_ai_service_manager = dependencies["core_ai_service_manager"]
+        context_manager = dependencies["context_manager"]
 
         model_context_limit = core_ai_service_manager.get_llama_cpp_model_context_size()
 
         chat_context.add_message(session_id, role="user", content=user_query)
         session_history = chat_context.get_messages_for_session(session_id)
 
-        rag_results = rag_manager.query_knowledge(query_text=user_query)
+        rag_results = context_manager.get_context(context_key="relevant_document_chunks", user_inputs=user_query)
         rag_context_str = "\n".join(rag_results)
 
         prompt_template_str = prompt_manager.load_template(self.prompt_template_name)
