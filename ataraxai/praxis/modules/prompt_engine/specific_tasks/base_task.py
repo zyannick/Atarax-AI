@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, List, Dict
-from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import TaskDependencies
-
+from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import (
+    TaskDependencies,
+)
 
 
 class BaseTask(ABC):
@@ -44,7 +45,7 @@ class BaseTask(ABC):
     def run(
         self,
         input_data: Dict[str, Any],
-                        dependencies: TaskDependencies,
+        dependencies: TaskDependencies,
     ) -> Any:
         """
         Executes the main logic of the task, handling input validation, preprocessing, execution, and postprocessing steps.
@@ -78,12 +79,16 @@ class BaseTask(ABC):
         if missing:
             raise ValueError(f"Task '{self.id}' missing required inputs: {missing}")
 
-    def handle_error(self, error: Exception, ) -> Any:
+    def handle_error(
+        self,
+        error: Exception,
+    ) -> Any:
         print(f"ERROR during execution of task '{self.id}': {error}")
         raise error
 
     def preprocess(
-        self, input_data: Dict[str, Any], 
+        self,
+        input_data: Dict[str, Any],
     ) -> Dict[str, Any]:
         return input_data
 
@@ -95,7 +100,10 @@ class BaseTask(ABC):
     ) -> Any:
         pass
 
-    def postprocess(self, raw_output: Any, ) -> Any:
+    def postprocess(
+        self,
+        raw_output: Any,
+    ) -> Any:
         return raw_output
 
     @property

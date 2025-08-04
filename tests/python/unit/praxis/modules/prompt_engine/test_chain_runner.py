@@ -1,5 +1,8 @@
 # import pytest
+from typing import Any, Any, Dict
 from unittest.mock import Mock
+
+from rpds import List
 from ataraxai.praxis.modules.prompt_engine.chain_runner import ChainRunner
 
 def test_chain_runner_init_sets_attributes():
@@ -14,7 +17,7 @@ def test_chain_runner_init_sets_attributes():
         task_manager=mock_task_manager,
         context_manager=mock_context_manager,
         prompt_manager=mock_prompt_manager,
-        core_ai_service=mock_core_ai_service,
+        core_ai_service_manager=mock_core_ai_service,
         chat_context=mock_chat_context,
         rag_manager=mock_rag_manager
     )
@@ -38,7 +41,7 @@ def test_chain_runner_init_sets_dependencies_dict():
         task_manager=mock_task_manager,
         context_manager=mock_context_manager,
         prompt_manager=mock_prompt_manager,
-        core_ai_service=mock_core_ai_service,
+        core_ai_service_manager=mock_core_ai_service,
         chat_context=mock_chat_context,
         rag_manager=mock_rag_manager
     )
@@ -46,7 +49,7 @@ def test_chain_runner_init_sets_dependencies_dict():
     expected_dependencies = {
         "context_manager": mock_context_manager,
         "prompt_manager": mock_prompt_manager,
-        "core_ai_service": mock_core_ai_service,
+        "core_ai_service_manager": mock_core_ai_service,
         "chat_context": mock_chat_context,
         "rag_manager": mock_rag_manager
     }
@@ -61,7 +64,6 @@ def test_run_chain_single_step_success():
     mock_chat_context = Mock()
     mock_rag_manager = Mock()
 
-    # Mock task with run and handle_error
     mock_task = Mock()
     mock_task.run.return_value = "step_result"
     mock_task.handle_error = Mock()
@@ -72,12 +74,12 @@ def test_run_chain_single_step_success():
         task_manager=mock_task_manager,
         context_manager=mock_context_manager,
         prompt_manager=mock_prompt_manager,
-        core_ai_service=mock_core_ai_service,
+        core_ai_service_manager=mock_core_ai_service,
         chat_context=mock_chat_context,
         rag_manager=mock_rag_manager
     )
 
-    chain_definition = [
+    chain_definition : List[Dict[str, Any]] = [
         {
             "task_id": "task1",
             "inputs": {"input1": "value1"}
@@ -118,7 +120,7 @@ def test_run_chain_multiple_steps_with_reference():
         task_manager=mock_task_manager,
         context_manager=mock_context_manager,
         prompt_manager=mock_prompt_manager,
-        core_ai_service=mock_core_ai_service,
+        core_ai_service_manager=mock_core_ai_service,
         chat_context=mock_chat_context,
         rag_manager=mock_rag_manager
     )
@@ -162,7 +164,7 @@ def test_run_chain_handles_exception_and_calls_handle_error():
         task_manager=mock_task_manager,
         context_manager=mock_context_manager,
         prompt_manager=mock_prompt_manager,
-        core_ai_service=mock_core_ai_service,
+        core_ai_service_manager=mock_core_ai_service,
         chat_context=mock_chat_context,
         rag_manager=mock_rag_manager
     )

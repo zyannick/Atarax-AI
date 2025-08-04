@@ -10,5 +10,4 @@ class TaskDependencies(TypedDict):
     rag_manager: AtaraxAIRAGManager
     prompt_manager: PromptManager
     context_manager: ContextManager
-    chat_context: ChatContextManager
     core_ai_service_manager: CoreAIServiceManager 

@@ -1,99 +1,127 @@
 import pytest
-from unittest import mock
-from ataraxai.praxis.modules.prompt_engine.specific_tasks.standard_chat_task import (
-    StandardChatTask,
-)
-
+from ataraxai.praxis.modules.prompt_engine.specific_tasks.standard_chat_task import StandardChatTask
+from unittest.mock import MagicMock
 
 @pytest.fixture
 def mock_dependencies():
-    chat_context = mock.Mock()
-    prompt_manager = mock.Mock()
-    rag_manager = mock.Mock()
-    core_ai_service = mock.Mock()
-    return {
-        "chat_context": chat_context,
-        "prompt_manager": prompt_manager,
-        "rag_manager": rag_manager,
-        "core_ai_service": core_ai_service,
-        "generation_params": {"temperature": 0.7},
-    }
-
-
-@pytest.fixture
-def processed_input():
-    return {"user_query": "What is AI?", "session_id": "session123"}
-
-
-@pytest.fixture
-def context():
-    return mock.Mock()
-
-
-def test_execute_adds_user_and_assistant_messages(
-    processed_input, context, mock_dependencies
-):
-    chat_context = mock_dependencies["chat_context"]
-    prompt_manager = mock_dependencies["prompt_manager"]
-    rag_manager = mock_dependencies["rag_manager"]
-    core_ai_service = mock_dependencies["core_ai_service"]
+    chat_context = MagicMock()
+    rag_manager = MagicMock()
+    prompt_manager = MagicMock()
+    core_ai_service_manager = MagicMock()
+    context_manager = MagicMock()
 
     chat_context.get_messages_for_session.return_value = [
         {"role": "user", "content": "Hello"},
-        {"role": "assistant", "content": "Hi! How can I help you?"},
+        {"role": "assistant", "content": "Hi, how can I help you?"}
     ]
-    rag_manager.query_knowledge.return_value = {
-        "documents": [["AI is artificial intelligence."]]
+    context_manager.get_context.return_value = ["Relevant chunk 1", "Relevant chunk 2"]
+    prompt_manager.load_template.return_value = "Prompt template"
+    prompt_manager.build_prompt_within_limit.return_value = "Final prompt"
+    core_ai_service_manager.get_llama_cpp_model_context_size.return_value = 2048
+    core_ai_service_manager.process_prompt.return_value = "assistant: This is a response."
+
+    rag_manager.rag_config_manager.config = {}
+
+    return {
+        "chat_context": chat_context,
+        "rag_manager": rag_manager,
+        "prompt_manager": prompt_manager,
+        "core_ai_service_manager": core_ai_service_manager,
+        "context_manager": context_manager,
     }
-    prompt_manager.load_template.return_value = "Prompt with context"
-    core_ai_service.process_prompt.return_value = (
-        "AI stands for Artificial Intelligence."
-    )
 
+def test_execute_returns_assistant_response(mock_dependencies):
     task = StandardChatTask()
-    result = task.execute(processed_input, context, mock_dependencies)
+    processed_input = {
+        "user_query": "What is AI?",
+        "session_id": "session123"
+    }
 
-    chat_context.add_message.assert_any_call(
+    response = task.execute(processed_input, mock_dependencies)
+
+    assert response == "This is a response."
+    mock_dependencies["chat_context"].add_message.assert_any_call(
         "session123", role="user", content="What is AI?"
     )
-    chat_context.add_message.assert_any_call(
-        "session123", role="assistant", content="AI stands for Artificial Intelligence."
+    mock_dependencies["chat_context"].add_message.assert_any_call(
+        "session123", role="assistant", content="This is a response."
     )
 
-    prompt_manager.load_template.assert_called_once_with(
-        "main_chat",
-        history=chat_context.get_messages_for_session.return_value,
-        context="AI is artificial intelligence.",
-        query="What is AI?",
-    )
-
-    rag_manager.query_knowledge.assert_called_once_with(
-        query_text="What is AI?", n_results=3
-    )
-
-    core_ai_service.process_prompt.assert_called_once_with(
-        "Prompt with context", {"temperature": 0.7}
-    )
-
-    assert result == "AI stands for Artificial Intelligence."
-
-
-def test_execute_handles_no_rag_documents(processed_input, context, mock_dependencies):
-    rag_manager = mock_dependencies["rag_manager"]
-    prompt_manager = mock_dependencies["prompt_manager"]
-    core_ai_service = mock_dependencies["core_ai_service"]
-
-    rag_manager.query_knowledge.return_value = {"documents": []}
-    prompt_manager.load_template.return_value = "Prompt with no context"
-    core_ai_service.process_prompt.return_value = "Sorry, I don't know."
-
+def test_execute_handles_empty_model_response(mock_dependencies):
     task = StandardChatTask()
-    result = task.execute(processed_input, context, mock_dependencies)
+    processed_input = {
+        "user_query": "What is AI?",
+        "session_id": "session123"
+    }
+    mock_dependencies["core_ai_service_manager"].process_prompt.return_value = "   "
 
-    prompt_manager.load_template.assert_called_once_with(
-        "main_chat",
-        history=mock_dependencies["chat_context"].get_messages_for_session.return_value,
-        context="No relevant documents found.",
-        query="What is AI?",
+    response = task.execute(processed_input, mock_dependencies)
+
+    assert response == "I'm sorry, I couldn't generate a response."
+    mock_dependencies["chat_context"].add_message.assert_any_call(
+        "session123", role="assistant", content="I'm sorry, I couldn't generate a response."
     )
-    assert result == "Sorry, I don't know."
+
+def test_execute_strips_assistant_prefix(mock_dependencies):
+    task = StandardChatTask()
+    processed_input = {
+        "user_query": "Tell me a joke.",
+        "session_id": "session456"
+    }
+    mock_dependencies["core_ai_service_manager"].process_prompt.return_value = "assistant: Here is a joke."
+
+    response = task.execute(processed_input, mock_dependencies)
+
+    assert response == "Here is a joke."
+
+def test_execute_includes_rag_context_and_prompt_template(mock_dependencies):
+    task = StandardChatTask()
+    processed_input = {
+        "user_query": "Explain quantum computing.",
+        "session_id": "session789"
+    }
+
+    response = task.execute(processed_input, mock_dependencies)
+
+    # Ensure RAG context was fetched with correct arguments
+    mock_dependencies["context_manager"].get_context.assert_called_once_with(
+        context_key="relevant_document_chunks", user_inputs="Explain quantum computing."
+    )
+    # Ensure prompt template was loaded
+    mock_dependencies["prompt_manager"].load_template.assert_called_once_with("standard_chat")
+    # Ensure prompt was built with correct arguments
+    mock_dependencies["prompt_manager"].build_prompt_within_limit.assert_called_once()
+    # Ensure model was called with the final prompt
+    mock_dependencies["core_ai_service_manager"].process_prompt.assert_called_once_with("Final prompt")
+    # The response should be stripped of the "assistant:" prefix
+    assert response == "This is a response."
+
+def test_execute_handles_no_assistant_prefix(mock_dependencies):
+    task = StandardChatTask()
+    processed_input = {
+        "user_query": "No prefix?",
+        "session_id": "session999"
+    }
+    mock_dependencies["core_ai_service_manager"].process_prompt.return_value = "Just a plain response."
+
+    response = task.execute(processed_input, mock_dependencies)
+
+    assert response == "Just a plain response."
+    mock_dependencies["chat_context"].add_message.assert_any_call(
+        "session999", role="assistant", content="Just a plain response."
+    )
+
+def test_execute_handles_multiple_assistant_prefixes(mock_dependencies):
+    task = StandardChatTask()
+    processed_input = {
+        "user_query": "Multiple prefixes?",
+        "session_id": "session1000"
+    }
+    mock_dependencies["core_ai_service_manager"].process_prompt.return_value = "assistant: assistant: Nested response."
+
+    response = task.execute(processed_input, mock_dependencies)
+
+    assert response == "Nested response."
+    mock_dependencies["chat_context"].add_message.assert_any_call(
+        "session1000", role="assistant", content="Nested response."
+    )
