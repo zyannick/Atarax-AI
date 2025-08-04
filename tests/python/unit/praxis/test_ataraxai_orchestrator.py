@@ -8,7 +8,7 @@ from ataraxai.praxis.ataraxai_orchestrator import (
     AtaraxAIOrchestrator,
     AtaraxAIOrchestratorFactory,
 )
-from ataraxai.praxis.utils.vault_manager import VaultUnlockStatus
+from ataraxai.praxis.utils.vault_manager import VaultInitializationStatus, VaultUnlockStatus
 
 
 class TestAtaraxAIOrchestrator:
@@ -66,7 +66,7 @@ class TestAtaraxAIOrchestrator:
         master_password = mock.Mock()
         result = orchestrator.initialize_new_vault(master_password)
         
-        assert result is True
+        assert result is VaultInitializationStatus.SUCCESS
         assert orchestrator._state == AppState.UNLOCKED
         orchestrator.vault_manager.create_and_initialize_vault.assert_called_once_with(
             master_password
@@ -74,12 +74,11 @@ class TestAtaraxAIOrchestrator:
         orchestrator._initialize_unlocked_services.assert_called_once()
 
     def test_initialize_new_vault_fails_when_wrong_state(self, orchestrator):
-        """Test that vault initialization fails when not in FIRST_LAUNCH state."""
         orchestrator._state = AppState.LOCKED
         
         result = orchestrator.initialize_new_vault(mock.Mock())
         
-        assert result is False
+        assert result is VaultInitializationStatus.ALREADY_INITIALIZED
         orchestrator.vault_manager.create_and_initialize_vault.assert_not_called()
 
     def test_initialize_new_vault_handles_exception(self, orchestrator):
@@ -88,7 +87,7 @@ class TestAtaraxAIOrchestrator:
         
         result = orchestrator.initialize_new_vault(master_password=mock.Mock())
         
-        assert result is False
+        assert result is VaultInitializationStatus.FAILED
         assert orchestrator._state == AppState.ERROR
 
     def test_reinitialize_vault_fails_with_wrong_phrase(self, orchestrator):
@@ -130,8 +129,8 @@ class TestAtaraxAIOrchestrator:
         
         password = mock.Mock()
         result = orchestrator.unlock(password)
-        
-        assert result is True
+
+        assert result.status is VaultUnlockStatus.SUCCESS
         assert orchestrator._state == AppState.UNLOCKED
         orchestrator.vault_manager.unlock_vault.assert_called_once_with(password)
         orchestrator._initialize_unlocked_services.assert_called_once()
@@ -140,20 +139,20 @@ class TestAtaraxAIOrchestrator:
         orchestrator._state = AppState.UNLOCKED
         
         result = orchestrator.unlock(password=mock.Mock())
-        
-        assert result is True
+
+        assert result.status is VaultUnlockStatus.ALREADY_UNLOCKED
         orchestrator.vault_manager.unlock_vault.assert_not_called()
 
     def test_unlock_failure(self, orchestrator):
         orchestrator._state = AppState.LOCKED
         
         unlock_result = mock.Mock()
-        unlock_result.status = "INVALID_PASSWORD"
+        unlock_result.status = VaultUnlockStatus.INVALID_PASSWORD
         orchestrator.vault_manager.unlock_vault.return_value = unlock_result
         
         result = orchestrator.unlock(password=mock.Mock())
         
-        assert result is False
+        assert result.status is VaultUnlockStatus.INVALID_PASSWORD
         assert orchestrator._state == AppState.LOCKED
 
     def test_lock_transitions_to_locked_state(self, orchestrator):
