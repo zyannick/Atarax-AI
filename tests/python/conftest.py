@@ -1,13 +1,25 @@
 import pytest
-import functools
-import pytest
 from unittest.mock import MagicMock
-from fastapi.testclient import TestClient
+from pathlib import Path
+from ataraxai.praxis.ataraxai_orchestrator import (
+    AtaraxAIOrchestrator,
+)
+from ataraxai.praxis.utils.app_directories import AppDirectories
 
-# Import your actual app and factory
-from api import app
-from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
-from ataraxai.praxis.utils.app_state import AppState
+# Currently I'm duplicating the fixture for function scoped and module scoped
+# TODO: Refactor to avoid duplication
+# I am keeping things simple for now to avoid confusion. We'll see how it goes.
+from fixtures.function_scoped import *
+from fixtures.module_scoped import *
+
+
+def pytest_collection_modifyitems(config, items):
+    for item in items:
+        if "unit" in str(item.path):
+            item.add_marker(pytest.mark.unit)
+        elif "integration" in str(item.path):
+            item.add_marker(pytest.mark.integration)
+
 
 def identity_decorator(func):
     """
@@ -17,6 +29,7 @@ def identity_decorator(func):
     """
     return func
 
+
 @pytest.fixture(autouse=True)
 def disable_all_instrumentation(monkeypatch):
     """
@@ -25,26 +38,57 @@ def disable_all_instrumentation(monkeypatch):
     """
     monkeypatch.setattr(
         "ataraxai.praxis.katalepsis.katalepsis_monitor.instrument_api",
-        lambda *args, **kwargs: identity_decorator
-    )
-    
-
-
-@pytest.fixture
-def client(monkeypatch):
-    mock_orchestrator = MagicMock()
-
-    monkeypatch.setattr(
-        AtaraxAIOrchestratorFactory,
-        "create_orchestrator",
-        lambda: mock_orchestrator
+        lambda *args, **kwargs: identity_decorator,
     )
 
-    with TestClient(app, base_url="http://test") as test_client:
-        test_client.orchestrator = mock_orchestrator
-        yield test_client
 
-    app.dependency_overrides.clear()
-    
-    
+@pytest.fixture(scope="module")
+def mock_orchestrator():
+    """
+    Pytest fixture that provides a mock instance of the AtaraxAIOrchestrator class.
 
+    Returns:
+        MagicMock: A mock object adhering to the AtaraxAIOrchestrator specification.
+    """
+    return MagicMock(spec=AtaraxAIOrchestrator)
+
+
+@pytest.fixture(scope="module")
+def test_data_dir(app_directories: AppDirectories) -> Path:
+    """
+    Pytest fixture that provides the path to the application's data directory.
+
+    Args:
+        app_directories (AppDirectories): An instance containing application directory paths.
+
+    Returns:
+        Path: The path to the application's data directory.
+    """
+    return app_directories.data
+
+
+@pytest.fixture(scope="module")
+def test_config_dir(app_directories: AppDirectories) -> Path:
+    """
+    Pytest fixture that provides the path to the application's configuration directory.
+
+    Args:
+        app_directories (AppDirectories): An instance containing application directory paths.
+
+    Returns:
+        Path: The path to the application's configuration directory.
+    """
+    return app_directories.config
+
+
+@pytest.fixture(scope="session")
+def session_tmp_path(tmp_path_factory):
+    """
+    Pytest fixture that creates a temporary directory for session-wide tests.
+    This directory is used to store session-specific test data and is cleaned up after the session ends
+    Args:
+        tmp_path_factory: Pytest's factory for creating temporary paths.
+    Returns:
+        Path: The path to the session's temporary directory.
+    """
+    return tmp_path_factory.mktemp("session_test_data")

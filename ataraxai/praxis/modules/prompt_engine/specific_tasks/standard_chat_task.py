@@ -1,81 +1,70 @@
 from typing import Any, Dict
 
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.base_task import BaseTask
-from ataraxai.praxis.modules.prompt_engine.context_manager import TaskContext
-from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
+from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import (
+    TaskDependencies,
+)
+
 
 class StandardChatTask(BaseTask):
     def __init__(self):
-        """
-        Initializes the StandardChatTask with default properties.
-
-        Attributes:
-            id (str): Unique identifier for the task.
-            description (str): Brief description of the task's purpose.
-            required_inputs (list): List of required input keys for the task.
-            prompt_template_name (str): Name of the prompt template to use.
-        """
         self.id = "standard_chat"
         self.description = "Performs a standard chat interaction with RAG context."
         self.required_inputs = ["user_query", "session_id"]
-        self.prompt_template_name = "main_chat"
+        self.prompt_template_name = "standard_chat"
         super().__init__()
 
     def _load_resources(self) -> None:
-        pass  
+        pass
 
     def execute(
         self,
         processed_input: Dict[str, Any],
-        context: TaskContext,  
-        dependencies: Dict[str, Any],
+        dependencies: TaskDependencies,
     ) -> str:
-        """
-        Executes the standard chat task by processing the user query, updating the chat context,
-        retrieving relevant documents via RAG (Retrieval-Augmented Generation), constructing the final prompt,
-        and generating a response using the core AI service.
-        Args:
-            processed_input (Dict[str, Any]): Dictionary containing user input data, including 'user_query' and 'session_id'.
-            context (TaskContext): The current task context object.
-            dependencies (Dict[str, Any]): Dictionary of dependencies required for execution, such as chat context manager,
-                RAG manager, prompt manager, core AI service, and optional generation parameters.
-        Returns:
-            str: The generated response text from the AI assistant.
-        """
 
         user_query = processed_input["user_query"]
         session_id = processed_input["session_id"]
 
-        chat_context : ChatContextManager = dependencies["chat_context"]
+        chat_context = dependencies["chat_context"]
+        rag_manager = dependencies["rag_manager"]
+        prompt_manager = dependencies["prompt_manager"]
+        core_ai_service_manager = dependencies["core_ai_service_manager"]
+        context_manager = dependencies["context_manager"]
+
+        model_context_limit = core_ai_service_manager.get_llama_cpp_model_context_size()
 
         chat_context.add_message(session_id, role="user", content=user_query)
+        session_history = chat_context.get_messages_for_session(session_id)
 
-        conversation_history = chat_context.get_messages_for_session(session_id)
-        
-        rag_results = dependencies["rag_manager"].query_knowledge(query_text=user_query, n_results=3)
+        rag_results = context_manager.get_context(context_key="relevant_document_chunks", user_inputs=user_query)
+        if not rag_results:
+            rag_context_str = ""
+        else:
+            rag_context_str = "\n".join(rag_results)
 
-        rag_context = (
-            "\n".join(rag_results["documents"][0])
-            if rag_results and rag_results["documents"]
-            else "No relevant documents found."
+        prompt_template_str = prompt_manager.load_template(self.prompt_template_name)
+
+        final_prompt = prompt_manager.build_prompt_within_limit(
+            history=session_history,
+            rag_context=rag_context_str,
+            user_query=user_query,
+            prompt_template=prompt_template_str,
+            context_limit=model_context_limit,
+            core_ai_service_manager=core_ai_service_manager,
+            rag_config=rag_manager.rag_config_manager.config,
         )
 
-        final_prompt = dependencies["prompt_manager"].load_template(
-            self.prompt_template_name,  # type: ignore
-            history=conversation_history,
-            context=rag_context,
-            query=user_query,
-        )
+        model_response_text = core_ai_service_manager.process_prompt(final_prompt)
 
-        core_ai_service = dependencies["core_ai_service"]  # type: ignore
-        generation_params = dependencies.get("generation_params", {})
-
-        model_response_text: str = core_ai_service.process_prompt(  # type: ignore
-            final_prompt, generation_params
-        )
+        assistant_response = model_response_text.strip()
+        if not assistant_response:
+            assistant_response = "I'm sorry, I couldn't generate a response."
+        else:
+            assistant_response = assistant_response.split("assistant:")[-1].strip()
 
         chat_context.add_message(
-            session_id, role="assistant", content=model_response_text
+            session_id, role="assistant", content=assistant_response
         )
 
-        return model_response_text # type: ignore
+        return assistant_response

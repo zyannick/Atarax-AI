@@ -1,19 +1,25 @@
 import asyncio
-import json
-from fastapi import APIRouter, BackgroundTasks
+from typing import Any, Dict, Optional
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.params import Depends
+from prometheus_client import Enum
 import ulid
-from ataraxai.routes.status import Status
+from ataraxai.routes.status import Status, StatusResponse
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator
+from ataraxai.routes.dependency_api import (
+    get_unlocked_orchestrator,
+    get_unlocked_orchestrator_ws,
+)
 from ataraxai.praxis.katalepsis import katalepsis_monitor
 from ataraxai.routes.models_manager_route.models_manager_api_models import (
     DownloadModelResponse,
     DownloadTaskStatus,
     ModelInfoResponse,
-    SearchModelsResponse,
+    ModelInfoResponsePaginated,
+    SearchModelsManifestRequest,
+    SearchModelsResponsePaginated,
     SearchModelsRequest,
     DownloadModelRequest,
 )
@@ -31,118 +37,131 @@ router_models_manager = APIRouter(
 )
 
 
-@router_models_manager.get("/search_models", response_model=SearchModelsResponse)
-@katalepsis_monitor.instrument_api("GET")  # type: ignore
+@router_models_manager.post(
+    "/search_models", response_model=SearchModelsResponsePaginated
+)
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Search Models", logger=logger)
-async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> SearchModelsResponse:  # type: ignore
+async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> SearchModelsResponsePaginated:  # type: ignore
     models = orch.models_manager.search_models(
         query=request.query,
         limit=request.limit,
         filter_tags=request.filters_tags,
     )
     if not models:
-        return SearchModelsResponse(
-            status=Status.SUCCESS,
-            message="No models found matching the search criteria.",
-            models=[],
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No models found matching the search criteria.",
         )
-    return SearchModelsResponse(
+    # the pagination will be handled by the frontend
+    # for now, we return all models found
+    # in the future, we can implement pagination if needed
+    return SearchModelsResponsePaginated(
         status=Status.SUCCESS,
         message="Models retrieved successfully.",
         models=[ModelInfoResponse(**model.model_dump()) for model in models],
+        total_count=len(models),
+        page=1,
+        page_size=len(models),
+        total_pages=1,
+        has_next=False,
+        has_previous=False,
     )
 
 
 @router_models_manager.websocket("/download_progress/{task_id}")
-async def download_progress_websocket(websocket: WebSocket, task_id: str):
+async def download_progress_websocket(
+    websocket: WebSocket,
+    task_id: str,
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator_ws),  # type: ignore
+):
     await websocket.accept()
+
     try:
         while True:
-            try:
-                progress_response = await get_download_progress(task_id)
+            status_data: Optional[Dict[Any, Any]] = (
+                orch.models_manager.get_download_status(task_id)
+            )
 
-                if progress_response.status in [
-                    DownloadTaskStatus.COMPLETED,
-                    DownloadTaskStatus.FAILED,
-                ]:
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "task_id": task_id,
-                                "progress": progress_response.percentage,
-                                "status": progress_response.status,
-                                "message": progress_response.message,
-                            }
-                        )
-                    )
-                    break
+            if status_data:
+                status_data = {
+                    k: (v.value if isinstance(v, Enum) else v)  # type: ignore
+                    for k, v in status_data.items()
+                }
 
-                await websocket.send_text(
-                    json.dumps(
-                        {
-                            "task_id": task_id,
-                            "progress": progress_response.percentage,
-                            "status": progress_response.status,
-                            "message": progress_response.message,
-                        }
-                    )
-                )
+            await websocket.send_json(status_data)
 
-                await asyncio.sleep(1)
+            if status_data.get("status") == DownloadTaskStatus.COMPLETED.value:  # type: ignore
+                break
 
-            except Exception as e:
-                await websocket.send_text(
-                    json.dumps(
-                        {
-                            "task_id": task_id,
-                            "progress": 0,
-                            "status": DownloadTaskStatus.FAILED,
-                            "message": f"Error retrieving progress: {str(e)}",
-                        }
-                    )
+            if status_data.get("status") == DownloadTaskStatus.FAILED.value:  # type: ignore
+                await websocket.send_json(
+                    {
+                        "task_id": task_id,
+                        "status": DownloadTaskStatus.FAILED.value,
+                        "message": "Download failed.",
+                        "percentage": 0,
+                    }
                 )
                 break
 
+            await asyncio.sleep(1)
+
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected for task {task_id}")
-    except Exception as e:
-        logger.error(f"WebSocket error for task {task_id}: {str(e)}")
+        print(f"Client disconnected from WebSocket for task: {task_id}")
     finally:
         await websocket.close()
 
 
-@router_models_manager.get("/download_progress/{task_id}")
-async def get_download_progress(
+@router_models_manager.get("/download_status/{task_id}")
+async def get_download_status(
+    task_id: str,
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+) -> DownloadModelResponse:
+    progress = orch.models_manager.get_download_status(task_id)
+    print(progress)
+    if progress is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No download task found with the provided ID.",
+        )
+
+    return DownloadModelResponse(
+        status=progress.get("status", DownloadTaskStatus.PENDING),
+        message=progress.get("message", "No message available."),
+        percentage=progress.get("percentage", 0),
+        task_id=task_id,
+    )
+
+
+@router_models_manager.post("/cancel_download/{task_id}")
+async def cancel_download(
     task_id: str,
     orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
 ) -> DownloadModelResponse:
     try:
-        progress = orch.models_manager.get_download_status(task_id)
-        if not progress:
-            return DownloadModelResponse(
-                status=DownloadTaskStatus.FAILED,
-                message="No download task found with the provided ID.",
-                percentage=0,
-                task_id=task_id,
-            )
-
+        orch.models_manager.cancel_download(task_id)
         return DownloadModelResponse(
-            status=progress.get("status", DownloadTaskStatus.PENDING),
-            message=progress.get("message", "No message available."),
-            percentage=progress.get("percentage", 0),
+            status=DownloadTaskStatus.CANCELLED,
+            message="Download task has been cancelled.",
             task_id=task_id,
+            percentage=0,
         )
     except Exception as e:
-        logger.error(f"Error getting download progress for task {task_id}: {str(e)}")
+        logger.error(f"Error cancelling download task {task_id}: {str(e)}")
         return DownloadModelResponse(
             status=DownloadTaskStatus.FAILED,
-            message=f"Error retrieving download status: {str(e)}",
-            percentage=0,
+            message=f"Error cancelling download task: {str(e)}",
             task_id=task_id,
+            percentage=0,
         )
 
 
-@router_models_manager.post("/download_model", response_model=DownloadModelResponse)
+@router_models_manager.post(
+    "/download_model",
+    response_model=DownloadModelResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
 @handle_api_errors("Download Models", logger=logger)
 async def download_model(
     background_tasks: BackgroundTasks,
@@ -171,4 +190,51 @@ async def download_model(
             message=f"Failed to create download task: {str(e)}",
             task_id=task_id,
             percentage=0,
+        )
+
+
+@router_models_manager.post(
+    "/get_model_info_manifest", response_model=ModelInfoResponsePaginated
+)
+@handle_api_errors("Get Model Info", logger=logger)
+async def get_model_info(
+    request: SearchModelsManifestRequest,
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+) -> ModelInfoResponsePaginated:
+    results = orch.models_manager.get_list_of_models_from_manifest(
+        search_infos=request.model_dump(mode="json"),
+    )
+    if not results:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No models found matching the search criteria.",
+        )
+    return ModelInfoResponsePaginated(
+        status=Status.SUCCESS,
+        message="Model information retrieved successfully.",
+        models=[ModelInfoResponse(**model) for model in results],
+        total_count=len(results),
+        page=1,
+        page_size=len(results),
+        total_pages=1,
+        has_next=False,
+        has_previous=False,
+    )
+
+
+@router_models_manager.post("/remove_all_models")
+async def remove_all_models(
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+) -> StatusResponse:
+    try:
+        orch.models_manager.remove_all_models()
+        return StatusResponse(
+            status=Status.SUCCESS,
+            message="Model manifests removed successfully.",
+        )
+    except Exception as e:
+        logger.error(f"Error removing model manifests: {str(e)}")
+        return StatusResponse(
+            status=Status.ERROR,
+            message=f"Failed to remove all model manifests: {str(e)}",
         )

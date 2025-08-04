@@ -19,6 +19,8 @@ class LlamaCPPConfigAPI(BaseModel):
     @field_validator("model_info")
     @classmethod
     def validate_model_info(cls, v: LlamaCPPModelInfo) -> LlamaCPPModelInfo:
+        if v is None: # type: ignore
+            return v
         if not v.local_path:
             raise ValueError("Model path cannot be empty.")
         return v
@@ -95,8 +97,8 @@ class LlamaCPPGenerationParamsResponse(BaseModel):
     message: str = Field(
         ..., description="Detailed message about the Llama.cpp generation parameters operation."
     )
-    params: LlamaCPPGenerationParamsAPI = Field(
-        ..., description="Llama.cpp generation parameters data."
+    params: Optional[LlamaCPPGenerationParamsAPI] = Field(
+        default_factory=lambda: None, description="Llama.cpp generation parameters data."
     )
 
     @field_validator("message")

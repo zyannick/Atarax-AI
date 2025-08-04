@@ -8,7 +8,7 @@ from ataraxai.praxis.utils.configs.config_schemas.whisper_config_schema import (
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
 from ataraxai.praxis.utils.exceptions import ServiceInitializationError, ValidationError
 from ataraxai.praxis.utils.service_status import ServiceStatus
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from pathlib import Path
 
 
@@ -29,8 +29,11 @@ class CoreAIServiceManager:
         """
         self.config_manager = config_manager
         self.logger = logger
-        self.service: Optional[Any] = None
-        self.status = ServiceStatus.NOT_INITIALIZED
+        self.core_ai_service: Optional[Any] = None
+        self.llama_cpp_status = ServiceStatus.NOT_INITIALIZED
+        self.llama_cpp_params_cc = None
+        self.llama_cpp_generation_params_cc = None
+
 
     def get_service(self) -> Any:
         """
@@ -46,14 +49,54 @@ class CoreAIServiceManager:
         Raises:
             ServiceInitializationError: If the service failed to initialize previously.
         """
-        if self.status == ServiceStatus.NOT_INITIALIZED:
+        # in the current implementation, we only have one service
+        if self.llama_cpp_status == ServiceStatus.NOT_INITIALIZED:
             self.initialize()
-        elif self.status == ServiceStatus.FAILED:
+        elif self.llama_cpp_status == ServiceStatus.FAILED:
             raise ServiceInitializationError(
                 "Core AI service initialization previously failed"
             )
 
-        return self.service
+        return self.core_ai_service
+    
+
+    def process_prompt(
+        self, prompt: str
+    ) -> str:
+        """
+        Processes a prompt using the core AI service.
+
+        Args:
+            prompt (str): The prompt to process.
+            generation_params (Any): The parameters for generation.
+
+        Returns:
+            str: The processed response from the core AI service.
+        """
+        if not self.core_ai_service:
+            raise ServiceInitializationError("Core AI service is not initialized")
+        
+        print(f"Processing prompt: {prompt}")
+        print(f"Using generation params: {self.llama_cpp_generation_params_cc}")
+
+        return self.core_ai_service.process_prompt(prompt.encode("utf-8"), self.llama_cpp_generation_params_cc)  # type: ignore
+        # return "Here is the response based on the provided prompt."  # Mock response for testing
+    
+
+    def get_llama_cpp_model_context_size(self) -> int:
+        """
+        Retrieves the context size of the Llama model from the core AI service.
+
+        Returns:
+            int: The context size of the Llama model.
+
+        Raises:
+            ServiceInitializationError: If the core AI service is not initialized.
+        """
+        if not self.core_ai_service:
+            raise ServiceInitializationError("Core AI service is not initialized")
+
+        return self.config_manager.llama_config_manager.get_llama_cpp_params().n_ctx
 
     def initialize(self) -> None:
         """
@@ -70,24 +113,22 @@ class CoreAIServiceManager:
         Raises:
             ServiceInitializationError: If initialization of core AI services fails.
         """
-        if self.status == ServiceStatus.INITIALIZED:
+        if self.llama_cpp_status == ServiceStatus.INITIALIZED:
             self.logger.info("Core AI services already initialized")
             return
 
-        self.status = ServiceStatus.INITIALIZING
+        self.llama_cpp_status = ServiceStatus.INITIALIZING
         self.logger.info("Initializing Core AI services...")
 
         try:
             self._validate_model_paths()
             self._initialize_services()
-            self.status = ServiceStatus.INITIALIZED
-            self.logger.info("Core AI services initialized successfully")
         except Exception as e:
-            self.status = ServiceStatus.FAILED
             self.logger.error(f"Failed to initialize core AI services: {e}")
             raise ServiceInitializationError(
                 f"Core AI service initialization failed: {e}"
             )
+        
 
     def is_configured(self) -> bool:
         """
@@ -125,15 +166,15 @@ class CoreAIServiceManager:
             "whisper_model_path": None,
             "llama_path_exists": False,
             "whisper_path_exists": False,
-            "initialization_status": self.status.value,
+            "initialization_status": self.llama_cpp_status.value,
         }
 
         try:
             llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
-            status["llama_model_path"] = llama_params.model_path()
-            status["llama_configured"] = bool(llama_params.model_path())
-            if len(llama_params.model_path()) > 0:
-                status["llama_path_exists"] = Path(llama_params.model_path()).exists()
+            status["llama_model_path"] = llama_params.model_path
+            status["llama_configured"] = bool(llama_params.model_path)
+            if len(str(llama_params.model_path)) > 0:
+                status["llama_path_exists"] = Path(str(llama_params.model_path)).exists()
         except Exception as e:
             self.logger.warning(f"Could not get Llama configuration: {e}")
 
@@ -155,24 +196,25 @@ class CoreAIServiceManager:
         Raises:
             ValidationError: If the Llama or Whisper model path is not configured or does not exist.
         """
+        self.logger.info("Validating model paths for Llama and Whisper models...")
         llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
-        whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
+        _ = self.config_manager.whisper_config_manager.get_whisper_params()
 
-        if not llama_params.model_path():
+        if llama_params.model_path is None:
             raise ValidationError("Llama model path not configured")
 
-        if not Path(llama_params.model_path()).exists():
+        if not Path(str(llama_params.model_path)).exists():
             raise ValidationError(
-                f"Llama model path does not exist: {llama_params.model_path()}"
+                f"Llama model path does not exist: {llama_params.model_path}"
             )
 
-        if not whisper_params.model:
-            raise ValidationError("Whisper model path not configured")
+        # if not whisper_params.model:
+        #     raise ValidationError("Whisper model path not configured")
 
-        if not Path(whisper_params.model).exists():
-            raise ValidationError(
-                f"Whisper model path does not exist: {whisper_params.model}"
-            )
+        # if not Path(whisper_params.model).exists():
+        #     raise ValidationError(
+        #         f"Whisper model path does not exist: {whisper_params.model}"
+        #     )
 
     def _initialize_services(self) -> None:
         """
@@ -189,20 +231,16 @@ class CoreAIServiceManager:
         llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
         whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
 
-        (
-            llama_model_params_cc,
-            llama_generation_params_cc,
-            whisper_model_params_cc,
-            whisper_transcription_params_cc,
-        ) = self._convert_params(llama_params, whisper_params)
 
-        self.service = self._create_core_ai_service(
-            llama_model_params_cc, whisper_model_params_cc
+        self.llama_cpp_params_cc, self.llama_cpp_generation_params_cc  = self._convert_params(llama_params, whisper_params)
+
+        self.core_ai_service = self._create_core_ai_service(
+            self.llama_cpp_params_cc, None
         )
 
     def _convert_params(
         self, llama_params: LlamaModelParams, whisper_params: WhisperModelParams
-    ) -> Tuple[Any, Any, Any, Any]:
+    ) -> Tuple[Any, Any]:
         """
         Converts Llama and Whisper model parameter objects into their corresponding hegemonikon_py representations.
 
@@ -218,26 +256,35 @@ class CoreAIServiceManager:
                 - Converted Whisper transcription parameters (hegemonikon_py.WhisperGenerationParams)
         """
         llama_model_params_cc: Any = hegemonikon_py.LlamaModelParams.from_dict(  # type: ignore
-            llama_params.model_dump()
+            {
+                "model_path": str(llama_params.model_info.local_path), # type: ignore
+                "n_ctx": llama_params.n_ctx,
+                "n_gpu_layers": llama_params.n_gpu_layers,
+                "main_gpu": llama_params.main_gpu,
+                "tensor_split": llama_params.tensor_split,
+                "vocab_only": llama_params.vocab_only,
+                "use_map": llama_params.use_map,
+                "use_mlock": llama_params.use_mlock,
+            }
         )
 
         llama_generation_params_cc: Any = hegemonikon_py.GenerationParams.from_dict(  # type: ignore
             self.config_manager.llama_config_manager.get_generation_params().model_dump()
         )
 
-        whisper_model_params_cc: Any = hegemonikon_py.WhisperModelParams.from_dict(  # type: ignore
-            whisper_params.model_dump()
-        )
+        # whisper_model_params_cc: Any = hegemonikon_py.WhisperModelParams.from_dict(  # type: ignore
+        #     whisper_params.model_dump()
+        # )
 
-        whisper_transcription_params_cc: Any = hegemonikon_py.WhisperGenerationParams.from_dict(  # type: ignore
-            self.config_manager.whisper_config_manager.get_transcription_params().model_dump()
-        )
+        # whisper_transcription_params_cc: Any = hegemonikon_py.WhisperGenerationParams.from_dict(  # type: ignore
+        #     self.config_manager.whisper_config_manager.get_transcription_params().model_dump()
+        # )
 
         return (
             llama_model_params_cc,
             llama_generation_params_cc,
-            whisper_model_params_cc,
-            whisper_transcription_params_cc,
+            # whisper_model_params_cc,
+            # whisper_transcription_params_cc,
         )  # type: ignore
 
     def _create_core_ai_service(self, llama_params: Any, whisper_params: Any) -> Any:
@@ -253,8 +300,32 @@ class CoreAIServiceManager:
         """
         service = hegemonikon_py.CoreAIService()  # type: ignore
         service.initialize_llama_model(llama_params)  # type: ignore
-        service.initialize_whisper_model(whisper_params)  # type: ignore
+        # try:
+        #     service.initialize_whisper_model(whisper_params)  # type: ignore
+        # except Exception as e:
+        #     self.logger.error(f"Error initializing Whisper model: {e}")
         return service  # type: ignore
+    
+    def tokenize(self, text: str) -> List[int]:
+        if not self.core_ai_service:
+            raise ServiceInitializationError("Core AI service is not initialized")
+
+        return  self.core_ai_service.tokenization(text.encode("utf-8"))
+    
+    def decode(self, tokens: List[int]) -> str:
+        """
+        Decodes a list of tokens into a string using the core AI service.
+
+        Args:
+            tokens (List[int]): The list of tokens to decode.
+
+        Returns:
+            str: The decoded string.
+        """
+        if not self.core_ai_service:
+            raise ServiceInitializationError("Core AI service is not initialized")
+
+        return str(self.core_ai_service.detokenization(tokens))
 
     def shutdown(self) -> None:
         """
@@ -264,14 +335,14 @@ class CoreAIServiceManager:
         Logs the outcome of the shutdown process, including any errors encountered.
         Resets the service reference and updates the service status to NOT_INITIALIZED.
         """
-        if self.service:
+        if self.core_ai_service:
             try:
                 # self.service.shutdown()
                 self.logger.info("Core AI services shut down successfully")
             except Exception as e:
                 self.logger.error(f"Error shutting down core AI services: {e}")
             finally:
-                self.service = None
+                self.core_ai_service = None
                 self.status = ServiceStatus.NOT_INITIALIZED
 
     @property

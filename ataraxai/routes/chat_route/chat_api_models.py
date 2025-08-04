@@ -11,12 +11,16 @@ class CreateProjectRequestAPI(BaseModel):
     def validate_name(cls, v: str) -> str:
         if not v:
             raise ValueError("Project name cannot be empty.")
+        if len(v) > 32:
+            raise ValueError("Project name exceeds maximum length.")
         return v
 
     @field_validator("description")
     def validate_description(cls, v: str) -> str:
         if not v:
             raise ValueError("Project description cannot be empty.")
+        if len(v) > 256:
+            raise ValueError("Project description exceeds maximum length.")
         return v
 
 
@@ -32,12 +36,14 @@ class DeleteProjectRequestAPI(BaseModel):
 
 class CreateSessionRequestAPI(BaseModel):
     project_id: uuid.UUID
-    title: str = Field(..., description="The initial title for the new chat session.")
+    title: str = Field(default_factory=lambda: "New Session", description="The initial title for the new chat session.")
 
     @field_validator("title")
     def validate_title(cls, v: str) -> str:
         if not v:
             raise ValueError("Session title cannot be empty.")
+        if len(v) > 64:
+            raise ValueError("Session title exceeds maximum length.")
         return v
 
     @field_validator("project_id")

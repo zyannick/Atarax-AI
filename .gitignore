@@ -2,6 +2,7 @@ ataraxai/hegemonikon/third_party
 build/
 models/
 .vscode/
+.venv/
 ataraxia/ataraxia
 *.egg-info/
 **.pyc
@@ -13,6 +14,8 @@ build.log
 ataraxai.log
 .coverage
 *.mp3
+
+logs/
 
 ataraxai.praxis.chat
 ataraxai.praxis.rag

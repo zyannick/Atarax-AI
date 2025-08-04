@@ -254,7 +254,7 @@ struct GenerationParams
     float penalty_freq = 0.0f;
     float penalty_present = 0.0f;
     std::vector<std::string> stop_sequences;
-    int32_t n_batch = 512;
+    int32_t n_batch = 1024;
     int32_t n_threads = 0;
 
     GenerationParams() = default;
@@ -274,7 +274,7 @@ struct GenerationParams
     GenerationParams(int32_t predict, float temperature = 0.8f, int32_t top_k = 40,
                      float top_p = 0.95f, float repeat_penalty = 1.1f, int32_t penalty_last_n = 64,
                      float penalty_freq = 0.0f, float penalty_present = 0.0f,
-                     std::vector<std::string> stop_seqs = {}, int32_t batch_size = 512,
+                     std::vector<std::string> stop_seqs = {}, int32_t batch_size = 1024,
                      int32_t threads = 0)
         : n_predict(predict), temp(temperature), top_k(top_k), top_p(top_p),
           repeat_penalty(repeat_penalty), penalty_last_n(penalty_last_n),
@@ -557,7 +557,8 @@ public:
     int get_context_size() const;
     int get_vocab_size() const;
     std::string get_model_info() const;
-    // std::vector<int32_t> tokenize(const std::string &text, bool add_bos = true, bool special) const;
+    std::vector<int32_t> tokenization(const std::string &text) const;
+    std::string detokenization(const std::vector<int32_t> &tokens) const;
     virtual std::string generate_completion(const std::string &prompt_text, const GenerationParams &params);
     virtual bool generate_completion_streaming(const std::string &prompt_text,
                                        const GenerationParams &params,

@@ -198,6 +198,14 @@ async def create_session(session_data: CreateSessionRequestAPI, orch: AtaraxAIOr
     Raises:
         HTTPException: If an error occurs during session creation, returns a 500 Internal Server Error with details.
     """
+    try:
+        orch.chat.get_project(session_data.project_id)
+    except Exception as e:
+        logger.error(f"Error retrieving project with ID {session_data.project_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
+        )
+
     session = orch.chat.create_session(
         project_id=session_data.project_id, title=session_data.title
     )

@@ -1,5 +1,6 @@
 from typing import Any
-from fastapi import HTTPException, Request
+from fastapi import HTTPException, Request, WebSocketDisconnect
+from fastapi import WebSocket
 from fastapi.params import Depends
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from fastapi import status
@@ -10,14 +11,26 @@ from ataraxai.praxis.katalepsis import Katalepsis
 def get_orchestrator(request: Request) -> AtaraxAIOrchestrator:
     return request.app.state.orchestrator
 
+def get_orchestrator_ws(websocket: WebSocket) -> AtaraxAIOrchestrator:
+    return websocket.app.state.orchestrator
+
 
 def get_unlocked_orchestrator(
     orch: Any = Depends(get_orchestrator),
 ) -> AtaraxAIOrchestrator:
-    print(f"Orchestrator state: {orch.state}")  # Debugging line, remove in production
     if orch.state != AppState.UNLOCKED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=Messages.VAULT_LOCKED
+        )
+    return orch
+
+def get_unlocked_orchestrator_ws(
+    orch: Any = Depends(get_orchestrator_ws),
+) -> AtaraxAIOrchestrator:
+    if orch.state != AppState.UNLOCKED:
+        raise WebSocketDisconnect(
+            code=status.WS_1008_POLICY_VIOLATION,
+            reason=Messages.VAULT_LOCKED,
         )
     return orch
 

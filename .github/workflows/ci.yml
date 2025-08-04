@@ -67,11 +67,13 @@ jobs:
           cd build/ataraxai/hegemonikon/
           ctest --output-on-failure --verbose
 
-      - name: Upload build artifact for the next job
+      - name: Upload build and test artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-artifact
-          path: build/
+          name: build-and-test-artifacts
+          path: |
+            build/
+            test_assets/
 
 
 
@@ -95,11 +97,10 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y portaudio19-dev python3-pyaudio
 
 
-      - name: Download C++ build artifact
+      - name: Download C++ build and test artifacts
         uses: actions/download-artifact@v4
         with:
-          name: build-artifact
-          path: build/
+          name: build-and-test-artifacts
 
       - name: Install and upgrade pip for Python 3.12
         run: |
@@ -110,8 +111,12 @@ jobs:
       - name: Install project dependencies
         run: python -m pip install -e .[dev]
 
-      - name: Run Python Tests with Pytest
-        run: pytest tests/python --cov=ataraxai --cov-report=term-missing
+      - name: Run Python Unit Tests with Pytest
+        run: pytest -m unit --cov=ataraxai --cov-report=term-missing --cov-report=html:htmlcov_unit
+
+      - name: Run Python Integration Tests with Pytest
+        if: github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main' || github.ref == 'refs/heads/main'
+        run: pytest -m integration --cov=ataraxai --cov-report=term-missing --cov-report=html:htmlcov_integration
 
       - name: Lint with Ruff
         run: ruff check ataraxai
