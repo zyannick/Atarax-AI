@@ -116,6 +116,8 @@ jobs:
 
       - name: Run Python Integration Tests with Pytest
         if: github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main' || github.ref == 'refs/heads/main'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: pytest -m integration --cov=ataraxai --cov-report=term-missing --cov-report=html:htmlcov_integration
 
       - name: Lint with Ruff
