@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import List, Optional
+from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import UserPreferences
 from ataraxai.praxis.utils.exceptions import ServiceInitializationError
 from ataraxai.praxis.utils.user_preferences_manager import UserPreferencesManager
 from ataraxai.praxis.utils.configs.llama_config_manager import LlamaConfigManager
@@ -43,6 +44,27 @@ class ConfigurationManager:
             raise ServiceInitializationError(
                 f"Configuration initialization failed: {e}"
             )
+        
+    def set_user_preferences(self, preferences: dict) -> None:
+        """
+        Sets user preferences using the UserPreferencesManager.
+
+        Args:
+            preferences (dict): A dictionary containing user preferences to be set.
+        """
+        self.preferences_manager.update_user_preferences(UserPreferences(**preferences))
+
+
+    def get_user_preferences(self) -> UserPreferences:
+        """
+        Retrieves user preferences using the UserPreferencesManager.
+
+        Returns:
+            UserPreferences: The current user preferences.
+        """
+        return self.preferences_manager.preferences
+    
+    
 
     def get_watched_directories(self) -> Optional[List[str]]:
         """

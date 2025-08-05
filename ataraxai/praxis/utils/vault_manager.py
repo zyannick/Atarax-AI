@@ -15,13 +15,18 @@ class VaultUnlockStatus(Enum):
     SUCCESS = auto()
     INVALID_PASSWORD = auto()
     ALREADY_UNLOCKED = auto()
+    INCORRECT_PASSWORD = auto()
     UNINITIALIZED = auto()
 
+class VaultInitializationStatus(Enum):
+    SUCCESS = auto()
+    ALREADY_INITIALIZED = auto()
+    FAILED = auto()
 
 @dataclass
 class UnlockResult:
     status: VaultUnlockStatus
-    error: Optional[Exception] = None
+    error: Optional[str] = None
 
 
 class VaultManager:
@@ -91,9 +96,9 @@ class VaultManager:
                 self._secure_key = temp_key
                 return UnlockResult(status=VaultUnlockStatus.SUCCESS)
             else:
-                return UnlockResult(status=VaultUnlockStatus.INVALID_PASSWORD)
+                return UnlockResult(status=VaultUnlockStatus.INCORRECT_PASSWORD)
         except Exception as e:
-            return UnlockResult(status=VaultUnlockStatus.UNINITIALIZED, error=e)
+            return UnlockResult(status=VaultUnlockStatus.UNINITIALIZED, error=str(e))
 
     def create_and_initialize_vault(self, password: SecureString):
         """
@@ -110,13 +115,16 @@ class VaultManager:
             ValueError: If the provided password is empty.
         """
         if not password:
-            raise ValueError("Password cannot be empty.")
+            return VaultInitializationStatus.FAILED
 
-        self._secure_key = derive_and_protect_key(password=password, salt=self.salt)
-
-        encrypted_check = self.encrypt(self.VAULT_CHECK_PLAINTEXT)
-        with open(self.check_path, "wb") as f:
-            f.write(encrypted_check)
+        try:
+            self._secure_key = derive_and_protect_key(password=password, salt=self.salt)
+            encrypted_check = self.encrypt(self.VAULT_CHECK_PLAINTEXT)
+            with open(self.check_path, "wb") as f:
+                f.write(encrypted_check)
+            return VaultInitializationStatus.SUCCESS
+        except Exception:
+            return VaultInitializationStatus.FAILED
 
     def _verify_key(self, key: SecureKey) -> bool:
         """
@@ -203,3 +211,23 @@ class VaultManager:
         exc_tb: Optional[TracebackType],
     ) -> None:
         self.lock()
+
+
+if __name__ == "__main__":
+    vault_manager = VaultManager("vault.salt", "vault.check")
+    password = SecureString("my_secure_password".encode("utf-8"))
+
+    vault_manager.create_and_initialize_vault(password)
+
+    unlock_result = vault_manager.unlock_vault(password)
+    if unlock_result.status == VaultUnlockStatus.SUCCESS:
+        print("Vault unlocked successfully.")
+    else:
+        print(f"Failed to unlock vault: {unlock_result.status.name}")
+
+    wrong_password = SecureString("wrong_password".encode("utf-8"))
+    unlock_result = vault_manager.unlock_vault(wrong_password)
+    if unlock_result.status == VaultUnlockStatus.SUCCESS:
+        print("Vault unlocked successfully with wrong password, which is unexpected.")
+    else:
+        print(f"Failed to unlock vault with wrong password: {unlock_result.status.name}")

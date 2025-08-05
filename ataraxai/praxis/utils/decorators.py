@@ -1,11 +1,12 @@
 import functools
+import logging
 from fastapi import  HTTPException,  status
 from ataraxai.praxis.utils.exceptions import AtaraxAIError
+from typing import Optional
 
 
 
-
-def handle_api_errors(operation_name: str, logger=None):
+def handle_api_errors(operation_name: str, logger : Optional[logging.Logger]=None):
     def decorator(func):
         @functools.wraps(func) # Preserve the original function's metadata
         async def wrapper(*args, **kwargs):

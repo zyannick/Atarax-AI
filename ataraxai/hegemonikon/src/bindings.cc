@@ -305,7 +305,11 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def("transcribe_audio_pcm", &CoreAIService::transcribe_audio_pcm, "Transcribe PCM audio data using Whisper",
               py::arg("pcm_f32_data"), py::arg("whisper_model_params"))
          .def("transcribe_audio_file", &CoreAIService::transcribe_audio_file, "Transcribe an audio file using Whisper",
-              py::arg("audio_file_path"), py::arg("whisper_model_params"));
+              py::arg("audio_file_path"), py::arg("whisper_model_params"))
+         .def("tokenization", &CoreAIService::tokenization, "Tokenize text using Llama model parameters",
+              py::arg("text"))
+          .def("detokenization", &CoreAIService::detokenization, "Detokenize a list of tokens into text",
+               py::arg("tokens"));
 
      py::class_<QuantizedModelInfo>(m, "QuantizedModelInfo", "Information about a quantized model.")
          .def(py::init<>())
@@ -377,13 +381,12 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def("size", &SecureKey::size, "Returns the size of the key in bytes.");
 
      py::class_<SecureString>(m, "SecureString", "A C++ class to hold sensitive strings in locked memory.")
-          .def(py::init([](py::bytes b) {
-          return new SecureString(std::string(b));
-          }), "Constructor from a bytes object");
+         .def(py::init([](py::bytes b)
+                       { return new SecureString(std::string(b)); }),
+              "Constructor from a bytes object");
 
      m.def("derive_and_protect_key", [](const SecureString &secure_password, const py::bytes &salt_bytes)
            {
-               //  SecureString secure_password(password_str.c_str());
 
                 char *salt_buffer;
                 ssize_t salt_length;
@@ -393,7 +396,5 @@ PYBIND11_MODULE(hegemonikon_py, m)
                 }
                 std::vector<uint8_t> salt(salt_buffer, salt_buffer + salt_length);
 
-                return derive_and_protect_key(secure_password, salt);
-           },
-           py::arg("password"), py::arg("salt"), "Derives a key from a password using Argon2id and returns it in a protected object.");
+                return derive_and_protect_key(secure_password, salt); }, py::arg("password"), py::arg("salt"), "Derives a key from a password using Argon2id and returns it in a protected object.");
 };

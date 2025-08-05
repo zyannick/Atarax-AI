@@ -3,9 +3,28 @@
 
 # Atarax-AI
 
-![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)
-![Build Status](https://img.shields.io/badge/build-passing-green.svg)
-![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)
+<p align="center">
+  <a href="https://github.com/zyannick/Atarax-AI/actions/workflows/ci.yaml"><img src="https://github.com/zyannick/Atarax-AI/actions/workflows/ci.yaml/badge.svg" alt="CI/CD Pipeline"></a>
+  <a href="https://coveralls.io/github/zyannick/Atarax-AI?branch=main"><img src="https://coveralls.io/repos/github/zyannick/Atarax-AI/badge.svg?branch=main" alt="Code Coverage"/></a>
+  <a href="https://github.com/zyannick/Atarax-AI/releases"><img src="https://img.shields.io/github/v/release/zyannick/Atarax-AI" alt="Latest Release"></a>
+  <img src="https://img.shields.io/badge/license-GPL--3.0-blue.svg" alt="License">
+  <a href="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg"><img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg" alt="Platform"/></a>
+</p>
+
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white" alt="C++">
+  <img src="https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white" alt="Rust">
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript">
+  <br>
+  <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI">
+  <img src="https://img.shields.io/badge/Tauri-24C8DB?style=for-the-badge&logo=tauri&logoColor=white" alt="Tauri">
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" alt="React">
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
+  <img src="https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white" alt="Prometheus">
+</p>
+
 
 A Local, Privacy-Preserving AI Assistant Powered by llama.cpp
 

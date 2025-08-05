@@ -9,6 +9,7 @@ CUDA_ARCH="native"
 SETUP_ARGS=""
 CMAKE_ARGS_STR=""
 ONLY_CPP=0
+USE_UV=0
 
 echo "Starting Atarax-AI Installation..."
 
@@ -37,12 +38,34 @@ for arg in "$@"; do
         USE_CONDA=1
         SETUP_ARGS+=" --use-conda"
         ;;
+    --use-uv) 
+        USE_UV=1
+        # SETUP_ARGS+=" --use-uv"
+        ;;
     *)
         echo "Unknown option: $arg"
         exit 1
         ;;
     esac
 done
+
+if [[ $CLEAN -eq 1 ]]; then
+    echo "[+] Cleaning previous build artifacts..."
+    rm -rf build ataraxai.egg-info dist _skbuild
+    rm -f ataraxai/*.so
+    [ -f clean.sh ] && ./clean.sh
+fi
+
+if [[ $USE_UV -eq 1 ]]; then
+    echo "[+] Using uv to manage the environment."
+    if ! command -v uv &> /dev/null; then
+        echo "Error: uv is not installed or not in PATH. Please install it first."
+        exit 1
+    fi
+    uv venv .venv --clear
+    source .venv/bin/activate
+    uv pip install cmake scikit-build ninja
+fi
 
 if [[ $USE_CONDA -eq 1 ]]; then
     if [[ -z "$CONDA_PREFIX" ]]; then
@@ -55,15 +78,14 @@ if [[ $USE_CONDA -eq 1 ]]; then
     export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 fi
 
-if [[ $CLEAN -eq 1 ]]; then
-    echo "[+] Cleaning previous build artifacts..."
-    rm -rf build ataraxai.egg-info dist _skbuild
-    rm -f ataraxai/*.so
-    [ -f clean.sh ] && ./clean.sh
-fi
+
 
 echo "[+] Uninstalling any previous version..."
-pip uninstall ataraxai -y || true
+if [[ $USE_UV -eq 1 ]]; then
+    uv pip uninstall ataraxai || true
+else
+    pip uninstall ataraxai -y || true
+fi
 
 if [ -f "setup_third_party.sh" ]; then
     echo "[+] Setting up third-party libraries..."
@@ -105,11 +127,20 @@ cmake --build build --target hegemonikon_tests
 
 if [[ $ONLY_CPP -eq 1 ]]; then
     echo "[+] C++ build complete. Exiting due to --only-cpp flag."
+    [[ $USE_UV -eq 1 ]] && deactivate
     exit 0
 fi
 
 echo "[+] Running pip install to build Python extension..."
-python3 -m pip install -e .
+if [[ $USE_UV -eq 1 ]]; then
+    uv pip install -e .
+else
+    python3 -m pip install -e .
+fi
 
 echo "[+] Verifying installation..."
 python3 -c "from ataraxai import hegemonikon_py; print('[SUCCESS] Atarax-AI installed and core module is importable!')"
+if [[ $USE_UV -eq 1 ]]; then
+    deactivate
+    echo "[+] Build complete. Virtual environment deactivated."
+fi

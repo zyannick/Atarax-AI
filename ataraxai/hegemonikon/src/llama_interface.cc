@@ -285,6 +285,54 @@ std::vector<llama_token> LlamaInterface::tokenize(const std::string &text, bool 
     return result;
 }
 
+
+std::vector<int32_t> LlamaInterface::tokenization(const std::string &text) const
+{
+    if (!is_model_loaded())
+    {
+        std::cerr << "LlamaInterface Error: model not loaded for tokenization" << std::endl;
+        return {};
+    }
+
+    std::vector<int32_t> tokens = tokenize(text, true, false);
+    if (tokens.empty())
+    {
+        std::cerr << "LlamaInterface Error: tokenization failed for text: " << text << std::endl;
+        return {};
+    }
+
+    return tokens;
+}
+
+std::string LlamaInterface::detokenization(const std::vector<int32_t> &tokens) const
+{
+    if (!is_model_loaded())
+    {
+        std::cerr << "LlamaInterface Error: model not loaded for detokenization" << std::endl;
+        return "";
+    }
+
+    if (tokens.empty())
+    {
+        return "";
+    }
+
+    std::string result;
+    result.reserve(tokens.size() * 4);
+
+    for (int32_t token : tokens)
+    {
+        std::string piece = detokenize_token(token);
+        if (piece == "[Error]")
+        {
+            std::cerr << "LlamaInterface Error: failed to detokenize token " << token << std::endl;
+            return "[Error]";
+        }
+        result += piece;
+    }
+    return result;
+}   
+
 /**
  * @brief Converts a token ID to its corresponding string representation.
  *
@@ -404,6 +452,9 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx = current_model_params_.n_ctx;
     ctx_params.n_batch = current_model_params_.n_batch;
+
+    // std::cout << ctx_params.n_batch << std::endl;
+    // std::cout << gen_params.n_batch << std::endl;
 
     try
     {

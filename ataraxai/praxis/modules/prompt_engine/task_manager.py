@@ -95,7 +95,7 @@ class TaskManager:
             raise ValueError(f"Task with id '{task_id}' not found.")
         return task
 
-    def list_tasks(self) -> List[Dict[str, str]]:
+    def list_available_tasks(self) -> List[Dict[str, str]]:
         """
         Returns a list of metadata dictionaries for all tasks.
 

@@ -1,5 +1,6 @@
 import logging
-
+from pathlib import Path
+from typing import Optional
 
 class CustomFormatter(logging.Formatter):
     # from https://stackoverflow.com/a/56944256
@@ -30,7 +31,7 @@ class CustomFormatter(logging.Formatter):
 
 class AtaraxAILogger:
 
-    def __init__(self, log_file: str = "ataraxai.log", log_dir: str | None = None):
+    def __init__(self, log_file: str = "ataraxai.log", log_dir: Optional[Path] = None):
         """
         Initializes the AtaraxaiLogger instance.
 
@@ -41,28 +42,32 @@ class AtaraxAILogger:
 
         Args:
             log_file (str): Path to the log file. Defaults to "ataraxai.log".
-            log_dir (str | None): Directory to store log files. If None, uses the current directory.
+            log_dir (Path | None): Directory to store log files. If None, uses the current directory.
         """
         self.logger = logging.getLogger("AtaraxaiLogger")
         self.logger.setLevel(logging.DEBUG)
         
-        if log_dir is not None:
-            log_file = f"{log_dir}/{log_file}"
+        if log_dir is None:
+            log_dir = Path("logs")
+            
+        log_dir.mkdir(parents=True, exist_ok=True)
 
-        file_handler = logging.FileHandler(log_file)
-        file_handler.setLevel(logging.DEBUG)
 
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
-        console_handler.setFormatter(CustomFormatter())
+        if not self.logger.handlers:
+            file_handler = logging.FileHandler(str(log_dir / log_file))
+            file_handler.setLevel(logging.DEBUG)
 
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-        file_handler.setFormatter(formatter)
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(logging.INFO)
+            console_handler.setFormatter(CustomFormatter())
 
-        self.logger.addHandler(file_handler)
-        self.logger.addHandler(console_handler)
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
+            file_handler.setFormatter(formatter)
+
+            self.logger.addHandler(file_handler)
+            self.logger.addHandler(console_handler)
         
     def get_logger(self) -> logging.Logger:
         """

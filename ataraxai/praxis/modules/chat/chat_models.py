@@ -50,7 +50,6 @@ class MessageResponse(BaseModel):
     @field_validator("date_time")
     @classmethod
     def validate_date_time(cls, v: datetime.datetime) -> datetime.datetime:
-        # Ensure the message timestamp is not in the future
         if v > datetime.datetime.now():
             raise ValueError("Message timestamp cannot be in the future.")
         return v
@@ -77,7 +76,6 @@ class ChatSessionResponse(BaseModel):
     @field_validator("updated_at")
     @classmethod
     def validate_timestamps(cls, v: datetime.datetime, info) -> datetime.datetime:
-        # Access created_at from the model data if available
         if hasattr(info, 'data') and 'created_at' in info.data:
             created_at = info.data['created_at']
             if v < created_at:

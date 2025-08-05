@@ -13,11 +13,14 @@ class ServiceInitializationError(AtaraxAIError):
 class ValidationError(AtaraxAIError):
     pass
 
+
 class AtaraxAIAuthenticationError(AtaraxAIError):
     pass
 
+
 class AtaraxAIStateError(AtaraxAIError):
     pass
+
 
 class AtaraxAILockError(AtaraxAIError):
     pass

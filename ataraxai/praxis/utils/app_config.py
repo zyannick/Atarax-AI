@@ -6,7 +6,7 @@ from dataclasses import dataclass
 @dataclass
 class AppConfig:
     database_filename: str = "chat_history.sqlite"
-    prompts_directory: str = "./prompts"
+    prompts_directory: str = "./prompt_templates/"
     setup_marker_filename: str = ".ataraxai_app_{version}_setup_complete"
 
     def get_setup_marker_filename(self, version: str) -> str:

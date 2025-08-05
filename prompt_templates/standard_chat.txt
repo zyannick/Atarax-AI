@@ -1,0 +1,4 @@
+<context>{context}</context>
+<history>{history}</history>
+<user>{query}</user>
+<assistant>
