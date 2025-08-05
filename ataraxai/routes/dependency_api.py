@@ -18,6 +18,7 @@ def get_orchestrator_ws(websocket: WebSocket) -> AtaraxAIOrchestrator:
 def get_unlocked_orchestrator(
     orch: Any = Depends(get_orchestrator),
 ) -> AtaraxAIOrchestrator:
+    print(f"Orchestrator state: {orch.state}")  # Debugging line, remove in production
     if orch.state != AppState.UNLOCKED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=Messages.VAULT_LOCKED
