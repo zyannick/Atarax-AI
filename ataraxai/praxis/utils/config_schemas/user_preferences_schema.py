@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Dict
 
 
+
 class UserPreferences(BaseModel):
     config_version: float = 1.0
 
