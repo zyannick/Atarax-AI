@@ -4,7 +4,7 @@
 # Atarax-AI
 
 <p align="center">
-  <a href="https://github.com/zyannick/Atarax-AI/actions/workflows/ci.yaml"><img src="https://github.com/zyannick/Atarax-AI/actions/workflows/ci.yaml/badge.svg" alt="CI/CD Pipeline"></a>
+  <a href="https://github.com/zyannick/Atarax-AI/actions/workflows/ci.yml"><img src="https://github.com/zyannick/Atarax-AI/actions/workflows/ci.yaml/badge.svg" alt="CI/CD Pipeline"></a>
   <a href="https://coveralls.io/github/zyannick/Atarax-AI?branch=main"><img src="https://coveralls.io/repos/github/zyannick/Atarax-AI/badge.svg?branch=main" alt="Code Coverage"/></a>
   <a href="https://github.com/zyannick/Atarax-AI/releases"><img src="https://img.shields.io/github/v/release/zyannick/Atarax-AI" alt="Latest Release"></a>
   <img src="https://img.shields.io/badge/license-GPL--3.0-blue.svg" alt="License">
