@@ -34,7 +34,17 @@ Developing a full-featured AI assistant that runs entirely offline using llama.c
 
 The assistant supports multi-modal inputs (text + voice + images/videos), performs real-time reasoning, and integrates with local system APIs (calendar, file system, etc.)  all with zero cloud dependency.
 
-<img src="docs/architecture/architecture.png" alt="Architecture Diagram" width="800"/>
+## Bird view
+
+<img src="docs/architecture/AtaraxAI-BirdView.drawio.png" alt="Architecture Diagram" width="800"/>
+
+## Services
+
+<img src="docs/architecture/AtaraxAI-Services.drawio.png" alt="Architecture Diagram" width="800"/>
+
+## RAG Module
+
+<img src="docs/architecture/AtaraxAI-AtaraxAIRagManager.drawio.png" alt="Architecture Diagram" width="800"/>
 
 
 ## 🎯 Project Vision

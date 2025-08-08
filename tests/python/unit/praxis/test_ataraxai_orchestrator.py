@@ -35,14 +35,8 @@ class TestAtaraxAIOrchestrator:
 
         
         orchestrator_instance = AtaraxAIOrchestrator(
-        app_config=mock_app_config,
         settings=mock_settings,
-        logger=mock_logger,
-        directories=mock_directories,
-        vault_manager=mock_vault_manager,
         setup_manager=mock_setup_manager,
-        config_manager=mock_config_manager,
-        core_ai_manager=mock_core_ai_manager,
         services=mock_services,
         )
     

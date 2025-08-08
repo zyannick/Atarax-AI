@@ -27,7 +27,7 @@ ataraxai.praxis.rag_config
 ataraxai.praxis.user_preferences
 
 .coverage
-
+*.bkp
 /node_modules
 
 /src-tauri/target
