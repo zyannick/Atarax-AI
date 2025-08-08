@@ -438,7 +438,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="ABtYKX1RMWbo9tlNEPyk" name="ArchUpdate">
-    <mxGraphModel dx="1017" dy="1017" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="2550" dy="1291" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -505,7 +505,7 @@
         <mxCell id="GCA-xhVPgXmm4jISF8Eo-2" value="State Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#76608a;strokeColor=#432D57;fontColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="-69" y="355" width="148" height="71" as="geometry" />
         </mxCell>
-        <mxCell id="GCA-xhVPgXmm4jISF8Eo-3" value="Security Vault" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#76608a;strokeColor=#432D57;fontColor=#ffffff;" vertex="1" parent="1">
+        <mxCell id="GCA-xhVPgXmm4jISF8Eo-3" value="Vault Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#76608a;strokeColor=#432D57;fontColor=#ffffff;" vertex="1" parent="1">
           <mxGeometry x="193" y="355" width="148" height="71" as="geometry" />
         </mxCell>
         <mxCell id="GCA-xhVPgXmm4jISF8Eo-4" value="Context Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#76608a;strokeColor=#432D57;fontColor=#ffffff;" vertex="1" parent="1">
