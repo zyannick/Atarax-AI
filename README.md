@@ -36,15 +36,9 @@ The assistant supports multi-modal inputs (text + voice + images/videos), perfor
 
 ## Bird view
 
-<img src="docs/architecture/AtaraxAI-BirdView.drawio.png" alt="Architecture Diagram" width="800"/>
+We are refactoring the backend before integration the front-end. 
 
-## Services
-
-<img src="docs/architecture/AtaraxAI-Services.drawio.png" alt="Architecture Diagram" width="800"/>
-
-## RAG Module
-
-<img src="docs/architecture/AtaraxAI-AtaraxAIRagManager.drawio.png" alt="Architecture Diagram" width="800"/>
+<img src="docs/architecture/AtaraxAI-ArchUpdate.drawio.png" alt="Architecture Diagram" width="800"/>
 
 
 ## 🎯 Project Vision
