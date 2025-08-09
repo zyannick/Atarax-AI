@@ -43,7 +43,10 @@ COPY . .
 
 RUN chmod +x ./install.sh ./setup_third_party.sh ./clean.sh
 
+ENV Python_EXECUTABLE=/usr/bin/python3.12
+ENV Python_INCLUDE_DIR=/usr/include/python3.12
+ENV Python_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.12.so
 
-RUN ./install.sh --clean --use-cuda --cuda-arch="75;80;86;89;90"
+RUN ./install.sh 
 
-CMD ["python3", "ataraxai/praxis/ataraxai_cli.py"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
