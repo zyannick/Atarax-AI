@@ -106,7 +106,7 @@ docker run --gpus all -it --rm -p 8000:8000 ataraxai:gpu
 # Available options:
 # --use-uv          This will create a .venv to use uv env (You need to have uv install in your OS) 
 # --use-conda       Use conda environment
-# --clean           Clean previous installations
+# --clean           Clean previous builds
 # --clean-ccache    Clean C++ compilation cache
 # --use-cuda        Build with CUDA support
 # --only-cpp        Build only C++ components
@@ -140,9 +140,6 @@ docker compose -f docker/docker-compose.monitoring.base.yml up -d
 
 ### API Reference
 Access the interactive API documentation at http://localhost:8000/docs once the server is running.
-
-### Configuration
-Configuration files are located in the `config/` directory. Customize model parameters, security settings, and system integrations to suit your needs.
 
 ## 🛡️ Privacy Commitment
 
