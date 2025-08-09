@@ -16,7 +16,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install system Python 3.10 and development packages (simpler alternative)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-dev \
@@ -33,6 +32,6 @@ ENV Python_EXECUTABLE=/usr/bin/python3.12
 ENV Python_INCLUDE_DIR=/usr/include/python3.12
 ENV Python_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.12.so
 
-RUN ./install.sh --clean
+RUN ./install.sh 
 
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
