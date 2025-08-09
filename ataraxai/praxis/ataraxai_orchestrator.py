@@ -42,31 +42,55 @@ class AtaraxAIOrchestrator:
 
     def __init__(
         self,
-        app_config: AppConfig,
         settings: AtaraxAISettings,
-        logger: logging.Logger,
-        directories: AppDirectories,
-        vault_manager: VaultManager,
         setup_manager: SetupManager,
-        config_manager: ConfigurationManager,
-        core_ai_manager: CoreAIServiceManager,
         services: Services,
     ):
 
-        self.app_config = app_config
-        self.logger = logger
         self.settings = settings
-        self.directories = directories
-
-        self.vault_manager = vault_manager
         self.setup_manager = setup_manager
-        self.config_manager = config_manager
-        self.core_ai_manager = core_ai_manager
         self.services = services
 
         self._state_lock = threading.RLock()
         self._state: AppState = AppState.LOCKED
         self.initialize()
+
+    @property
+    def directories(self) -> AppDirectories:
+        return self.services.directories
+
+    @property
+    def logger(self) -> logging.Logger:
+        return self.services.logger
+    
+    @property
+    def vault_manager(self) -> VaultManager:
+        return self.services.vault_manager
+    
+    @property
+    def config_manager(self) -> ConfigurationManager:
+        return self.services.config_manager
+
+    @property
+    def core_ai_service_manager(self) -> CoreAIServiceManager:
+        return self.services.core_ai_service_manager
+
+    @property
+    def app_config(self) -> AppConfig:
+        return self.services.app_config
+
+    @property
+    def chat_context(self) -> ChatContextManager:
+        return self.services.chat_context
+
+    @property
+    def chat_manager(self) -> ChatManager:
+        return self.services.chat_manager
+
+    @property
+    def rag_manager(self) -> AtaraxAIRAGManager:
+        return self.services.rag_manager
+
 
     def initialize(self):
         """
@@ -130,7 +154,7 @@ class AtaraxAIOrchestrator:
             AppState: Returns AppState.LOCKED if the vault check path exists,
                       otherwise returns AppState.FIRST_LAUNCH.
         """
-        if Path(self.vault_manager.check_path).exists():
+        if Path(self.services.vault_manager.check_path).exists():
             return AppState.LOCKED
         else:
             return AppState.FIRST_LAUNCH
@@ -252,7 +276,7 @@ class AtaraxAIOrchestrator:
 
         self.directories.create_directories()
 
-        self.vault_manager = self._init_security_manager()
+        self.services.vault_manager = self._init_security_manager()
 
         self._set_state(AppState.FIRST_LAUNCH)
         self.logger.info(
@@ -356,6 +380,15 @@ class AtaraxAIOrchestrator:
                     "Application is locked. CRUD operations are not available."
                 )
             return self.services.chat_manager
+        
+    @property
+    def core_ai_manager(self) -> CoreAIServiceManager:
+        with self._state_lock:
+            if self.state != AppState.UNLOCKED or self.services is None:
+                raise AtaraxAILockError(
+                    "Application is locked. Core AI service operations are not available."
+                )
+            return self.services.core_ai_service_manager
 
     @property
     def rag(self) -> AtaraxAIRAGManager:
@@ -453,14 +486,8 @@ class AtaraxAIOrchestratorFactory:
         )
 
         orchestrator = AtaraxAIOrchestrator(
-            app_config=app_config,
             settings=settings,
-            logger=logger,
-            directories=directories,
-            vault_manager=vault_manager,
             setup_manager=setup_manager,
-            config_manager=config_manager,
-            core_ai_manager=core_ai_manager,
             services=services,
         )
 

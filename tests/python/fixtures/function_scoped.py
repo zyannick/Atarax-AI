@@ -378,14 +378,8 @@ def orchestrator(
         AtaraxAIOrchestrator: An orchestrator instance initialized with the provided dependencies.
     """
     orchestrator = AtaraxAIOrchestrator(
-        app_config=app_config,
         settings=settings,
-        logger=logger,
-        directories=app_directories,
-        vault_manager=vault_manager,
         setup_manager=setup_manager,
-        config_manager=config_manager,
-        core_ai_manager=core_ai_manager,
         services=services,
     )
 
