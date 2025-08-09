@@ -73,7 +73,7 @@ We will provide soon packages for Linux/Windows/Mac. For now, you can build the 
 
 ### Option 1: Docker (Recommended)
 
-#### Path A: Pull from Docker Hub
+#### Pull from Docker Hub
 ```bash
 # For the CPU version
 docker pull ataraxai/ataraxai:latest
