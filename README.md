@@ -1,6 +1,3 @@
-<!-- <img src="https://github.com/user-attachments/assets/fdd8be29-ac97-4efc-8e5b-b559096e5234" alt="AtaraxAI" width="200"> -->
-
-
 # Atarax-AI
 
 <p align="center">
@@ -10,7 +7,6 @@
   <img src="https://img.shields.io/badge/license-GPL--3.0-blue.svg" alt="License">
   <a href="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg"><img src="https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg" alt="Platform"/></a>
 </p>
-
 
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
@@ -25,95 +21,167 @@
   <img src="https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white" alt="Prometheus">
 </p>
 
+## A Local, Privacy-Preserving AI Assistant Powered by llama.cpp
 
-A Local, Privacy-Preserving AI Assistant Powered by llama.cpp
+**Fully offline. Multi-modal. Secure. Yours.**
 
-_Fully offline. Multi-modal. Secure. Yours._
+Atarax-AI is a full-featured AI assistant that runs entirely offline using llama.cpp, optimized for low-latency, high-accuracy inference on consumer-grade hardware. The assistant supports multi-modal inputs (text, voice, images, and videos), performs real-time reasoning, and integrates with local system APIs—all with zero cloud dependency.
 
-Developing a full-featured AI assistant that runs entirely offline using llama.cpp, optimized for low-latency, high-accuracy inference on consumer-grade hardware (laptop, smartphone)
+## Architecture Overview
 
-The assistant supports multi-modal inputs (text + voice + images/videos), performs real-time reasoning, and integrates with local system APIs (calendar, file system, etc.)  all with zero cloud dependency.
+> **Note**: We are currently refactoring the backend before integrating the front-end.
 
-<img src="docs/architecture/architecture.png" alt="Architecture Diagram" width="800"/>
-
+<img src="docs/architecture/AtaraxAI-ArchUpdate.drawio.png" alt="Architecture Diagram" width="800"/>
 
 ## 🎯 Project Vision
 
 Create a production-ready AI assistant that:
-- Runs 100% offline - No internet connection required after setup
-- Preserves privacy - All data processing happens locally
-- Works on consumer hardware - Optimized for laptops and desktop computers
-- Provides multi-modal interaction - Text, voice, and document processing
-- Integrates with your workflow - Seamless integration with local applications
+- **100% Offline Operation** - No internet connection required after setup
+- **Privacy-First Design** - All data processing happens locally
+- **Consumer Hardware Optimized** - Runs efficiently on laptops and desktops
+- **Multi-Modal Interaction** - Text, voice, and document processing capabilities
+- **Seamless Integration** - Works with your existing workflow and applications
 
-## ✨ Features
+## ✨ Key Features
 
-### Core Capabilities
-- Text-based AI assistant with context-aware responses
-- Voice interaction via Whisper.cpp integration
-- Document processing for local files and knowledge bases
-- Persistent memory with semantic search capabilities
-- System integration for calendar, files, and task management
+### 🧠 Core Capabilities
+- **Intelligent Text Assistant** - Context-aware responses with advanced reasoning
+- **Voice Interaction** - Whisper.cpp integration for natural speech processing
+- **Document Processing** - Local file analysis and knowledge base creation
+- **Persistent Memory** - Semantic search with long-term context retention
+- **System Integration** - Calendar, file management, and task automation
 
-### Technical Highlights
-- Adaptive context management with sliding window techniques
-- Modular prompt engineering framework
-- Real-time performance monitoring and optimization
-- Comprehensive logging and debugging tools
+### ⚡ Technical Excellence
+- **Adaptive Context Management** - Sliding window techniques for optimal performance
+- **Modular Architecture** - Flexible prompt engineering framework
+- **Real-Time Monitoring** - Performance optimization and comprehensive logging
+- **Cross-Platform Support** - Linux, macOS, and Windows compatibility
 
-### Security Features
-- End-to-end encryption - All user data encrypted with AES-256-GCM
-- Local key management - Keys derived from user password, never stored
-- Secure deletion - Cryptographic erasure of sensitive data
-<!-- - **Memory protection** - Sensitive data cleared from RAM after use
-- **Audit logging** - All security events logged and encrypted -->
+### 🔒 Security & Privacy
+- **Local Key Management** - Password-derived keys, never stored on disk
+- **Secure Data Deletion** - Cryptographic erasure of sensitive information
+- **Zero Telemetry** - No data collection or external transmissions
 
+## 🚀 Quick Start
 
-## Usage
+We will provide soon packages for Linux/Windows/Mac. For now, you can build the docker locally. Optionnaly you can pull it from docker hub (https://hub.docker.com/repositories/ataraxai).
 
-### Standard user
+### Prerequisites
+- Docker and Docker Compose
+- NVIDIA GPU (optional, for GPU acceleration)
+- 8GB+ RAM recommended
 
-Package coming soon
+### Option 1: Docker (Recommended)
 
-### Power user 
-
-#### Without Docker
-
-In order to run the code on your computer, you can clone this repository, then you need to manually install:
-
-##### Backend
-
-```
-.\install.sh 
+#### Pull from Docker Hub
+```bash
+# For the CPU version
+docker pull ataraxai/ataraxai:latest
+docker run -it --rm -p 8000:8000 ataraxai/ataraxai:latest
 ```
 
-You can add some options:
-- ```--use-conda``` : if you want to use you preferred environnement
-- ```--clean``` : if you want to clean your previous installations
-- ```--clean-ccache``` : if you want to clean ccache that is use to accelerated the c++ compilation. 
-- ```--use-cuda``` : if you want to build llama.cpp and whisper.cpp with cuda supports
-- ```--only-cpp``` : if you want to build and install only the c++ part of the backend
-- ```--cuda-arch``` : if you want to precise your cuda architecture
+#### CPU Version locally
+```bash
+# Build the image
+docker build -t ataraxai:cpu -f docker/Dockerfile.cpu .
 
-#### Frontend
+# Run the container
+docker run -it --rm -p 8000:8000 ataraxai:cpu
+```
 
+#### GPU Version locally
+```bash
+# Build the image
+docker build -t ataraxai:gpu -f docker/Dockerfile.gpu .
 
+# Run with GPU support
+docker run --gpus all -it --rm -p 8000:8000 ataraxai:gpu
+```
 
-#### With Docker
+### Option 2: Local Installation
+```bash
+# Run the installation script
+./install.sh
 
+# Available options:
+# --use-uv          This will create a .venv to use uv env (You need to have uv install in your OS) 
+# --use-conda       Use conda environment
+# --clean           Clean previous builds
+# --clean-ccache    Clean C++ compilation cache
+# --use-cuda        Build with CUDA support
+# --only-cpp        Build only C++ components
+# --cuda-arch       Specify CUDA architecture
 
+# Start the API server
+uvicorn api:app --reload --host 0.0.0.0 --port 8000
+```
 
-## Privacy Policy
+## 📊 Monitoring & Observability
 
-- No cloud dependency
-- No external API calls
-- All data stored locally in encrypted formats
-- Source code and logs are fully inspectable by user
+Launch the monitoring stack to track performance and resource usage:
 
+### Full Monitoring (CPU + GPU)
+```bash
+docker compose -f docker-compose.monitoring.base.yml -f docker-compose.monitoring.gpu.yml up -d
+```
 
-## License
+### CPU-Only Monitoring
+```bash
+docker compose -f docker/docker-compose.monitoring.base.yml up -d
+```
 
-This project is licensed under the [GNU GPLv3 License](LICENSE).  
-You are free to use, modify, and distribute this software under the terms of the GPL.
+### Access Monitoring Services
+- **FastAPI Backend**: http://localhost:8000
+- **Prometheus Metrics**: http://localhost:9090
+- **Node Exporter**: http://localhost:9100
+- **Grafana Dashboard**: http://localhost:3000
 
+## 📚 Documentation
 
+### API Reference
+Access the interactive API documentation at http://localhost:8000/docs once the server is running.
+
+## 🛡️ Privacy Commitment
+
+Atarax-AI is designed with privacy as a fundamental principle:
+
+- **No Cloud Dependency** - Everything runs on your hardware
+- **No External API Calls** - Zero network requests to third-party services  
+- **Local Data Storage** - All data encrypted and stored locally
+- **Open Source Transparency** - Full source code inspection and auditing
+- **User Control** - Complete ownership of your data and interactions
+
+## 🤝 Contributing
+
+We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
+- Code style and standards
+- Testing requirements
+- Pull request process
+- Issue reporting
+
+## 📋 Roadmap
+
+- [ ] Desktop application with Tauri frontend
+- [ ] Mobile application support
+- [ ] Plugin system for custom integrations
+- [ ] Advanced document understanding
+- [ ] Multi-language support
+- [ ] Voice synthesis capabilities
+
+## ⚖️ License
+
+This project is licensed under the [GNU GPLv3 License](LICENSE). You are free to use, modify, and distribute this software under the terms of the GPL.
+
+## 🙏 Acknowledgments
+
+Built with these amazing open-source projects:
+- [llama.cpp](https://github.com/ggerganov/llama.cpp) - High-performance LLM inference
+- [Whisper.cpp](https://github.com/ggerganov/whisper.cpp) - Speech recognition
+- [FastAPI](https://fastapi.tiangolo.com/) - Modern Python web framework
+- [Tauri](https://tauri.app/) - Cross-platform desktop applications
+
+---
+
+<p align="center">
+  <strong>Made with ❤️ for privacy-conscious users who value local AI</strong>
+</p>

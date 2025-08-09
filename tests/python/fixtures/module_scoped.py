@@ -350,14 +350,8 @@ def module_orchestrator(
         AtaraxAIOrchestrator: An orchestrator instance initialized with the provided dependencies.
     """
     orchestrator = AtaraxAIOrchestrator(
-        app_config=module_app_config,
         settings=module_settings,
-        logger=module_logger,
-        directories=module_app_directories,
-        vault_manager=module_vault_manager,
         setup_manager=module_setup_manager,
-        config_manager=module_config_manager,
-        core_ai_manager=module_core_ai_manager,
         services=module_services,
     )
 
