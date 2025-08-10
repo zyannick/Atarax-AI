@@ -5,10 +5,10 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "ataraxai"
-version = "0.1.0"
+version = "0.0.1"
 description = "A Local, Privacy-Preserving AI Assistant Powered by llama.cpp"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 license = { file = "LICENSE" }
 authors = [
     { name = "Yannick Wend Kuni Zoetgnande", email = "yannickzoet@gmail.com" },
@@ -54,7 +54,8 @@ dependencies = [
     "psutil",
     "nvitop",
     "python-ulid",
-    "isort"
+    "isort",
+    "pybreaker",
 ]
 
 [tool.isort]

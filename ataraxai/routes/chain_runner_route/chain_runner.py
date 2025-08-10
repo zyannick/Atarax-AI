@@ -1,11 +1,13 @@
 from fastapi import APIRouter, BackgroundTasks
 from fastapi.params import Depends
+from ataraxai.gateway.request_manager import RequestPriority
 from ataraxai.routes.chain_runner_route.chain_runner_api_models import AvailableTasksResponse, RunChainRequest, RunChainResponse
 from ataraxai.routes.status import Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.dependency_api import get_unlocked_orchestrator
+from ataraxai.routes.dependency_api import get_request_manager
 from ataraxai.praxis.katalepsis import katalepsis_monitor
 
 
@@ -19,7 +21,8 @@ router_chain_runner = APIRouter(prefix="/api/v1/chain_runner", tags=["Chain Runn
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("List Available Tasks", logger=logger)
 async def list_available_tasks(
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator) # type: ignore
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+
 ) -> AvailableTasksResponse:
     """
     Endpoint to list all available tasks that can be executed.
@@ -47,13 +50,20 @@ async def list_available_tasks(
 async def run_chain(
     request: RunChainRequest,
     orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+    request_manager: RequestManager = Depends(get_request_manager),  # type: ignore
     background_tasks: BackgroundTasks = BackgroundTasks()
 ) -> RunChainResponse:
-    
-    background_tasks.add_task(orch.run_task_chain, request.chain_definition, request.initial_user_query)
+    task_coroutine = orch.run_task_chain(request.chain_definition, request.initial_user_query)
+
+    future = await request_manager.submit_request(
+        coro=task_coroutine,
+        priority=RequestPriority.HIGH
+    )
+
+    result = await future
 
     return RunChainResponse(
        status=Status.SUCCESS,
-       message="Chain execution started successfully.",
+       message="The task chain is in the queue and will be processed shortly.",
        result=None
    )

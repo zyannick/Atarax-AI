@@ -1,14 +1,17 @@
 import asyncio
 from typing import Any, Dict, Optional
+import uuid
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.params import Depends
 from prometheus_client import Enum
 import ulid
+from ataraxai.gateway.request_manager import RequestManager, RequestPriority
 from ataraxai.routes.status import Status, StatusResponse
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.dependency_api import (
+    get_request_manager,
     get_unlocked_orchestrator,
     get_unlocked_orchestrator_ws,
 )
@@ -67,6 +70,22 @@ async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator
         has_next=False,
         has_previous=False,
     )
+
+
+async def start_download_in_thread(
+    orch: AtaraxAIOrchestrator,
+    model_info: LlamaCPPModelInfo
+) -> str:
+    task_id = str(ulid.ULID())
+    
+
+    await asyncio.to_thread(
+        orch.models_manager.start_download_task,
+        task_id=task_id,
+        model_info=model_info
+    )
+    
+    return task_id
 
 
 @router_models_manager.websocket("/download_progress/{task_id}")
@@ -157,40 +176,67 @@ async def cancel_download(
         )
 
 
-@router_models_manager.post(
-    "/download_model",
-    response_model=DownloadModelResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-)
+
+@router_models_manager.post("/download_model", response_model=DownloadModelResponse, status_code=status.HTTP_202_ACCEPTED)
 @handle_api_errors("Download Models", logger=logger)
 async def download_model(
-    background_tasks: BackgroundTasks,
     request: DownloadModelRequest,
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
-) -> DownloadModelResponse:
-    task_id = str(ulid.ULID())
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator), # type: ignore
+    req_manager: RequestManager = Depends(get_request_manager) # type: ignore
+):
+    task_coroutine = start_download_in_thread(
+        orch=orch,
+        model_info=LlamaCPPModelInfo(**request.model_dump()),
+    )
 
-    try:
-        background_tasks.add_task(
-            orch.models_manager.start_download_task,
-            task_id=task_id,
-            model_info=LlamaCPPModelInfo(**request.model_dump()),
-        )
+    future = await req_manager.submit_request(
+        coro=task_coroutine,
+        priority=RequestPriority.MEDIUM
+    )
 
-        return DownloadModelResponse(
-            status=DownloadTaskStatus.PENDING,
-            message="Download task has been created.",
-            task_id=task_id,
-            percentage=0,
-        )
-    except Exception as e:
-        logger.error(f"Error creating download task: {str(e)}")
-        return DownloadModelResponse(
-            status=DownloadTaskStatus.FAILED,
-            message=f"Failed to create download task: {str(e)}",
-            task_id=task_id,
-            percentage=0,
-        )
+    task_id = await future
+
+    return DownloadModelResponse(
+        status=DownloadTaskStatus.PENDING,
+        message="Download task has been created.",
+        task_id=task_id,
+        percentage=0,
+    )
+
+# @router_models_manager.post(
+#     "/download_model",
+#     response_model=DownloadModelResponse,
+#     status_code=status.HTTP_202_ACCEPTED,
+# )
+# @handle_api_errors("Download Models", logger=logger)
+# async def download_model(
+#     background_tasks: BackgroundTasks,
+#     request: DownloadModelRequest,
+#     orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+# ) -> DownloadModelResponse:
+    
+
+#     try:
+#         background_tasks.add_task(
+#             orch.models_manager.start_download_task,
+#             task_id=task_id,
+#             model_info=LlamaCPPModelInfo(**request.model_dump()),
+#         )
+
+#         return DownloadModelResponse(
+#             status=DownloadTaskStatus.PENDING,
+#             message="Download task has been created.",
+#             task_id=task_id,
+#             percentage=0,
+#         )
+#     except Exception as e:
+#         logger.error(f"Error creating download task: {str(e)}")
+#         return DownloadModelResponse(
+#             status=DownloadTaskStatus.FAILED,
+#             message=f"Failed to create download task: {str(e)}",
+#             task_id=task_id,
+#             percentage=0,
+#         )
 
 
 @router_models_manager.post(

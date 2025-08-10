@@ -2,6 +2,8 @@ from fastapi import  FastAPI
 from contextlib import asynccontextmanager
 from fastapi.params import Depends
 import os
+from ataraxai.gateway.request_manager import RequestManager
+from ataraxai.gateway.task_manager import TaskManager
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
 from ataraxai import __version__
 from ataraxai.routes.status import StatusResponse, Status
@@ -33,9 +35,13 @@ logger = AtaraxAILogger("ataraxai.praxis.api").get_logger()
 async def lifespan(app: FastAPI):
     app.state.orchestrator = AtaraxAIOrchestratorFactory.create_orchestrator()
     app.state.katalepsis_monitor = Katalepsis()
+    app.state.request_manager = RequestManager()
+    app.state.task_manager = TaskManager()
+    await app.state.request_manager.start()
     yield
     logger.info("API is shutting down. Closing orchestrator resources.")
     app.state.orchestrator.shutdown()
+    await app.state.request_manager.stop() 
 
 
 if ENVIRONMENT == "development":
@@ -45,6 +51,8 @@ if ENVIRONMENT == "development":
         version=__version__,
         lifespan=lifespan,
     )
+    allowed_hosts = ["localhost", "127.0.0.1", "test"]
+    allow_origins=["http://localhost:3000", "http://test"]
 else:
     app = FastAPI(
         title="AtaraxAI API",
@@ -54,11 +62,15 @@ else:
         docs_url="/docs",
         redoc_url="/redoc",
     )
+    allowed_hosts = ["localhost", "127.0.0.1"]
+    allow_origins=["http://localhost:3000"]
 
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "test"])
+
+
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://test"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

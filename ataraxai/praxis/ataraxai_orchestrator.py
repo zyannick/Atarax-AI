@@ -354,7 +354,7 @@ class AtaraxAIOrchestrator:
             self.logger.error(f"Failed to lock vault: {e}")
             return False
 
-    def run_task_chain(
+    async def run_task_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
         """
