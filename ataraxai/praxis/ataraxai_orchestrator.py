@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from pathlib import Path
 from types import TracebackType
@@ -368,10 +369,10 @@ class AtaraxAIOrchestrator:
             Any: The result produced after executing the entire task chain.
 
         """
-        return self.services.run_task_chain(
+        return await self.services.run_task_chain(
             chain_definition=chain_definition, initial_user_query=initial_user_query
         )
-
+    
     @property
     def chat(self) -> ChatManager:
         with self._state_lock:

@@ -136,7 +136,7 @@ class RequestManager:
         except asyncio.QueueFull:
             self._metrics['requests_rejected'] += 1
             logger.warning(f"Queue is full! Rejecting request with priority {priority.name}")
-            raise
+            raise 
         
         return await future
 

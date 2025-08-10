@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi.params import Depends
 import os
 from ataraxai.gateway.request_manager import RequestManager
-from ataraxai.gateway.task_manager import TaskManager
+from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
 from ataraxai import __version__
 from ataraxai.routes.status import StatusResponse, Status
@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
     app.state.orchestrator = AtaraxAIOrchestratorFactory.create_orchestrator()
     app.state.katalepsis_monitor = Katalepsis()
     app.state.request_manager = RequestManager()
-    app.state.task_manager = TaskManager()
+    app.state.gateway_task_manager = GatewayTaskManager()
     await app.state.request_manager.start()
     yield
     logger.info("API is shutting down. Closing orchestrator resources.")

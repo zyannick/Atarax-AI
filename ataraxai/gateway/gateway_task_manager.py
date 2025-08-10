@@ -31,7 +31,7 @@ class Task:
         self.result: Optional[Any] = None
         self.error: Optional[str] = None
 
-class TaskManager:
+class GatewayTaskManager:
     def __init__(self):
         self._tasks: Dict[str, Task] = {}
 
@@ -54,6 +54,14 @@ class TaskManager:
         future.add_done_callback(lambda f: self._on_task_done(task_id, f))
         
         return task_id
+    
+    def cancel_task(self, task_id: str) -> bool:
+        task = self._tasks.get(task_id)
+        if not task or task.status != TaskStatus.PENDING:
+            return False
+        
+        task.future.cancel()
+        return True
 
     def get_task_status(self, task_id: str) -> Optional[Dict[str, Any]]:
         task = self._tasks.get(task_id)

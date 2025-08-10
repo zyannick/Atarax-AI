@@ -178,7 +178,7 @@ class Services:
         )
         self.logger.info("Prompt engine initialized successfully")
 
-    def run_task_chain(
+    async def run_task_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
         """
@@ -205,19 +205,10 @@ class Services:
         if not chain_definition:
             raise ValidationError("Chain definition cannot be empty")
 
-        # try:
-        #     core_ai_service = self.core_ai_manager.get_service()
-        # except ServiceInitializationError as e:
-        #     self.logger.error(f"Cannot run task chain: {e}")
-        #     raise
-
-        # if self.chain_runner.core_ai_service_manager is None:
-        #     self.chain_runner.core_ai_service_manager = core_ai_service
 
         self.logger.info(f"Executing chain for query: '{initial_user_query}'")
         try:
-            # _ = chain_definition[0].get("task_id", "unknown")
-            result = self.chain_runner.run_chain(
+            result = await self.chain_runner.run_chain(
                 chain_definition=chain_definition, initial_user_query=initial_user_query
             )
             self.logger.info("Chain execution completed successfully")

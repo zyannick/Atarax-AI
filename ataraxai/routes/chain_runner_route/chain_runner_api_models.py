@@ -3,6 +3,12 @@ from typing import List, Dict, Any
 from ataraxai.routes.status import Status
 
 
+class StartChainResponse(BaseModel):
+    status: str
+    message: str
+    task_id: str
+
+
 class RunChainRequest(BaseModel):
     """
     Request model for running a chain of tasks.
@@ -30,6 +36,11 @@ class RunChainResponse(BaseModel):
     status: Status
     message: str
     result: Any
+
+
+class CancelChainResponse(BaseModel):
+    status: Status
+    message: str
 
 
 class AvailableTasksResponse(BaseModel):

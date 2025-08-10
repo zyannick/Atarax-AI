@@ -17,7 +17,7 @@ class StandardChatTask(BaseTask):
     def _load_resources(self) -> None:
         pass
 
-    def execute(
+    async def execute(
         self,
         processed_input: Dict[str, Any],
         dependencies: TaskDependencies,
@@ -55,7 +55,7 @@ class StandardChatTask(BaseTask):
             rag_config=rag_manager.rag_config_manager.config,
         )
 
-        model_response_text = core_ai_service_manager.process_prompt(final_prompt)
+        model_response_text = await core_ai_service_manager.process_prompt(final_prompt)
 
         assistant_response = model_response_text.strip()
         if not assistant_response:

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from ataraxai import hegemonikon_py  # type: ignore
 # from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
@@ -60,7 +61,7 @@ class CoreAIServiceManager:
         return self.core_ai_service
     
 
-    def process_prompt(
+    async def process_prompt(
         self, prompt: str
     ) -> str:
         """
@@ -79,8 +80,14 @@ class CoreAIServiceManager:
         print(f"Processing prompt: {prompt}")
         print(f"Using generation params: {self.llama_cpp_generation_params_cc}")
 
-        return self.core_ai_service.process_prompt(prompt.encode("utf-8"), self.llama_cpp_generation_params_cc)  # type: ignore
-        # return "Here is the response based on the provided prompt."  # Mock response for testing
+        response = await asyncio.to_thread(
+            self.core_ai_service.process_prompt,
+            prompt.encode("utf-8"),
+            self.llama_cpp_generation_params_cc
+        )
+        
+        return response
+
     
 
     def get_llama_cpp_model_context_size(self) -> int:

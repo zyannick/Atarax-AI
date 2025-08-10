@@ -33,7 +33,7 @@ class ChainRunner:
             "rag_manager": self.rag_manager
         }
 
-    def run_chain(
+    async def run_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
         """
@@ -76,7 +76,7 @@ class ChainRunner:
             print(f"\n--- Running Step {i}: Task '{task_id}' ---")
 
             try:
-                final_result = task.run(input_data, self.dependencies)
+                final_result = await task.run(input_data, self.dependencies)
 
                 step_outputs[f"step_{i}"] = {"output": final_result}
                 print(
@@ -85,7 +85,7 @@ class ChainRunner:
 
             except Exception as e:
                 print(f"--- Error in Step {i}, Task '{task_id}' ---")
-                final_result = task.handle_error(e)
+                final_result = await task.handle_error(e)
                 break
 
         return final_result
