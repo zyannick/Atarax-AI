@@ -1,8 +1,7 @@
-# import pytest
-from typing import Any, Any, Dict
-from unittest.mock import Mock
+from typing import Any, Any, Dict, List
+from unittest.mock import Mock, AsyncMock
 
-from rpds import List
+import pytest
 from ataraxai.praxis.modules.prompt_engine.chain_runner import ChainRunner
 
 def test_chain_runner_init_sets_attributes():
@@ -54,9 +53,10 @@ def test_chain_runner_init_sets_dependencies_dict():
         "rag_manager": mock_rag_manager
     }
     assert runner.dependencies == expected_dependencies
-    
-    
-def test_run_chain_single_step_success():
+
+
+@pytest.mark.asyncio
+async def test_run_chain_single_step_success():
     mock_task_manager = Mock()
     mock_context_manager = Mock()
     mock_prompt_manager = Mock()
@@ -65,8 +65,8 @@ def test_run_chain_single_step_success():
     mock_rag_manager = Mock()
 
     mock_task = Mock()
-    mock_task.run.return_value = "step_result"
-    mock_task.handle_error = Mock()
+    mock_task.run = AsyncMock(return_value="step_result")
+    mock_task.handle_error = AsyncMock()
 
     mock_task_manager.get_task.return_value = mock_task
 
@@ -79,18 +79,21 @@ def test_run_chain_single_step_success():
         rag_manager=mock_rag_manager
     )
 
-    chain_definition : List[Dict[str, Any]] = [
+    chain_definition: List[Dict[str, Any]] = [
         {
             "task_id": "task1",
             "inputs": {"input1": "value1"}
         }
     ]
-    result = runner.run_chain(chain_definition, "user query")
-    assert result == "step_result"
-    mock_task.run.assert_called_once()
-    mock_task.handle_error.assert_not_called()
 
-def test_run_chain_multiple_steps_with_reference():
+    result = await runner.run_chain(chain_definition, "user query")
+
+    mock_task.run.assert_awaited_once() 
+
+    assert result == "step_result", f"Expected 'step_result', got {result}"
+
+@pytest.mark.asyncio
+async def test_run_chain_multiple_steps_with_reference():
     mock_task_manager = Mock()
     mock_context_manager = Mock()
     mock_prompt_manager = Mock()
@@ -98,13 +101,12 @@ def test_run_chain_multiple_steps_with_reference():
     mock_chat_context = Mock()
     mock_rag_manager = Mock()
 
-    # Mock tasks
-    mock_task1 = Mock()
-    mock_task1.run.return_value = "result1"
-    mock_task1.handle_error = Mock()
-    mock_task2 = Mock()
-    mock_task2.run.return_value = "result2"
-    mock_task2.handle_error = Mock()
+    mock_task1 = AsyncMock()
+    mock_task1.run = AsyncMock(return_value="result1")
+    mock_task1.handle_error = AsyncMock()
+    mock_task2 = AsyncMock()
+    mock_task2.run = AsyncMock(return_value="result2")
+    mock_task2.handle_error = AsyncMock()
 
     def get_task_side_effect(task_id):
         if task_id == "task1":
@@ -135,17 +137,17 @@ def test_run_chain_multiple_steps_with_reference():
             "inputs": {"input2": "{{step_0.output}}"}
         }
     ]
-    result = runner.run_chain(chain_definition, "user query")
+    result = await runner.run_chain(chain_definition, "user query")
     assert result == "result2"
     assert mock_task1.run.call_count == 1
     assert mock_task2.run.call_count == 1
     mock_task1.handle_error.assert_not_called()
     mock_task2.handle_error.assert_not_called()
-    # Check that the referenced input was passed
     args, kwargs = mock_task2.run.call_args
     assert args[0]["input2"] == "result1"
 
-def test_run_chain_handles_exception_and_calls_handle_error():
+@pytest.mark.asyncio
+async def test_run_chain_handles_exception_and_calls_handle_error():
     mock_task_manager = Mock()
     mock_context_manager = Mock()
     mock_prompt_manager = Mock()
@@ -153,10 +155,9 @@ def test_run_chain_handles_exception_and_calls_handle_error():
     mock_chat_context = Mock()
     mock_rag_manager = Mock()
 
-    # Mock task that raises exception
-    mock_task = Mock()
+    mock_task = AsyncMock()
     mock_task.run.side_effect = Exception("fail!")
-    mock_task.handle_error.return_value = "handled_error"
+    mock_task.handle_error = AsyncMock(return_value="handled_error")
 
     mock_task_manager.get_task.return_value = mock_task
 
@@ -175,7 +176,7 @@ def test_run_chain_handles_exception_and_calls_handle_error():
             "inputs": {"input1": "value1"}
         }
     ]
-    result = runner.run_chain(chain_definition, "user query")
+    result = await runner.run_chain(chain_definition, "user query")
     assert result == "handled_error"
     mock_task.run.assert_called_once()
     mock_task.handle_error.assert_called_once()

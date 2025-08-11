@@ -161,14 +161,15 @@ class TestAtaraxAIOrchestrator:
         orchestrator.shutdown.assert_called_once()
         orchestrator._set_state.assert_called_once_with(AppState.LOCKED)
 
-    def test_run_task_chain_delegates_to_services(self, orchestrator):
+    @pytest.mark.asyncio
+    async def test_run_task_chain_delegates_to_services(self, orchestrator):
         expected_result = {"output": "task completed"}
-        orchestrator.services.run_task_chain.return_value = expected_result
+        orchestrator.services.run_task_chain = mock.AsyncMock(return_value=expected_result)
         
         chain_def = [{"task": "analyze", "params": {"input": "test"}}]
         query = "Analyze this data"
-        
-        result = orchestrator.run_task_chain(chain_def, query)
+
+        result = await orchestrator.run_task_chain(chain_def, query)
         
         assert result == expected_result
         orchestrator.services.run_task_chain.assert_called_once_with(

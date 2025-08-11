@@ -95,17 +95,20 @@ def test_get_service_raises_if_failed(manager):
     with pytest.raises(ServiceInitializationError):
         manager.get_service()
 
-def test_process_prompt_success(manager):
-    manager.core_ai_service = mock.Mock()
+@pytest.mark.asyncio
+async def test_process_prompt_success(manager):
+    mock_blocking_function = mock.MagicMock(return_value="response")
+    manager.core_ai_service = mock.MagicMock()
+    manager.core_ai_service.process_prompt = mock_blocking_function
     manager.llama_cpp_generation_params_cc = {"param": 1}
-    manager.core_ai_service.process_prompt.return_value = "response"
-    result = manager.process_prompt("prompt")
+    result = await manager.process_prompt("prompt")
     assert result == "response"
 
-def test_process_prompt_raises_if_not_initialized(manager):
+@pytest.mark.asyncio
+async def test_process_prompt_raises_if_not_initialized(manager):
     manager.core_ai_service = None
     with pytest.raises(ServiceInitializationError):
-        manager.process_prompt("prompt")
+        await manager.process_prompt("prompt")
 
 def test_get_llama_cpp_model_context_size(manager):
     manager.core_ai_service = mock.Mock()

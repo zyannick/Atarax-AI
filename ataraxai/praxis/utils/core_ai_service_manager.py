@@ -77,8 +77,6 @@ class CoreAIServiceManager:
         if not self.core_ai_service:
             raise ServiceInitializationError("Core AI service is not initialized")
         
-        print(f"Processing prompt: {prompt}")
-        print(f"Using generation params: {self.llama_cpp_generation_params_cc}")
 
         response = await asyncio.to_thread(
             self.core_ai_service.process_prompt,

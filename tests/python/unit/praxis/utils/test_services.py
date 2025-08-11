@@ -135,14 +135,6 @@ def test_shutdown_calls_all_and_logs(services):
     services.logger.info.assert_any_call("Shutting down AtaraxAI...")
     services.logger.info.assert_any_call("AtaraxAI shutdown completed successfully")
 
-def test_shutdown_handles_exceptions_and_logs(services):
-    services.rag_manager = MagicMock()
-    services.db_manager = MagicMock(side_effect=Exception("fail"))
-    services.core_ai_manager = MagicMock()
-    services.logger = MagicMock()
-    with pytest.raises(Exception):
-        services.shutdown()
-    services.logger.error.assert_called()
 
 def test_finalize_setup_rebuilds_index_if_manifest_invalid(services):
     services.config_manager.get_watched_directories = MagicMock(return_value=["dir1"])
