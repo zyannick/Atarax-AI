@@ -57,7 +57,8 @@ dependencies = [
     "isort",
     "pybreaker",
     "pytest-asyncio",
-    "watchfiles"
+    "watchfiles",
+    "async_lru"
 ]
 
 [tool.isort]

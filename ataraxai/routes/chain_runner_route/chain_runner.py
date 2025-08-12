@@ -102,6 +102,7 @@ async def get_chain_result(
 @router_chain_runner.delete("/run_chain/{task_id}", status_code=200)
 async def cancel_chain_run(
     task_id: str,
+    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
     task_manager: GatewayTaskManager = Depends(get_gatewaye_task_manager), # type: ignore
 ):
     was_cancelled = task_manager.cancel_task(task_id)

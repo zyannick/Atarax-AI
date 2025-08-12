@@ -17,7 +17,9 @@ import logging
 from ataraxai.praxis.modules.rag.rag_updater import rag_update_worker_async
 from ataraxai.praxis.utils.configs.rag_config_manager import RAGConfigManager
 from ataraxai.praxis.modules.rag.resilient_indexer import ResilientIndexer
-from ataraxai.praxis.modules.rag.watch_directories_manager import WatchedDirectoriesManager
+from ataraxai.praxis.modules.rag.watch_directories_manager import (
+    WatchedDirectoriesManager,
+)
 
 
 class AtaraxAIRAGManager:
@@ -69,15 +71,23 @@ class AtaraxAIRAGManager:
         self._cross_encoder: Optional[CrossEncoder] = None
         self._cross_encoder_lock = asyncio.Lock()
         self.logger.info("Async AtaraxAIRAGManager initialized successfully.")
-        
-    def check_manifest_validity(self) -> bool:
-        """
-        Checks if the RAG manifest is valid.
 
-        Returns:
-            bool: True if the manifest is valid, False otherwise.
-        """
-        return self.manifest.is_valid(self.rag_store)
+    async def check_manifest_validity(self) -> bool:
+        try:
+            is_valid = await asyncio.to_thread(self.manifest.is_valid, self.rag_store)
+            self.logger.info(f"Manifest validity check: {'Valid' if is_valid else 'Invalid'}")
+            return is_valid
+        except Exception as e:
+            self.logger.error(f"Error checking manifest validity: {e}")
+            return False
+
+    async def health_check(self) -> bool:
+        try:
+            await asyncio.to_thread(self.rag_store.collection.count)
+            return True
+        except Exception:
+            return False
+        
 
     async def start(self):
         self.logger.info("Starting RAG manager services...")
@@ -96,14 +106,33 @@ class AtaraxAIRAGManager:
             await self.directory_manager.add_directories(watch_dirs)
 
         self.logger.info("RAG manager services started successfully.")
-        
-    async def rebuild_index():
-        """
-        Rebuilds the RAG index by performing a full scan of the watched directories.
-        """
-        self.logger.info("Rebuilding RAG index...")
-        await self.file_watcher_manager.rebuild_index()
-        self.logger.info("RAG index rebuilt successfully.")
+
+    async def rebuild_index(self):
+        watch_dirs = self.rag_config_manager.config.rag_watched_directories
+        if not watch_dirs:
+            self.logger.warning(
+                "No watched directories configured for RAG index rebuild."
+            )
+            return False
+        try:
+            await asyncio.to_thread(
+                self.rag_store.client.delete_collection,
+                name=self.rag_store.collection_name,
+            )
+            self.rag_store.collection = await asyncio.to_thread(
+                self.rag_store.client.get_or_create_collection,
+                name=self.rag_store.collection_name,
+                embedding_function=self.embedder,
+                metadata={"hnsw:space": "cosine"},
+            )
+            self.manifest.clear()
+            await self.directory_manager.add_directories(watch_dirs)
+            self.logger.info("RAG index rebuild completed successfully.")
+            return True
+
+        except Exception as e:
+            self.logger.error(f"Error during index rebuild: {e}")
+            return False
 
     async def stop(self):
         self.logger.info("Stopping RAG manager services...")
@@ -181,8 +210,6 @@ class AtaraxAIRAGManager:
             final_docs = await self._rerank_documents(query_text, initial_docs)
 
         return final_docs[: self.rag_config_manager.config.rag_n_result_final]
-    
-    
 
     @alru_cache(maxsize=128)
     async def _generate_hypothetical_document(self, query_text: str) -> str:
@@ -230,4 +257,4 @@ class AtaraxAIRAGManager:
         )
 
         scored_docs = sorted(zip(scores, documents), key=lambda x: x[0], reverse=True)  # type: ignore
-        return [doc for _, doc in scored_docs] # type: ignore
+        return [doc for _, doc in scored_docs]  # type: ignore
