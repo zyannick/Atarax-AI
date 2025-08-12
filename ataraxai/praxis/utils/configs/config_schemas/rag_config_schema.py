@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Set
 from pathlib import Path
 
 class RAGConfig(BaseModel):
@@ -7,7 +7,7 @@ class RAGConfig(BaseModel):
     rag_model_path: str = Field("", description="Path to the RAG model.")
     rag_chunk_size: int = Field(400, description="Size of the chunks to be processed.")
     rag_chunk_overlap: int = Field(50, description="Overlap between chunks.")
-    rag_watched_directories: List[str] | None = Field(None, description="Directories to watch for changes.")
+    rag_watched_directories: Set[str] = Field(default_factory=lambda : set(), description="Directories to watch for changes.")
     rag_time_out_update: float = Field(30.0, description="Timeout for updates.")
     rag_separators: List[str] | None = Field(None, description="List of separators.")
     rag_keep_separator: bool = Field(True, description="Whether to keep the separator.")
@@ -15,6 +15,17 @@ class RAGConfig(BaseModel):
     rag_embedder_model: str = Field("sentence-transformers/all-MiniLM-L6-v2", description="Embedder model.")
     rag_use_reranking: bool = Field(False, description="Whether to use reranking.")
     rag_cross_encoder_model: str = Field("cross-encoder/ms-marco-MiniLM-L-6-v2", description="Cross-encoder model.")
+    rag_n_result: int = Field(5, description="Number of results to return.")
+    rag_n_result_final: int = Field(3, description="Final number of results after processing.")
+    rag_use_hyde: bool = Field(True, description="Whether to use HYDE for retrieval.")
+    hyde_model_path: str = Field("", description="Path to the HYDE model.")
+    hyde_max_tokens: int = Field(1000, description="Maximum tokens for HYDE.")
+    hyde_temperature: float = Field(0.7, description="Temperature for HYDE.")
+    hyde_top_p: float = Field(0.9, description="Top-p for HYDE.")
+    hyde_max_retries: int = Field(3, description="Maximum retries for HYDE.")
+    hyde_retry_delay: float = Field(2.0, description="Delay between retries for HYDE.")
+    hyde_max_documents: int = Field(10, description="Maximum number of documents to retrieve with HYDE.")
+    hyde_min_documents: int = Field(1, description="Minimum number of documents to retrieve with HYDE.")
     cross_encoder_hits: int = Field(5, description="Number of hits for the cross-encoder.")
     context_allocation_ratio: float = Field(
         0.5,

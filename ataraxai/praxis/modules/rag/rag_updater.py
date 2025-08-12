@@ -1,5 +1,7 @@
 import asyncio
+from logging import Logger
 from pathlib import Path
+from ataraxai.praxis.modules.rag.parser.document_base_parser import DocumentChunk
 from ataraxai.praxis.modules.rag.rag_store import RAGStore
 from ataraxai.praxis.modules.rag.rag_manifest import (
     RAGManifest,
@@ -23,6 +25,7 @@ async def process_new_file(
     manifest: RAGManifest,
     rag_store: RAGStore,
     chunker: SmartChunker,
+    logger: Logger = Logger(__name__),
 ):
     file_path = Path(file_path_str)
 
@@ -64,8 +67,7 @@ async def process_new_file(
                 "status": "indexed",
             },
         )
-        manifest.save()
-
+        await asyncio.to_thread(manifest.save)
 
     except Exception as e:
         if manifest.data.get(str(file_path)):
@@ -78,6 +80,7 @@ async def process_modified_file(
     manifest: RAGManifest,
     rag_store: RAGStore,
     chunker: SmartChunker,
+    logger: Logger = Logger(__name__),
 ):
     file_path = Path(file_path_str)
 
@@ -99,9 +102,8 @@ async def process_modified_file(
                 manifest.save()
             return
 
-
         if manifest_entry and manifest_entry.get("chunk_ids"):
-            print(f"WORKER: Deleting old chunks for {file_path} from RAG store.")
+            logger.info(f"WORKER: Deleting old chunks for {file_path} from RAG store.")
             rag_store.delete_by_ids(ids=manifest_entry["chunk_ids"])
 
         await process_new_file(file_path_str, manifest, rag_store, chunker)
@@ -113,7 +115,10 @@ async def process_modified_file(
 
 
 async def process_deleted_file(
-    file_path_str: str, manifest: "RAGManifest", rag_store: "RAGStore"
+    file_path_str: str,
+    manifest: "RAGManifest",
+    rag_store: "RAGStore",
+    logger: Logger = Logger(__name__),
 ):
 
     try:
@@ -125,14 +130,15 @@ async def process_deleted_file(
         else:
             pass
     except Exception as e:
-        print(f"WORKER: Error processing deleted file {file_path_str}: {e}")
+        logger.error(f"WORKER: Error processing deleted file {file_path_str}: {e}")
 
 
-async def rag_update_worker(
+async def rag_update_worker_async(
     processing_queue: asyncio.Queue[Dict[str, Any]],
     manifest: RAGManifest,
     rag_store: RAGStore,
     chunk_config: Dict[str, Any],
+    logger: Logger = Logger(__name__),
 ):
     chunk_size = chunk_config.get("size", 400)
     chunk_overlap = chunk_config.get("overlap", 50)
@@ -152,13 +158,13 @@ async def rag_update_worker(
                 processing_queue.task_done()
                 break
 
-            print(f"RAG Update Worker: Got task {task}")
+            logger.info(f"RAG Update Worker: Got task {task}")
             event_type = task.get("event_type")
             file_path = task.get("path")
             dest_path = task.get("dest_path")
 
-            if not file_path:   
-                print(f"RAG Update Worker: Invalid task, missing path: {task}")
+            if not file_path:
+                logger.warning(f"RAG Update Worker: Invalid task, missing path: {task}")
                 processing_queue.task_done()
                 continue
 
@@ -178,23 +184,14 @@ async def rag_update_worker(
                         chunker,
                     )
                 else:
-                    print(
+                    logger.warning(
                         f"RAG Update Worker: Invalid 'moved' task, missing dest_path: {task}"
                     )
             else:
-                print(
+                logger.warning(
                     f"RAG Update Worker: Unknown event type '{event_type}' for task: {task}"
                 )
             processing_queue.task_done()
-        except queue.Empty:
-            continue
         except Exception as e:
-            print(f"RAG Update Worker: Error processing task: {e}")
-            # It's good practice to still call task_done() even on an error
-            # to prevent the queue from getting stuck.
+            logger.error(f"RAG Update Worker: Error processing task: {e}")
             processing_queue.task_done()
-        # finally:
-        #     # if "task" in locals() and task is not None:
-        #     #     processing_queue.task_done()
-        #     print(f"RAG Update Worker: Error processing task: {e}")
-        #     processing_queue.task_done()
