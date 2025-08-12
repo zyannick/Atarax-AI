@@ -50,7 +50,11 @@ class WatchedDirectoriesManager:
     async def add_directories(self, directories_to_add: Set[str]) -> bool:
         current_dirs = set(self.rag_config_manager.config.rag_watched_directories or [])
         new_dirs = current_dirs.union(directories_to_add)
-        await self._update_config(new_dirs)
+        if new_dirs != current_dirs:
+            await self._update_config(new_dirs)
+        else:
+            self.logger.info("No new directories to add, skipping update.")
+            return False
 
         for directory in directories_to_add:
             await asyncio.to_thread(self._scan_and_queue_files, directory, "add")

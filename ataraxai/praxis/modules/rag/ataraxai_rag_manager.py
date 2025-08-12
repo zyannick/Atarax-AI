@@ -69,6 +69,15 @@ class AtaraxAIRAGManager:
         self._cross_encoder: Optional[CrossEncoder] = None
         self._cross_encoder_lock = asyncio.Lock()
         self.logger.info("Async AtaraxAIRAGManager initialized successfully.")
+        
+    def check_manifest_validity(self) -> bool:
+        """
+        Checks if the RAG manifest is valid.
+
+        Returns:
+            bool: True if the manifest is valid, False otherwise.
+        """
+        return self.manifest.is_valid(self.rag_store)
 
     async def start(self):
         self.logger.info("Starting RAG manager services...")
@@ -87,6 +96,14 @@ class AtaraxAIRAGManager:
             await self.directory_manager.add_directories(watch_dirs)
 
         self.logger.info("RAG manager services started successfully.")
+        
+    async def rebuild_index():
+        """
+        Rebuilds the RAG index by performing a full scan of the watched directories.
+        """
+        self.logger.info("Rebuilding RAG index...")
+        await self.file_watcher_manager.rebuild_index()
+        self.logger.info("RAG index rebuilt successfully.")
 
     async def stop(self):
         self.logger.info("Stopping RAG manager services...")
@@ -208,9 +225,9 @@ class AtaraxAIRAGManager:
 
         query_doc_pairs = [(query_text, doc) for doc in documents]
 
-        scores: np.ndarray = await asyncio.to_thread(  # type: ignore
+        scores: List[float] = await asyncio.to_thread(  # type: ignore
             cross_encoder.predict, query_doc_pairs, convert_to_numpy=True  # type: ignore
         )
 
-        scored_docs = sorted(zip(scores.tolist(), documents), key=lambda x: x[0], reverse=True)  # type: ignore
+        scored_docs = sorted(zip(scores, documents), key=lambda x: x[0], reverse=True)  # type: ignore
         return [doc for _, doc in scored_docs] # type: ignore

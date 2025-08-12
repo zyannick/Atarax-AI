@@ -7,7 +7,7 @@ from ataraxai.routes.vault_route.vault_api_models import (
         ConfirmationPhaseRequest,
     )
 
-def test_reinitialize_vault_success(integration_client):
+def test_reinitialize_vault_success(integration_client : mock.MagicMock):
     orchestrator = integration_client.app.state.orchestrator
     password_request = VaultPasswordRequest(password=SecretStr("Saturate-Heave8-Unfasten-Squealing"))
     integration_client.post("/api/v1/vault/initialize", json=password_request.model_dump(mode="json"))
@@ -21,7 +21,7 @@ def test_reinitialize_vault_success(integration_client):
     assert data["status"] == Status.SUCCESS
     assert "Vault reinitialized" in data["message"]
 
-def test_reinitialize_vault_failure(integration_client):
+def test_reinitialize_vault_failure(integration_client : mock.MagicMock):
     orchestrator = integration_client.app.state.orchestrator
     password_request = VaultPasswordRequest(password=SecretStr("Saturate-Heave8-Unfasten-Squealing"))
     integration_client.post("/api/v1/vault/initialize", json=password_request.model_dump(mode="json"))

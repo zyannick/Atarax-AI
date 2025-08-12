@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from typing import Any, Dict, List
 import logging
@@ -181,25 +182,6 @@ class Services:
     async def run_task_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
-        """
-        Executes a sequence of tasks defined in a chain for a given user query.
-
-        Args:
-            chain_definition (List[Dict[str, Any]]): A list of dictionaries, each representing a task in the chain.
-            initial_user_query (str): The initial query provided by the user to start the task chain.
-
-        Returns:
-            Any: The result of executing the task chain.
-
-        Raises:
-            ValidationError: If the chain definition is empty or the initial user query is invalid.
-            ServiceInitializationError: If the core AI service cannot be initialized.
-            Exception: If any error occurs during the execution of the task chain.
-
-        Logs:
-            - Info: When chain execution starts and completes successfully.
-            - Error: If chain execution fails or the core AI service cannot be initialized.
-        """
         InputValidator.validate_string(initial_user_query, "Initial user query")
 
         if not chain_definition:
@@ -217,45 +199,19 @@ class Services:
             self.logger.error(f"Chain execution failed: {e}")
             raise
 
-    def shutdown(self) -> None:
-        """
-        Shuts down the AtaraxAI service by stopping file monitoring, closing the database connection,
-        and shutting down the core AI manager. Logs the shutdown process and handles any exceptions
-        that occur during shutdown.
-
-        Raises:
-            Exception: If an error occurs during the shutdown process, it is logged and re-raised.
-        """
+    async def shutdown(self) -> None:
         self.logger.info("Shutting down AtaraxAI...")
         try:
             if hasattr(self, "rag_manager"):
-                self.rag_manager.stop_file_monitoring()
+                await self.rag_manager.stop()
             if hasattr(self, "db_manager"):
-                self.db_manager.close()
+                await asyncio.to_thread(self.db_manager.close)
             if hasattr(self, "core_ai_manager"):
-                self.core_ai_manager.shutdown()
+                await asyncio.to_thread(self.core_ai_service_manager.shutdown)
             self.logger.info("AtaraxAI shutdown completed successfully")
         except Exception as e:
             self.logger.error(f"Error during shutdown: {e}")
             raise
 
-    def _finalize_setup(self) -> None:
-        """
-        Finalizes the setup process by validating the RAG (Retrieval-Augmented Generation) index and initializing file monitoring.
-
-        This method performs the following steps:
-        1. Retrieves the list of directories to watch from the configuration manager.
-        2. Checks if the RAG manifest is valid for the current RAG store.
-        3. If the manifest is invalid, rebuilds the RAG index for the watched directories.
-        4. If the manifest is valid, performs an initial scan of the watched directories.
-        5. Starts monitoring the watched directories for file changes.
-        """
-        watched_dirs: Optional[List[str]] = (
-            self.config_manager.get_watched_directories()
-        )
-        is_valid = self.rag_manager.manifest.is_valid(self.rag_manager.rag_store)
-        if not is_valid:
-            self.rag_manager.rebuild_index_for_watches(watched_dirs)
-        else:
-            self.rag_manager.perform_initial_scan(watched_dirs)
-        self.rag_manager.start_file_monitoring(watched_dirs)
+    async def _finalize_setup(self) -> None:
+        await self.rag_manager.start()

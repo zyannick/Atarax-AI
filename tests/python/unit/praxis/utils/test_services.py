@@ -1,6 +1,6 @@
 import pytest
 from unittest import mock
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from ataraxai.praxis.utils.services import Services
 from ataraxai.praxis.utils.exceptions import ValidationError
 from pathlib import Path
@@ -123,13 +123,14 @@ async def test_run_task_chain_exception_logs_and_raises(services):
             await services.run_task_chain([{"task": "t"}], "query")
         services.logger.error.assert_called()
 
-def test_shutdown_calls_all_and_logs(services):
-    services.rag_manager = MagicMock()
+@pytest.mark.asyncio
+async def test_shutdown_calls_all_and_logs(services):
+    services.rag_manager = AsyncMock()
     services.db_manager = MagicMock()
     services.core_ai_manager = MagicMock()
     services.logger = MagicMock()
-    services.shutdown()
-    services.rag_manager.stop_file_monitoring.assert_called_once()
+    await services.shutdown()
+    services.rag_manager.stop.assert_called_once()
     services.db_manager.close.assert_called_once()
     services.core_ai_manager.shutdown.assert_called_once()
     services.logger.info.assert_any_call("Shutting down AtaraxAI...")

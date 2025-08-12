@@ -15,6 +15,8 @@ from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.dependency_api import get_unlocked_orchestrator
 from ataraxai.praxis.katalepsis import katalepsis_monitor
+from ataraxai.routes.dependency_api import get_request_manager
+
 
 
 logger = AtaraxAILogger("ataraxai.praxis.rag").get_logger()
@@ -101,7 +103,7 @@ async def scan_and_index(background_tasks: BackgroundTasks, orch: AtaraxAIOrches
     Raises:
         HTTPException: If an error occurs while starting the scan and indexing process, returns a 500 Internal Server Error.
     """
-    background_tasks.add_task(orch.rag.perform_initial_scan, [])
+    background_tasks.add_task(orch.rag.start, [])
     return ScanAndIndexResponse(
         status=Status.SUCCESS,
         message="Scan and indexing started in the background.",
