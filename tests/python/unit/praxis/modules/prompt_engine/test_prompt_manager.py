@@ -11,7 +11,6 @@ def mock_logger():
 
 @pytest.fixture
 def tmp_prompts_dir(tmp_path):
-    # Create a temporary prompts directory with a sample template
     prompts_dir = tmp_path / "prompts"
     prompts_dir.mkdir()
     (prompts_dir / "test_template.txt").write_text("Hello {name}!", encoding="utf-8")
@@ -40,13 +39,11 @@ def test_load_template_success(prompt_manager):
 
 
 def test_load_template_caches(prompt_manager):
-    # First load should read from file
     with mock.patch("builtins.open", wraps=open) as m:
         prompt_manager.load_template("test_template", name="World")
         assert m.call_count == 1
-        # Second load should use cache
         prompt_manager.load_template("test_template", name="World")
-        assert m.call_count == 1  # No additional file open
+        assert m.call_count == 1  
 
 
 def test_load_template_missing_file(prompt_manager):
@@ -55,7 +52,6 @@ def test_load_template_missing_file(prompt_manager):
 
 
 def test_load_template_missing_placeholder(prompt_manager):
-    # Should return unformatted template and log a warning
     result = prompt_manager.load_template("test_template")
     assert result == "Hello {name}!"
     prompt_manager.logger.warning.assert_called()
@@ -131,7 +127,6 @@ def test_build_prompt_within_limit_basic(
 def test_build_prompt_within_limit_no_budget(
     prompt_manager, mock_core_ai_service_manager, mock_rag_config
 ):
-    # Set context_limit so low that nothing fits
     prompt_template = "{history}\n{context}\n{query}"
     result = prompt_manager.build_prompt_within_limit(
         [],

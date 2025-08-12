@@ -17,7 +17,7 @@ from typing import Dict, List, Union, Mapping, Any
 MetadataDict = Mapping[str, Union[str, int, float, bool, None]]
 
 
-def process_new_file(
+async def process_new_file(
     file_path_str: str,
     manifest: RAGManifest,
     rag_store: RAGStore,
@@ -91,13 +91,12 @@ def process_new_file(
         print(f"WORKER: Successfully processed and indexed {file_path}")
 
     except Exception as e:
-        # print(f"WORKER: Error processing new file {file_path}: {e}")
         if manifest.data.get(str(file_path)):
             manifest.data[str(file_path)]["status"] = f"error: {e}"
             manifest.save()
 
 
-def process_modified_file(
+async def process_modified_file(
     file_path_str: str,
     manifest: RAGManifest,
     rag_store: RAGStore,
@@ -128,7 +127,7 @@ def process_modified_file(
         print(
             f"WORKER: Modified file {file_path} not found (maybe deleted quickly). Treating as delete."
         )
-        process_deleted_file(file_path_str, manifest, rag_store)
+        await process_deleted_file(file_path_str, manifest, rag_store)
         return
 
     try:
@@ -156,7 +155,7 @@ def process_modified_file(
             print(f"WORKER: Deleting old chunks for {file_path} from RAG store.")
             rag_store.delete_by_ids(ids=manifest_entry["chunk_ids"])
 
-        process_new_file(file_path_str, manifest, rag_store, chunker)
+        await process_new_file(file_path_str, manifest, rag_store, chunker)
 
     except Exception as e:
         print(f"WORKER: Error processing modified file {file_path}: {e}")
@@ -165,7 +164,7 @@ def process_modified_file(
             manifest.save()
 
 
-def process_deleted_file(
+async def process_deleted_file(
     file_path_str: str, manifest: "RAGManifest", rag_store: "RAGStore"
 ):
     """

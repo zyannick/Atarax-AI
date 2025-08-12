@@ -66,7 +66,6 @@ def test_list_tasks():
 
 
 def test_discover_and_load_tasks(monkeypatch):
-    # Patch Path.glob to simulate .py files
     fake_path = mock.Mock()
     fake_file = mock.Mock()
     fake_file.name = "dummy_task.py"
@@ -80,7 +79,6 @@ def test_discover_and_load_tasks(monkeypatch):
     ]
     fake_path.glob.return_value = [fake_file]
 
-    # Patch importlib.import_module to return a module with DummyTask
     dummy_module = mock.Mock()
     dummy_module.DummyTask = DummyTask
 

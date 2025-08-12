@@ -73,7 +73,7 @@ class SmartChunker:
             f"chunk_size={chunk_size_tokens} tokens, overlap={chunk_overlap_tokens} tokens."
         )
 
-    def ingest_file(self, file_path: Path) -> List[DocumentChunk]:
+    async def ingest_file(self, file_path: Path) -> List[DocumentChunk]:
         """
         Ingests a file, parses its content into document chunks, and applies smart chunking.
 
