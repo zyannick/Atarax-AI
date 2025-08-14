@@ -31,7 +31,7 @@ class ChatManager:
         self.validator = InputValidator()
         self.vault_manager = vault_manager
 
-    def create_project(self, name: str, description: str) -> ProjectResponse:
+    async def create_project(self, name: str, description: str) -> ProjectResponse:
         """
         Creates a new project with the specified name and description.
 
@@ -51,14 +51,14 @@ class ChatManager:
         """
         self.validator.validate_string(name, "Project name")
         try:
-            project = self.db_manager.create_project(name=name, description=description)
+            project = await self.db_manager.create_project(name=name, description=description)
             self.logger.info(f"Created project: {name}")
             return ProjectResponse.model_validate(project)
         except Exception as e:
             self.logger.error(f"Failed to create project {name}: {e}")
             raise
 
-    def get_project(self, project_id: uuid.UUID) -> ProjectResponse:
+    async def get_project(self, project_id: uuid.UUID) -> ProjectResponse:
         """
         Retrieve a project by its unique identifier.
 
@@ -73,13 +73,13 @@ class ChatManager:
         """
         self.validator.validate_uuid(project_id, "Project ID")
         try:
-            project = self.db_manager.get_project(project_id)
+            project = await self.db_manager.get_project(project_id)
             return ProjectResponse.model_validate(project)
         except Exception as e:
             self.logger.error(f"Failed to get project {project_id}: {e}")
             raise
 
-    def list_projects(self) -> List[ProjectResponse]:
+    async def list_projects(self) -> List[ProjectResponse]:
         """
         Retrieves a list of all projects from the database.
 
@@ -90,13 +90,13 @@ class ChatManager:
             Exception: If an error occurs while retrieving the projects, the exception is logged and re-raised.
         """
         try:
-            projects = self.db_manager.list_projects()
+            projects = await self.db_manager.list_projects()
             return [ProjectResponse.model_validate(project) for project in projects]
         except Exception as e:
             self.logger.error(f"Failed to list projects: {e}")
             raise
 
-    def delete_project(self, project_id: uuid.UUID) -> bool:
+    async def delete_project(self, project_id: uuid.UUID) -> bool:
         """
         Deletes a project from the database by its UUID.
 
@@ -115,7 +115,7 @@ class ChatManager:
         """
         self.validator.validate_uuid(project_id, "Project ID")
         try:
-            result = self.db_manager.delete_project(project_id)
+            result = await self.db_manager.delete_project(project_id)
             if result:
                 self.logger.info(f"Deleted project: {project_id}")
             return result
@@ -123,7 +123,7 @@ class ChatManager:
             self.logger.error(f"Failed to delete project {project_id}: {e}")
             raise
 
-    def create_session(self, project_id: uuid.UUID, title: str) -> ChatSessionResponse:
+    async def create_session(self, project_id: uuid.UUID, title: str) -> ChatSessionResponse:
         """
         Creates a new chat session for the specified project.
 
@@ -140,14 +140,14 @@ class ChatManager:
         self.validator.validate_uuid(project_id, "Project ID")
         self.validator.validate_string(title, "Session title")
         try:
-            session = self.db_manager.create_session(project_id=project_id, title=title)
+            session = await self.db_manager.create_session(project_id=project_id, title=title)
             self.logger.info(f"Created session: {title} for project {project_id}")
             return ChatSessionResponse.model_validate(session)
         except Exception as e:
             self.logger.error(f"Failed to create session {title}: {e}")
             raise
 
-    def get_session(self, session_id: uuid.UUID) -> ChatSessionResponse:
+    async def get_session(self, session_id: uuid.UUID) -> ChatSessionResponse:
         """
         Retrieves a chat session by its unique identifier.
 
@@ -165,7 +165,7 @@ class ChatManager:
         """
         self.validator.validate_uuid(session_id, "Session ID")
         try:
-            db_session = self.db_manager.get_session(session_id)
+            db_session = await self.db_manager.get_session(session_id)
             if not db_session:
                 raise ValueError(f"Session not found with identifier {session_id}")
             decrypted_messages: List[MessageResponse] = []
@@ -195,7 +195,7 @@ class ChatManager:
             self.logger.error(f"Failed to get session {session_id}: {e}")
             raise
 
-    def list_sessions(self, project_id: uuid.UUID) -> List[ChatSessionResponse]:
+    async def list_sessions(self, project_id: uuid.UUID) -> List[ChatSessionResponse]:
         """
         Retrieve a list of chat sessions associated with a given project.
 
@@ -213,7 +213,7 @@ class ChatManager:
         """
         self.validator.validate_uuid(project_id, "Project ID")
         try:
-            sessions_db = self.db_manager.get_sessions_for_project(project_id)
+            sessions_db = await self.db_manager.get_sessions_for_project(project_id)
             return [
                 ChatSessionResponse.model_validate(session) for session in sessions_db
             ]
@@ -221,7 +221,7 @@ class ChatManager:
             self.logger.error(f"Failed to list sessions for project {project_id}: {e}")
             raise
 
-    def delete_session(self, session_id: uuid.UUID) -> bool:
+    async def delete_session(self, session_id: uuid.UUID) -> bool:
         """
         Deletes a session with the specified session ID.
 
@@ -240,7 +240,7 @@ class ChatManager:
         """
         self.validator.validate_uuid(session_id, "Session ID")
         try:
-            result = self.db_manager.delete_session(session_id)
+            result = await self.db_manager.delete_session(session_id)
             if result:
                 self.logger.info(f"Deleted session: {session_id}")
             return result
@@ -248,7 +248,7 @@ class ChatManager:
             self.logger.error(f"Failed to delete session {session_id}: {e}")
             raise
 
-    def add_message(
+    async def add_message(
         self, session_id: uuid.UUID, role: str, content: str
     ) -> MessageResponse:
         """
@@ -275,7 +275,7 @@ class ChatManager:
             encrypted_content_bytes = self.vault_manager.encrypt(
                 content.encode("utf-8")
             )
-            db_message = self.db_manager.add_message(
+            db_message = await self.db_manager.add_message(
                 session_id=session_id,
                 role=role,
                 encrypted_content=encrypted_content_bytes,
@@ -293,7 +293,7 @@ class ChatManager:
             self.logger.error(f"Failed to add message to session {session_id}: {e}")
             raise
 
-    def get_message(self, message_id: uuid.UUID) -> MessageResponse:
+    async def get_message(self, message_id: uuid.UUID) -> MessageResponse:
         """
         Retrieves a message by its unique identifier.
 
@@ -312,7 +312,7 @@ class ChatManager:
         self.logger.info(f"Retrieving message with ID: {message_id}")
         self.validator.validate_uuid(message_id, "Message ID")
         try:
-            db_message = self.db_manager.get_message(message_id)
+            db_message = await self.db_manager.get_message(message_id)
             if not db_message:
                 raise ValueError(f"Message with ID {message_id} not found.")
 
@@ -331,13 +331,13 @@ class ChatManager:
             self.logger.error(f"Failed to get message {message_id}: {e}")
             raise
 
-    def get_messages_for_session(self, session_id: uuid.UUID) -> List[MessageResponse]:
+    async def get_messages_for_session(self, session_id: uuid.UUID) -> List[MessageResponse]:
         """
         Retrieves encrypted messages from the database and returns them decrypted.
         """
         self.validator.validate_uuid(session_id, "Session ID")
         try:
-            encrypted_messages = self.db_manager.get_messages_for_session(session_id)
+            encrypted_messages = await self.db_manager.get_messages_for_session(session_id)
             decrypted_responses = []
             for msg in encrypted_messages:
                 decrypted_content: str = self.vault_manager.decrypt(
@@ -359,7 +359,7 @@ class ChatManager:
             )
             raise
 
-    def delete_message(self, message_id: uuid.UUID) -> bool:
+    async def delete_message(self, message_id: uuid.UUID) -> bool:
         """
         Deletes a message with the specified UUID from the database.
 
@@ -378,7 +378,7 @@ class ChatManager:
         """
         self.validator.validate_uuid(message_id, "Message ID")
         try:
-            result = self.db_manager.delete_message(message_id)
+            result = await self.db_manager.delete_message(message_id)
             if result:
                 self.logger.info(f"Deleted message: {message_id}")
             return result

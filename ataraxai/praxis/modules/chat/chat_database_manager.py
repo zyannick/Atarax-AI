@@ -20,7 +20,6 @@ from peewee import (
 import asyncio
 
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -117,9 +116,6 @@ class Message(BaseModel):
     content = BlobField()
     date_time = DateTimeField(default=datetime.now)
 
-    def __str__(self):
-        content_preview = self.content[:50] + "..." if len(self.content) > 50 else self.content  # type: ignore
-        return f"Message(id={self.id}, role='{self.role}', content='{content_preview}')"
 
     def get_date_time(self) -> datetime:
         return datetime(
@@ -467,15 +463,22 @@ class ChatDatabaseManager:
 
     def __init__(self, db_path: Path):
         self.db_path = str(db_path)
-        self.db = SqliteDatabase(self.db_path)
-        self.db.connect()
-        self.db.create_tables([Project, ChatSession, Message])
-        self.db.close()
+        self._initialize_database()
 
         self.project_service = ProjectService()
         self.session_service = ChatSessionService()
         self.message_service = MessageService()
 
+    def _initialize_database(self):
+        try:
+            db.init(str(self.db_path))
+            db.connect()
+            db.create_tables([Project, ChatSession, Message]) 
+            logger.info(f"Database initialized at {self.db_path}")
+        except Exception as e:
+            logger.error(f"Failed to initialize database: {e}")
+            raise DatabaseError(f"Failed to initialize database: {e}")
+        
 
     @contextmanager
     def _db_connection(self):
@@ -487,20 +490,20 @@ class ChatDatabaseManager:
             if not db.is_closed():
                 db.close()
 
-
-
-    async def create_project(self, name: str, description: Optional[str] = None) -> Project:
+    async def create_project(
+        self, name: str, description: Optional[str] = None
+    ) -> Project:
         def _create():
             with self._db_connection():
                 return self.project_service.create_project(name, description)
-        
+
         return await asyncio.to_thread(_create)
 
     async def get_project(self, project_id: uuid.UUID) -> Project:
         def _get():
             with self._db_connection():
                 return self.project_service.get_project(project_id)
-        
+
         return await asyncio.to_thread(_get)
 
     async def list_projects(self, limit: Optional[int] = None) -> List[Project]:
@@ -518,7 +521,9 @@ class ChatDatabaseManager:
     ) -> Project:
         def _update():
             with self._db_connection():
-                return self.project_service.update_project(project_id, name, description)
+                return self.project_service.update_project(
+                    project_id, name, description
+                )
 
         return await asyncio.to_thread(_update)
 
@@ -535,7 +540,6 @@ class ChatDatabaseManager:
                 return self.session_service.create_session(project_id, title)
 
         return await asyncio.to_thread(_create)
-        
 
     async def get_session(self, session_id: uuid.UUID) -> ChatSession:
         def _get():
@@ -560,7 +564,6 @@ class ChatDatabaseManager:
 
         return await asyncio.to_thread(_update)
 
-
     async def delete_session(self, session_id: uuid.UUID) -> bool:
         def _delete():
             with self._db_connection():
@@ -576,7 +579,9 @@ class ChatDatabaseManager:
 
         def _add_message():
             with self._db_connection():
-                return self.message_service.create_message(session_id, role, encrypted_content)
+                return self.message_service.create_message(
+                    session_id, role, encrypted_content
+                )
 
         return await asyncio.to_thread(_add_message)
 
@@ -602,6 +607,10 @@ class ChatDatabaseManager:
         role: Optional[str] = None,
         content: Optional[bytes] = None,
     ) -> Message:
+
+        if content is not None and not content:
+            raise DatabaseError("Message content cannot be empty")
+
         def _update():
             with self._db_connection():
                 return self.message_service.update_message(message_id, role, content)
