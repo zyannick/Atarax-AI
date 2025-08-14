@@ -1,6 +1,7 @@
 import asyncio
 from logging import Logger
 from pathlib import Path
+import time
 from ataraxai.praxis.modules.rag.parser.document_base_parser import DocumentChunk
 from ataraxai.praxis.modules.rag.rag_store import RAGStore
 from ataraxai.praxis.modules.rag.rag_manifest import (
@@ -70,9 +71,21 @@ async def process_new_file(
         await asyncio.to_thread(manifest.save)
 
     except Exception as e:
-        if manifest.data.get(str(file_path)):
-            manifest.data[str(file_path)]["status"] = f"error: {e}"
-            manifest.save()
+        logger.error(f"Failed to process new file {file_path}: {e}", exc_info=True)
+        
+
+        manifest.add_file(
+            str(file_path),
+            metadata={
+                "timestamp": time.time(),
+                "hash": "unknown_due_to_error",
+                "chunk_ids": [],
+                "status": f"error: {e}",
+            },
+        )
+        await asyncio.to_thread(manifest.save)
+
+
 
 
 async def process_modified_file(

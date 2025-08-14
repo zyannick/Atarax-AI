@@ -62,7 +62,7 @@ class Services:
         self.core_ai_service_manager = core_ai_service_manager
         self.vault_manager = vault_manager
 
-    def initialize(self) -> None:
+    async def initialize(self) -> None:
         """
         Initializes the core services required for the application.
 
@@ -77,7 +77,7 @@ class Services:
             self._init_database()
             self._init_rag_manager()
             self._init_prompt_engine()
-            self._finalize_setup()
+            await self._finalize_setup()
             self.logger.info("Services initialized successfully")
         except Exception as e:
             self.logger.error(f"Failed to initialize services: {e}")
@@ -99,7 +99,7 @@ class Services:
         self.core_ai_manager = core_ai_manager
         self.logger.info("Core AI manager set for chat manager and chain runner")
 
-    def add_watched_directory(self, directory: str) -> None:
+    async def add_watched_directory(self, directory: str) -> None:
         """
         Adds a new directory to the list of watched directories and starts monitoring it.
 
@@ -115,9 +115,10 @@ class Services:
         InputValidator.validate_directory(directory, "Directory path")
 
         self.config_manager.add_watched_directory(directory)
-        watched_dirs = self.config_manager.get_watched_directories()
-        self.rag_manager.start_file_monitoring(watched_dirs)
+        await self.rag_manager.start()
         self.logger.info(f"Added watch directory: {directory}")
+
+    
 
     def _init_database(self) -> None:
         """

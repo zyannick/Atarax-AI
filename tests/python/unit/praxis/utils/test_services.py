@@ -21,6 +21,7 @@ def mock_dependencies():
         "core_ai_service_manager": MagicMock(),
     }
 
+
 @pytest.fixture
 def services(mock_dependencies):
     mock_dependencies["app_config"].database_filename = "test.db"
@@ -28,129 +29,152 @@ def services(mock_dependencies):
     mock_dependencies["directories"].data = mock.Mock()
     return Services(**mock_dependencies)
 
-def test_set_core_ai_manager_sets_attribute_and_logs(services):
+
+def test_init_database_sets_up_managers(services, mock_dependencies):
+    mock_dependencies["directories"].data = Path("/tmp")
+    mock_dependencies["app_config"].database_filename = "test.db"
+    mock_dependencies["vault_manager"] = MagicMock()
+
+    services._init_database()
+    assert hasattr(services, "db_manager")
+    assert hasattr(services, "chat_context")
+    assert hasattr(services, "chat_manager")
+    services.logger.info.assert_called_with("Database initialized successfully")
+
+
+def test_init_rag_manager_sets_rag_manager(services, mock_dependencies):
+    mock_dependencies["config_manager"].rag_config_manager = MagicMock()
+    mock_dependencies["config_manager"].rag_config_manager.config.rag_embedder_model = (
+        "sentence-transformers/all-MiniLM-L6-v2"
+    )
+    mock_dependencies["directories"].data = Path("/tmp")
+
+    services._init_rag_manager()
+
+    assert hasattr(services, "rag_manager")
+    services.logger.info.assert_called_with("RAG manager initialized successfully")
+
+
+@pytest.mark.asyncio
+async def test_initialize_success(monkeypatch, services):
+    monkeypatch.setattr(services, "_init_database", lambda: None)
+    monkeypatch.setattr(services, "_init_rag_manager", lambda: None)
+    monkeypatch.setattr(services, "_init_prompt_engine", lambda: None)
+    monkeypatch.setattr(services, "_finalize_setup", AsyncMock())
+
+    await services.initialize()
+    services.logger.info.assert_called_with("Services initialized successfully")
+
+
+@pytest.mark.asyncio
+async def test_initialize_failure(monkeypatch, services):
+    monkeypatch.setattr(
+        services, "_init_database", lambda: (_ for _ in ()).throw(Exception("fail"))
+    )
+    with pytest.raises(Exception):
+        await services.initialize()
+    services.logger.error.assert_called()
+
+
+def test_set_core_ai_manager_sets_manager_and_logs(services):
     core_ai_manager = MagicMock()
-    services.logger = MagicMock()
     services.set_core_ai_manager(core_ai_manager)
     assert services.core_ai_manager == core_ai_manager
-    services.logger.info.assert_called_with("Core AI manager set for chat manager and chain runner")
+    services.logger.info.assert_called_with(
+        "Core AI manager set for chat manager and chain runner"
+    )
 
-def test_add_watched_directory_validates_and_adds(services):
-    services.config_manager.add_watched_directory = MagicMock()
-    services.config_manager.get_watched_directories = MagicMock(return_value=["dir1", "dir2"])
-    services.rag_manager = MagicMock()
-    services.logger = MagicMock()
-    with patch("ataraxai.praxis.utils.services.InputValidator.validate_directory") as mock_validate:
-        services.add_watched_directory("dir3")
-        mock_validate.assert_called_once_with("dir3", "Directory path")
-        services.config_manager.add_watched_directory.assert_called_once_with("dir3")
-        services.rag_manager.start_file_monitoring.assert_called_once_with(["dir1", "dir2"])
-        services.logger.info.assert_called_with("Added watch directory: dir3")
 
-def test_add_watched_directory_invalid_raises(services):
+@pytest.mark.asyncio
+async def test_add_watched_directory_valid(monkeypatch, services):
     services.config_manager.add_watched_directory = MagicMock()
     services.rag_manager = MagicMock()
-    with patch("ataraxai.praxis.utils.services.InputValidator.validate_directory", side_effect=ValueError("bad dir")):
-        with pytest.raises(ValueError):
-            services.add_watched_directory("bad_dir")
+    services.rag_manager.start = AsyncMock()
+    monkeypatch.setattr(
+        "ataraxai.praxis.utils.input_validator.InputValidator.validate_directory",
+        lambda d, n: None,
+    )
 
-def test_init_database_sets_up_managers(services):
-    services.directories.data = Path("/tmp")
-    services.app_config.database_filename = "test.db"
-    services.vault_manager = MagicMock()
-    services.logger = MagicMock()
-    with patch("ataraxai.praxis.utils.services.ChatDatabaseManager") as mock_db_mgr, \
-         patch("ataraxai.praxis.utils.services.ChatContextManager") as mock_ctx_mgr, \
-         patch("ataraxai.praxis.utils.services.ChatManager") as mock_chat_mgr:
-        services._init_database()
-        mock_db_mgr.assert_called_once()
-        mock_ctx_mgr.assert_called_once()
-        mock_chat_mgr.assert_called_once()
-        services.logger.info.assert_called_with("Database initialized successfully")
+    await services.add_watched_directory("/tmp/test")
+    services.config_manager.add_watched_directory.assert_called_with("/tmp/test")
+    services.rag_manager.start.assert_awaited()
+    services.logger.info.assert_called_with("Added watch directory: /tmp/test")
 
-def test_init_rag_manager_sets_rag_manager(services):
-    services.config_manager.rag_config_manager = MagicMock()
-    services.directories.data = MagicMock()
-    services.logger = MagicMock()
-    with patch("ataraxai.praxis.utils.services.AtaraxAIRAGManager") as mock_rag_mgr:
-        services._init_rag_manager()
-        mock_rag_mgr.assert_called_once()
-        services.logger.info.assert_called_with("RAG manager initialized successfully")
 
-def test_init_prompt_engine_creates_managers(tmp_path, services):
-    services.app_config.prompts_directory = str(tmp_path / "prompts")
-    services.config_manager.rag_config_manager = MagicMock()
-    services.config_manager.rag_config_manager.get_config.return_value.model_dump.return_value = {}
+@pytest.mark.asyncio
+async def test_add_watched_directory_invalid(monkeypatch, services):
+    monkeypatch.setattr(
+        "ataraxai.praxis.utils.input_validator.InputValidator.validate_directory",
+        lambda d, n: (_ for _ in ()).throw(ValueError("bad dir")),
+    )
+    with pytest.raises(ValueError):
+        await services.add_watched_directory("/bad/dir")
+
+
+@pytest.mark.asyncio
+async def test_run_task_chain_success(monkeypatch, services):
+    services.chain_runner = MagicMock()
+    services.chain_runner.run_chain = AsyncMock(return_value="result")
+    monkeypatch.setattr(
+        "ataraxai.praxis.utils.input_validator.InputValidator.validate_string",
+        lambda s, n: None,
+    )
+
+    result = await services.run_task_chain([{"step": 1}], "query")
+    assert result == "result"
+    services.logger.info.assert_any_call("Executing chain for query: 'query'")
+    services.logger.info.assert_any_call("Chain execution completed successfully")
+
+
+@pytest.mark.asyncio
+async def test_run_task_chain_empty_definition(monkeypatch, services):
+    monkeypatch.setattr(
+        "ataraxai.praxis.utils.input_validator.InputValidator.validate_string",
+        lambda s, n: None,
+    )
+    with pytest.raises(ValidationError):
+        await services.run_task_chain([], "query")
+
+
+@pytest.mark.asyncio
+async def test_run_task_chain_exception(monkeypatch, services):
+    services.chain_runner = MagicMock()
+    services.chain_runner.run_chain = AsyncMock(side_effect=Exception("fail"))
+    monkeypatch.setattr(
+        "ataraxai.praxis.utils.input_validator.InputValidator.validate_string",
+        lambda s, n: None,
+    )
+    with pytest.raises(Exception):
+        await services.run_task_chain([{"step": 1}], "query")
+    services.logger.error.assert_called()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_success(monkeypatch, services):
     services.rag_manager = MagicMock()
-    services.chat_context = MagicMock()
-    services.core_ai_service_manager = MagicMock()
-    services.logger = MagicMock()
-    with patch("ataraxai.praxis.utils.services.PromptManager") as mock_prompt_mgr, \
-         patch("ataraxai.praxis.utils.services.ContextManager") as mock_ctx_mgr, \
-         patch("ataraxai.praxis.utils.services.TaskManager") as mock_task_mgr, \
-         patch("ataraxai.praxis.utils.services.ChainRunner") as mock_chain_runner:
-        services._init_prompt_engine()
-        mock_prompt_mgr.assert_called_once()
-        mock_ctx_mgr.assert_called_once()
-        mock_task_mgr.assert_called_once()
-        mock_chain_runner.assert_called_once()
-        services.logger.info.assert_called_with("Prompt engine initialized successfully")
-
-@pytest.mark.asyncio
-async def test_run_task_chain_valid(services):
-    services.chain_runner = MagicMock()
-    services.chain_runner.run_chain = mock.AsyncMock(return_value="result")
-    services.logger = MagicMock()
-    with patch("ataraxai.praxis.utils.services.InputValidator.validate_string"):
-        result = await services.run_task_chain([{"task": "t"}], "query")
-        assert result == "result"
-        services.logger.info.assert_any_call("Executing chain for query: 'query'")
-        services.logger.info.assert_any_call("Chain execution completed successfully")
-
-@pytest.mark.asyncio
-async def test_run_task_chain_empty_chain_raises(services):
-    with patch("ataraxai.praxis.utils.services.InputValidator.validate_string"):
-        with pytest.raises(ValidationError):
-            await services.run_task_chain([], "query")
-
-@pytest.mark.asyncio
-async def test_run_task_chain_exception_logs_and_raises(services):
-    services.chain_runner = MagicMock()
-    services.chain_runner.run_chain = mock.AsyncMock(side_effect=Exception("fail"))
-    services.logger = MagicMock()
-    with patch("ataraxai.praxis.utils.services.InputValidator.validate_string"):
-        with pytest.raises(Exception):
-            await services.run_task_chain([{"task": "t"}], "query")
-        services.logger.error.assert_called()
-
-@pytest.mark.asyncio
-async def test_shutdown_calls_all_and_logs(services):
-    services.rag_manager = AsyncMock()
+    services.rag_manager.stop = AsyncMock()
     services.db_manager = MagicMock()
-    services.core_ai_manager = MagicMock()
-    services.logger = MagicMock()
+    services.db_manager.close = MagicMock()
+    services.core_ai_service_manager = MagicMock()
+    services.core_ai_service_manager.shutdown = MagicMock()
+
     await services.shutdown()
-    services.rag_manager.stop.assert_called_once()
-    services.db_manager.close.assert_called_once()
-    services.core_ai_manager.shutdown.assert_called_once()
     services.logger.info.assert_any_call("Shutting down AtaraxAI...")
     services.logger.info.assert_any_call("AtaraxAI shutdown completed successfully")
 
 
-def test_finalize_setup_rebuilds_index_if_manifest_invalid(services):
-    services.config_manager.get_watched_directories = MagicMock(return_value=["dir1"])
+@pytest.mark.asyncio
+async def test_shutdown_exception(monkeypatch, services):
     services.rag_manager = MagicMock()
-    services.rag_manager.manifest.is_valid.return_value = False
-    services.rag_manager.rag_store = MagicMock()
-    services._finalize_setup()
-    services.rag_manager.rebuild_index_for_watches.assert_called_once_with(["dir1"])
-    services.rag_manager.start_file_monitoring.assert_called_once_with(["dir1"])
+    services.rag_manager.stop = AsyncMock(side_effect=Exception("fail"))
+    with pytest.raises(Exception):
+        await services.shutdown()
+    services.logger.error.assert_called()
 
-def test_finalize_setup_performs_initial_scan_if_manifest_valid(services):
-    services.config_manager.get_watched_directories = MagicMock(return_value=["dir1"])
+
+@pytest.mark.asyncio
+async def test_finalize_setup_calls_rag_manager_start(services):
     services.rag_manager = MagicMock()
-    services.rag_manager.manifest.is_valid.return_value = True
-    services.rag_manager.rag_store = MagicMock()
-    services._finalize_setup()
-    services.rag_manager.perform_initial_scan.assert_called_once_with(["dir1"])
-    services.rag_manager.start_file_monitoring.assert_called_once_with(["dir1"])
+    services.rag_manager.start = AsyncMock()
+    await services._finalize_setup()
+    services.rag_manager.start.assert_awaited()

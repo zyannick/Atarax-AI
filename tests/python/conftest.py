@@ -13,6 +13,12 @@ from fixtures.function_scoped import *
 from fixtures.module_scoped import *
 
 
+import os
+
+@pytest.fixture(scope="session", autouse=True)
+def set_test_environment():
+    os.environ["ENVIRONMENT"] = "development"
+
 def pytest_collection_modifyitems(config, items):
     for item in items:
         if "unit" in str(item.path):

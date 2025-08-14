@@ -51,8 +51,8 @@ def test_chunk_skips_non_documentchunk():
     result = chunker.chunk(["not a DocumentChunk"])
     assert result == []
 
-def test_ingest_file_with_parser(tmp_path, monkeypatch):
-    # Create a dummy file
+@pytest.mark.asyncio
+async def test_ingest_file_with_parser(tmp_path, monkeypatch):
     file_path = tmp_path / "test.pdf"
     file_path.write_text("dummy content")
 
@@ -63,45 +63,23 @@ def test_ingest_file_with_parser(tmp_path, monkeypatch):
     monkeypatch.setitem(EXT_PARSER_MAP, ".pdf", dummy_parser)
 
     chunker = SmartChunker(chunk_size_tokens=2, chunk_overlap_tokens=0)
-    chunks = chunker.ingest_file(file_path)
+    chunks = await chunker.ingest_file(file_path)
     assert isinstance(chunks, list)
     assert all(isinstance(c, DocumentChunk) for c in chunks)
     dummy_parser.parse.assert_called_once_with(file_path)
 
-def test_ingest_file_no_parser(tmp_path):
+@pytest.mark.asyncio
+async def test_ingest_file_no_parser(tmp_path):
     file_path = tmp_path / "test.unknown"
     file_path.write_text("dummy content")
     chunker = SmartChunker()
-    chunks = chunker.ingest_file(file_path)
+    chunks = await chunker.ingest_file(file_path)
     assert chunks == []
 
-def test_ingest_file_not_a_file(tmp_path):
+@pytest.mark.asyncio
+async def test_ingest_file_not_a_file(tmp_path):
     dir_path = tmp_path / "adir"
     dir_path.mkdir()
     chunker = SmartChunker()
-    chunks = chunker.ingest_file(dir_path)
+    chunks = await chunker.ingest_file(dir_path)
     assert chunks == []
-
-def test_ingest_directory(tmp_path, monkeypatch):
-    # Setup files
-    pdf_path = tmp_path / "a.pdf"
-    docx_path = tmp_path / "b.docx"
-    pdf_path.write_text("pdf content")
-    docx_path.write_text("docx content")
-
-    dummy_pdf_parser = MagicMock()
-    dummy_pdf_parser.parse.return_value = [
-        DocumentChunk(content="pdf", source=str(pdf_path), metadata={})
-    ]
-    dummy_docx_parser = MagicMock()
-    dummy_docx_parser.parse.return_value = [
-        DocumentChunk(content="docx", source=str(docx_path), metadata={})
-    ]
-    monkeypatch.setitem(EXT_PARSER_MAP, ".pdf", dummy_pdf_parser)
-    monkeypatch.setitem(EXT_PARSER_MAP, ".docx", dummy_docx_parser)
-
-    chunker = SmartChunker(chunk_size_tokens=2, chunk_overlap_tokens=0)
-    chunks = chunker.ingest_directory(tmp_path)
-    assert isinstance(chunks, list)
-    assert any(c.source == str(pdf_path) for c in chunks)
-    assert any(c.source == str(docx_path) for c in chunks)

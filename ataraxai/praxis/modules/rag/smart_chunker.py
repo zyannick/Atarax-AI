@@ -108,37 +108,6 @@ class SmartChunker:
             print(f"[!] Failed to process {file_path}: {e}")
             return []
 
-    def ingest_directory(self, directory: Path) -> List[DocumentChunk]:
-        """
-        Ingests all files from the specified directory, recursively parsing and chunking their contents.
-
-        Args:
-            directory (Path): The root directory to search for files.
-
-        Returns:
-            List[DocumentChunk]: A list of processed and chunked document objects extracted from all files.
-
-        Notes:
-            - Only files with extensions present in EXT_PARSER_MAP are processed.
-            - Each file is parsed using its corresponding parser, then further chunked using the `chunk` method.
-            - Files that cannot be processed are skipped, and an error message is printed.
-        """
-        all_chunks: List[DocumentChunk] = []
-
-        for path in directory.rglob("*"):
-            if not path.is_file():
-                continue
-            parser = EXT_PARSER_MAP.get(path.suffix.lower())
-            if parser:
-                self.logger.info(f"Parsing: {path}")
-                try:
-                    raw_chunks: List[DocumentChunk] = parser.parse(path)
-                    smart_chunks = self.chunk(raw_chunks)
-                    all_chunks.extend(smart_chunks)
-                except Exception as e:
-                    self.logger.error(f"Failed to process {path}: {e}")
-        return all_chunks
-
     def _chunk_single_document_content(
         self, document_content: str, source_path: str, base_metadata: Dict[str, Any]
     ) -> List[DocumentChunk]:

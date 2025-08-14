@@ -73,7 +73,6 @@ def initialize_core_ai_service(
 ) -> CoreAiServiceInitializationResponse:
     try:
         service_manager.initialize()
-        # orch.services.set_core_ai_manager(service_manager)
         logger.info("Core AI Service initialized successfully")
         return CoreAiServiceInitializationResponse(
             status=Status.SUCCESS, message="Core AI Service initialized successfully."
