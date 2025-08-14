@@ -350,37 +350,16 @@ def services(
 
 @pytest.fixture(scope="function")
 def orchestrator(
-    app_config: AppConfig,
     settings: AtaraxAISettings,
     logger: logging.Logger,
-    app_directories: AppDirectories,
-    vault_manager: VaultManager,
     setup_manager: SetupManager,
-    config_manager: ConfigurationManager,
-    core_ai_manager: CoreAIServiceManager,
     services: Services,
 ) -> Generator[AtaraxAIOrchestrator, None, None]:
-    """
-    Pytest fixture that provides an instance of AtaraxAIOrchestrator configured with the given dependencies.
-
-    Args:
-        app_config (AppConfig): The application configuration object.
-        settings (AtaraxAISettings): The settings for AtaraxAI.
-        logger (logging.Logger): Logger instance for logging.
-        app_directories (AppDirectories): Object managing application directories.
-        vault_manager (VaultManager): Manager for secure vault operations.
-        setup_manager (SetupManager): Manager for application setup procedures.
-        config_manager (ConfigurationManager): Manager for configuration operations.
-        core_ai_manager (CoreAIServiceManager): Manager for core AI services.
-        services (Services): Collection of service instances.
-
-    Yields:
-        AtaraxAIOrchestrator: An orchestrator instance initialized with the provided dependencies.
-    """
     orchestrator = AtaraxAIOrchestrator(
         settings=settings,
         setup_manager=setup_manager,
         services=services,
+        logger=logger,
     )
 
     yield orchestrator

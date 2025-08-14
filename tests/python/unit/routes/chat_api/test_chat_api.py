@@ -5,10 +5,13 @@ from unittest import mock
 import uuid
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
 from ataraxai.praxis.utils.app_state import AppState
+
 # from ataraxai.routes.chat_route.chat import router_chat
 from ataraxai.routes.status import Status
+
 # from fastapi import FastAPI
 from api import app
+
 # from ataraxai.routes.chat_route.chat import get_unlocked_orchestrator
 
 
@@ -18,17 +21,20 @@ def unlocked_client(client):
     mock_orchestrator.state = AppState.UNLOCKED
     yield client
 
+
 @pytest.fixture
 def locked_client(client):
     mock_orchestrator = client.app.state.orchestrator
     mock_orchestrator.state = AppState.LOCKED
     yield client
 
+
 @pytest.fixture
 def first_launch_client(client):
     mock_orchestrator = client.app.state.orchestrator
     mock_orchestrator.state = AppState.FIRST_LAUNCH
     yield client
+
 
 def test_create_new_project_success(unlocked_client):
     mock_project = mock.Mock()
@@ -217,8 +223,12 @@ def test_send_message_success(unlocked_client):
     mock_orchestrator.chat.add_message.return_value = mock_response
 
     payload = {"user_query": "Hello"}
-    response = unlocked_client.post(f"/api/v1/chat/sessions/{session_id}/messages", json=payload)
-    assert response.status_code == status.HTTP_200_OK, f"API returned an error: {response.text}"
+    response = unlocked_client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages", json=payload
+    )
+    assert (
+        response.status_code == status.HTTP_200_OK
+    ), f"API returned an error: {response.text}"
     data = response.json()
     assert data["session_id"] == str(session_id)
     assert data["role"] == "user"
@@ -232,7 +242,9 @@ def test_send_message_session_not_found(unlocked_client):
     mock_orchestrator.chat.get_session.return_value = None
 
     payload = {"user_query": "Hello"}
-    response = unlocked_client.post(f"/api/v1/chat/sessions/{session_id}/messages", json=payload)
+    response = unlocked_client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages", json=payload
+    )
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -245,5 +257,7 @@ def test_send_message_failure(unlocked_client):
     mock_orchestrator.chat.add_message.side_effect = Exception("fail")
 
     payload = {"user_query": "Hello"}
-    response = unlocked_client.post(f"/api/v1/chat/sessions/{session_id}/messages", json=payload)
+    response = unlocked_client.post(
+        f"/api/v1/chat/sessions/{session_id}/messages", json=payload
+    )
     assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR

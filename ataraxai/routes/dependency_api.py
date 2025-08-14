@@ -62,8 +62,8 @@ def get_gatewaye_task_manager(request: Request) -> GatewayTaskManager:
     return request.app.state.gateway_task_manager
 
 
-def get_unlocked_orchestrator(
-    orch: Any = Depends(get_orchestrator),
+async def get_unlocked_orchestrator(
+    orch: AtaraxAIOrchestrator = Depends(get_orchestrator), # type: ignore
 ) -> AtaraxAIOrchestrator:
     """
     Dependency function that retrieves the current AtaraxAIOrchestrator instance only if its state is UNLOCKED.
@@ -74,14 +74,15 @@ def get_unlocked_orchestrator(
     Returns:
         AtaraxAIOrchestrator: The unlocked orchestrator instance.
     """
-    if orch.state != AppState.UNLOCKED:
+    orch_state = await orch.get_state()
+    if orch_state != AppState.UNLOCKED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail=Messages.VAULT_LOCKED
         )
     return orch
 
-def get_unlocked_orchestrator_ws(
-    orch: Any = Depends(get_orchestrator_ws),
+async def get_unlocked_orchestrator_ws(
+    orch: AtaraxAIOrchestrator = Depends(get_orchestrator_ws), # type: ignore
 ) -> AtaraxAIOrchestrator:
     """
     Dependency that ensures the orchestrator WebSocket is in the UNLOCKED state.
@@ -99,7 +100,8 @@ def get_unlocked_orchestrator_ws(
     Raises:
         WebSocketDisconnect: If the orchestrator is not in the UNLOCKED state.
     """
-    if orch.state != AppState.UNLOCKED:
+    orch_state = await orch.get_state()
+    if orch_state != AppState.UNLOCKED:
         raise WebSocketDisconnect(
             code=status.WS_1008_POLICY_VIOLATION,
             reason=Messages.VAULT_LOCKED,

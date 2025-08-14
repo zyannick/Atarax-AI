@@ -58,7 +58,8 @@ dependencies = [
     "pybreaker",
     "pytest-asyncio",
     "watchfiles",
-    "async_lru"
+    "async_lru",
+    "aiosqlite"
 ]
 
 [tool.isort]
