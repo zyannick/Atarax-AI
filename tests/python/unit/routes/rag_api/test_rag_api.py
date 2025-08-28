@@ -1,3 +1,4 @@
+import asyncio
 from fastapi.testclient import TestClient
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,24 +13,6 @@ from ataraxai.routes.dependency_api import (
     get_unlocked_orchestrator,
 )
 from ataraxai.routes.status import Status
-
-
-# @pytest.fixture
-# def unlocked_client(client):
-#     client.app.state.orchestrator.state = AppState.UNLOCKED
-#     yield client
-
-
-# @pytest.fixture
-# def locked_client(client):
-#     client.app.state.orchestrator.state = AppState.LOCKED
-#     yield client
-
-
-# @pytest.fixture
-# def first_launch_client(client):
-#     client.app.state.orchestrator.state = AppState.FIRST_LAUNCH
-#     yield client
 
 
 @pytest.fixture
@@ -47,7 +30,9 @@ def orch_mock():
 @pytest.fixture
 def req_manager_mock():
     req_manager = MagicMock()
-    req_manager.submit_request = AsyncMock(return_value=AsyncMock())
+    future = asyncio.Future()
+    future.set_result("mocked_future_result")
+    req_manager.submit_request = AsyncMock(return_value=future)
     return req_manager
 
 
@@ -92,14 +77,14 @@ def test_get_rebuild_index_result(
     response = client.get("/api/v1/rag/rebuild_index/task123")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["result"] == "done"
 
     task_manager_mock.get_task_status.return_value = None
     response = client.get("/api/v1/rag/rebuild_index/unknown")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == Status.ERROR
+    assert data["status"] == Status.ERROR.value
 
     app.dependency_overrides = {}
 
@@ -117,7 +102,7 @@ def test_cancel_rebuild_index(
     response = client.delete("/api/v1/rag/rebuild_index/task123")
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
 
     task_manager_mock.cancel_task.return_value = False
     response = client.delete("/api/v1/rag/rebuild_index/unknown")
@@ -140,12 +125,14 @@ def test_check_manifest(
 
     response = client.get("/api/v1/rag/check_manifest")
     assert response.status_code == 200
-    assert response.json()["status"] == Status.SUCCESS
+    data = response.json()
+    assert data["status"] == Status.SUCCESS.value
 
     orch_mock.rag.check_manifest_validity.return_value = False
     response = client.get("/api/v1/rag/check_manifest")
     assert response.status_code == 200
-    assert response.json()["status"] == Status.ERROR
+    data = response.json()
+    assert data["status"] == Status.ERROR.value
 
     app.dependency_overrides = {}
 
@@ -164,12 +151,12 @@ def test_health_check(
 
     response = client.get("/api/v1/rag/health_check")
     assert response.status_code == 200
-    assert response.json()["status"] == Status.SUCCESS
+    assert response.json()["status"] == Status.SUCCESS.value
 
     orch_mock.rag.health_check.return_value = False
     response = client.get("/api/v1/rag/health_check")
     assert response.status_code == 200
-    assert response.json()["status"] == Status.ERROR
+    assert response.json()["status"] == Status.ERROR.value
 
     app.dependency_overrides = {}
 
@@ -188,7 +175,7 @@ def test_add_directory(
     response = client.post("/api/v1/rag/add_directories", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["result"] == "task123"
 
     task_manager_mock.create_task.return_value = None
@@ -212,7 +199,7 @@ def test_remove_directory(
     response = client.post("/api/v1/rag/remove_directories", json=payload)
     assert response.status_code == 200
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["result"] == "task123"
 
     task_manager_mock.create_task.return_value = None

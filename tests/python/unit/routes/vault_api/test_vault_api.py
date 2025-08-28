@@ -16,7 +16,7 @@ def test_reinitialize_vault_success(integration_client : mock.MagicMock):
         response = integration_client.post(
             "/api/v1/vault/reinitialize", json=confirmation_request.model_dump(mode="json")
         )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_200_OK, f"Expected status code 200, got {response.text}"
     data = response.json()
     assert data["status"] == Status.SUCCESS
     assert "Vault reinitialized" in data["message"]
@@ -30,7 +30,7 @@ def test_reinitialize_vault_failure(integration_client : mock.MagicMock):
         response = integration_client.post(
             "/api/v1/vault/reinitialize", json=confirmation_request.model_dump(mode="json")
         )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_200_OK, f"Expected status code 200, got {response.text}"
     data = response.json()
     assert data["status"] == Status.ERROR
     assert "Failed to reinitialize vault" in data["message"]

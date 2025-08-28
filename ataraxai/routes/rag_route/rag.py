@@ -1,3 +1,4 @@
+from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from fastapi.params import Depends
 from ataraxai.gateway.request_manager import RequestManager, RequestPriority
@@ -10,7 +11,7 @@ from ataraxai.routes.rag_route.rag_api_models import (
     DirectoriesRemovalResponse,
     CheckManifestResponse,
 )
-from ataraxai.routes.status import Status, StatusResponse
+from ataraxai.routes.status import StatusResponse, TaskStatus as Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
@@ -29,12 +30,12 @@ router_rag = APIRouter(prefix="/api/v1/rag", tags=["RAG"])
 
 
 @router_rag.post("/rebuild_index", response_model=RebuildIndexResponse)
-@katalepsis_monitor.instrument_api("POST")  # type: ignore
+@katalepsis_monitor.instrument_api("POST")  
 @handle_api_errors("Rebuild Index", logger=logger)
 async def rebuild_index(
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
-    req_manager: RequestManager = Depends(get_request_manager),  # type: ignore
-    task_manager: GatewayTaskManager = Depends(get_gatewaye_task_manager),  # type: ignore
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    req_manager: Annotated[RequestManager, Depends(get_request_manager)],
+    task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)], 
 ) -> RebuildIndexResponse:
     """
     Endpoint to rebuild the RAG (Retrieval-Augmented Generation) index.
@@ -52,8 +53,8 @@ async def rebuild_index(
     Raises:
         HTTPException: If an error occurs during the index rebuild process.
     """
-
-    task_routine = orch.rag.rebuild_index()
+    rag_manager = await orch.get_rag_manager()
+    task_routine = rag_manager.rebuild_index()
     future = await req_manager.submit_request(
         coro=task_routine, priority=RequestPriority.HIGH
     )

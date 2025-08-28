@@ -304,14 +304,11 @@ class AtaraxAIOrchestrator:
         )
 
     async def _shutdown_services(self) -> None:
-        if hasattr(self.services, "shutdown") and callable(
-            getattr(self.services, "shutdown")
-        ):
-            if self.services is not None:
-                self.logger.info("Shutting down services...")
-                await self.services.shutdown()
-            else:
-                self.logger.warning("Services are not initialized, skipping shutdown.")
+        if self.services is not None:
+            self.logger.info("Shutting down services...")
+            await self.services.shutdown()
+        else:
+            self.logger.warning("Services are not initialized, skipping shutdown.")
 
     async def shutdown(self) -> None:
         if self._shutdown:
@@ -334,23 +331,53 @@ class AtaraxAIOrchestrator:
         if self.services is None:
             raise RuntimeError("Services container is not available.")
 
-    async def get_directories(self) -> AppDirectories:
-        async with self._state_lock:
-            current_state = await self.get_state()
-            if current_state != AppState.UNLOCKED or self.services is None:
-                raise AtaraxAILockError(
-                    "Application is locked. Directory operations are not available."
-                )
-            return self.services.directories
-
     async def get_rag_manager(self) -> AtaraxAIRAGManager:
-        async with self._state_lock:
-            current_state = await self.get_state()
-            if current_state != AppState.UNLOCKED or self.services is None:
-                raise AtaraxAILockError(
-                    "Application is locked. RAG operations are not available."
-                )
-            return self.services.rag_manager
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED or self.services is None:
+            raise AtaraxAILockError(
+                "Application is locked. RAG operations are not available."
+            )
+        return self.services.rag_manager
+
+    async def get_models_manager(self) -> ModelsManager:
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED or self.services is None:
+            raise AtaraxAILockError(
+                "Application is locked. Models manager operations are not available."
+            )
+        if self.services.models_manager is None:
+            raise RuntimeError("Models manager is not initialized.")
+        return self.services.models_manager
+
+    async def get_chat_context(self) -> ChatContextManager:
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED or self.services is None:
+            raise AtaraxAILockError(
+                "Application is locked. Chat context operations are not available."
+            )
+        if self.services.chat_context is None:
+            raise RuntimeError("Chat context manager is not initialized.")
+        return self.services.chat_context
+
+    async def get_chat_manager(self) -> ChatManager:
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED or self.services is None:
+            raise AtaraxAILockError(
+                "Application is locked. Chat manager operations are not available."
+            )
+        if self.services.chat_manager is None:
+            raise RuntimeError("Chat manager is not initialized.")
+        return self.services.chat_manager
+
+    async def get_task_manager(self) -> TaskManager:
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED or self.services is None:
+            raise AtaraxAILockError(
+                "Application is locked. Task manager operations are not available."
+            )
+        if self.services.task_manager is None:
+            raise RuntimeError("Task manager is not initialized.")
+        return self.services.task_manager
 
     async def get_vault_manager(self) -> VaultManager:
         async with self._state_lock:
@@ -376,33 +403,11 @@ class AtaraxAIOrchestrator:
                 raise RuntimeError("App config is not initialized.")
             return self.services.app_config
 
-    async def get_chat_context(self) -> ChatContextManager:
+    async def get_directories(self) -> AppDirectories:
         async with self._state_lock:
-            if self.services is None or self.services.chat_context is None:
-                raise RuntimeError("Chat context is not initialized.")
-            return self.services.chat_context
-
-    async def get_chat_manager(self) -> ChatManager:
-        async with self._state_lock:
-            if self.services is None or self.services.chat_manager is None:
-                raise RuntimeError("Chat manager is not initialized.")
-            return self.services.chat_manager
-
-    async def get_models_manager(self) -> ModelsManager:
-        async with self._state_lock:
-            if self.services is None or self.services.models_manager is None:
-                raise RuntimeError("Models manager is not initialized.")
-            return self.services.models_manager
-
-    async def get_task_manager(self) -> TaskManager:
-        async with self._state_lock:
-            if self.services is None or self.services.task_manager is None:
-                raise RuntimeError("Task manager is not initialized.")
-            return self.services.task_manager
-            raise RuntimeError(
-                "Services are not initialized, cannot access task manager."
-            )
-        return self.services.task_manager
+            if self.services is None or self.services.directories is None:
+                raise RuntimeError("App directories are not initialized.")
+            return self.services.directories
 
 
 class AtaraxAIOrchestratorFactory:

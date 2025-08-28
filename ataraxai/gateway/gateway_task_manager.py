@@ -22,6 +22,7 @@ class TaskStatus(Enum):
     PENDING = auto()
     SUCCESS = auto()
     FAILED = auto()
+    ERROR = auto()
 
 class Task:
     def __init__(self, task_id: str, future: asyncio.Future):
