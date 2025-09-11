@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Generator
 from fastapi import status
 
-
+import asyncio
 import requests
 
 from api import app
@@ -73,7 +73,7 @@ def module_app_directories(tmp_path_factory: Path) -> Generator[AppDirectories, 
     Yields:
         AppDirectories: An object containing paths to the created config, data, cache, and logs directories.
     """
-    module_tmp_dir = tmp_path_factory.mktemp("integration_module") # type: ignore
+    module_tmp_dir: Path = tmp_path_factory.mktemp("integration_module")  # type: ignore
     config = module_tmp_dir / "config"
     data = module_tmp_dir / "data"
     cache = module_tmp_dir / "cache"
@@ -84,8 +84,9 @@ def module_app_directories(tmp_path_factory: Path) -> Generator[AppDirectories, 
     cache.mkdir(parents=True, exist_ok=True)
     logs.mkdir(parents=True, exist_ok=True)
 
-    app_dirs = AppDirectories(config=config, data=data, cache=cache, logs=logs)
-    yield app_dirs
+    directories = AppDirectories(config=config, data=data, cache=cache, logs=logs)
+    # await asyncio.to_thread(directories.create_directories)
+    yield directories
 
 
 @pytest.fixture(scope="module")
@@ -322,14 +323,9 @@ def module_services(
 
 @pytest.fixture(scope="module")
 def module_orchestrator(
-    module_app_config: AppConfig,
     module_settings: AtaraxAISettings,
     module_logger: logging.Logger,
-    module_app_directories: AppDirectories,
-    module_vault_manager: VaultManager,
     module_setup_manager: SetupManager,
-    module_config_manager: ConfigurationManager,
-    module_core_ai_manager: CoreAIServiceManager,
     module_services: Services,
 ) -> Generator[AtaraxAIOrchestrator, None, None]:
     """
@@ -353,6 +349,7 @@ def module_orchestrator(
         settings=module_settings,
         setup_manager=module_setup_manager,
         services=module_services,
+        logger=module_logger,
     )
 
     yield orchestrator

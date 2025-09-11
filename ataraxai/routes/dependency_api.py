@@ -1,14 +1,15 @@
-from typing import Any
-from fastapi import HTTPException, Request, WebSocketDisconnect
-from fastapi import WebSocket
+from typing import Annotated
+
+from fastapi import HTTPException, Request, WebSocket, WebSocketDisconnect, status
 from fastapi.params import Depends
-from ataraxai.gateway.request_manager import RequestManager
+
 from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
+from ataraxai.gateway.request_manager import RequestManager
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-from fastapi import status
+from ataraxai.praxis.katalepsis import Katalepsis
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.routes.constant_messages import Messages
-from ataraxai.praxis.katalepsis import Katalepsis
+
 
 def get_orchestrator(request: Request) -> AtaraxAIOrchestrator:
     """
@@ -22,6 +23,7 @@ def get_orchestrator(request: Request) -> AtaraxAIOrchestrator:
     """
     return request.app.state.orchestrator
 
+
 def get_orchestrator_ws(websocket: WebSocket) -> AtaraxAIOrchestrator:
     """
     Retrieve the AtaraxAIOrchestrator instance from the application's state via the provided WebSocket.
@@ -34,10 +36,11 @@ def get_orchestrator_ws(websocket: WebSocket) -> AtaraxAIOrchestrator:
     """
     return websocket.app.state.orchestrator
 
+
 def get_request_manager(request: Request) -> RequestManager:
     """
     Dependency to get the RequestManager instance from the FastAPI application state.
-    
+
     Args:
         request (Request): The FastAPI request object.
 
@@ -46,10 +49,11 @@ def get_request_manager(request: Request) -> RequestManager:
     """
     return request.app.state.request_manager
 
+
 def get_gatewaye_task_manager(request: Request) -> GatewayTaskManager:
     """
     Dependency to get the TaskManager instance from the FastAPI application state.
-    
+
     Args:
         request (Request): The FastAPI request object.
 
@@ -63,7 +67,7 @@ def get_gatewaye_task_manager(request: Request) -> GatewayTaskManager:
 
 
 async def get_unlocked_orchestrator(
-    orch: AtaraxAIOrchestrator = Depends(get_orchestrator), # type: ignore
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_orchestrator)],
 ) -> AtaraxAIOrchestrator:
     """
     Dependency function that retrieves the current AtaraxAIOrchestrator instance only if its state is UNLOCKED.
@@ -81,8 +85,9 @@ async def get_unlocked_orchestrator(
         )
     return orch
 
+
 async def get_unlocked_orchestrator_ws(
-    orch: AtaraxAIOrchestrator = Depends(get_orchestrator_ws), # type: ignore
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_orchestrator_ws)],
 ) -> AtaraxAIOrchestrator:
     """
     Dependency that ensures the orchestrator WebSocket is in the UNLOCKED state.
@@ -108,10 +113,11 @@ async def get_unlocked_orchestrator_ws(
         )
     return orch
 
+
 def get_katalepsis_monitor(request: Request) -> Katalepsis:
     """
     Dependency to get the Katalepsis instance from the FastAPI application state.
-    
+
     Args:
         request (Request): The FastAPI request object.
 

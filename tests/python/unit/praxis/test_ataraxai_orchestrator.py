@@ -286,7 +286,7 @@ async def test_get_task_manager_uninitialized(monkeypatch):
     orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
 
     with pytest.raises(AtaraxAILockError):
-        await orchestrator.get_task_manager()
+        await orchestrator.get_chain_task_manager()
 
 @pytest.mark.asyncio
 async def test_shutdown_sets_services_and_setup_manager_to_none(monkeypatch):
@@ -482,7 +482,7 @@ async def test_get_task_manager_success(monkeypatch):
     logger = mock.Mock()
     orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
     orchestrator._state = AppState.UNLOCKED
-    result = await orchestrator.get_task_manager()
+    result = await orchestrator.get_chain_task_manager()
     assert result == services.task_manager
 
 
@@ -568,7 +568,7 @@ async def test_get_task_manager_locked(monkeypatch):
     orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
     orchestrator._state = AppState.LOCKED
     with pytest.raises(AtaraxAILockError):
-        await orchestrator.get_task_manager()
+        await orchestrator.get_chain_task_manager()
 
 
 @pytest.mark.asyncio
@@ -684,7 +684,7 @@ async def test_get_task_manager_services_none(monkeypatch):
     logger = mock.Mock()
     orchestrator = AtaraxAIOrchestrator(settings, setup_manager, None, logger)
     with pytest.raises(AtaraxAILockError):
-        await orchestrator.get_task_manager()
+        await orchestrator.get_chain_task_manager()
 
 @pytest.mark.asyncio
 async def test_unlock_services_none(monkeypatch):

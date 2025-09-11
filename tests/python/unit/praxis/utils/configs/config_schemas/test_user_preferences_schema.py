@@ -4,7 +4,7 @@ from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import
 
 def test_default_values():
     prefs = UserPreferences()
-    assert prefs.config_version == 1.0
+    assert prefs.config_version == "1.0"
     assert prefs.index_on_startup is True
     assert prefs.realtime_monitoring is False
     assert prefs.font_size == 12
@@ -16,7 +16,7 @@ def test_default_values():
 
 def test_custom_values():
     prefs = UserPreferences(
-        config_version=2.0,
+        config_version="2.0",
         index_on_startup=False,
         realtime_monitoring=True,
         font_size=16,
@@ -25,7 +25,7 @@ def test_custom_values():
         theme=AppTheme.DARK,
         language="fr"
     )
-    assert prefs.config_version == 2.0
+    assert prefs.config_version == "2.0"
     assert prefs.index_on_startup is False
     assert prefs.realtime_monitoring is True
     assert prefs.font_size == 16

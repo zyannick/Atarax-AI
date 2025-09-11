@@ -1,40 +1,41 @@
 import asyncio
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 import shutil
 from contextlib import asynccontextmanager
+from pathlib import Path
+from types import TracebackType
+from typing import Any, Dict, List, Optional, Type
+
 from ataraxai import __version__  # type: ignore
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
-
+from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
+from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
-from ataraxai.praxis.modules.prompt_engine.task_manager import TaskManager
+from ataraxai.praxis.modules.prompt_engine.chain_task_manager import ChainTaskManager
+from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
+from ataraxai.praxis.utils.app_config import AppConfig
+from ataraxai.praxis.utils.app_directories import AppDirectories
+from ataraxai.praxis.utils.app_state import AppState
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
+from ataraxai.praxis.utils.chat_manager import ChatManager
+from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import (
+    UserPreferences,
+)
+from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
+from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
+from ataraxai.praxis.utils.exceptions import (
+    AtaraxAILockError,
+)
+from ataraxai.praxis.utils.services import Services
+from ataraxai.praxis.utils.setup_manager import SetupManager
+from ataraxai.praxis.utils.user_preferences_manager import UserPreferencesManager
 from ataraxai.praxis.utils.vault_manager import (
     UnlockResult,
     VaultInitializationStatus,
     VaultManager,
-)
-from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
-from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
-import threading
-from ataraxai.praxis.utils.app_state import AppState
-from ataraxai.praxis.utils.app_directories import AppDirectories
-from ataraxai.praxis.utils.exceptions import (
-    AtaraxAILockError,
-)
-from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
-from ataraxai.praxis.utils.vault_manager import (
     VaultUnlockStatus,
 )
-from ataraxai.praxis.utils.setup_manager import SetupManager
-from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
-from ataraxai.praxis.utils.chat_manager import ChatManager
-from ataraxai.praxis.utils.app_config import AppConfig
-from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
-from ataraxai.praxis.utils.user_preferences_manager import UserPreferencesManager
-from ataraxai.praxis.utils.services import Services
 
 
 class AtaraxAIOrchestrator:
@@ -62,7 +63,12 @@ class AtaraxAIOrchestrator:
         await self.initialize()
         return self
 
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
         await self.shutdown()
 
     async def initialize(self) -> None:
@@ -150,7 +156,7 @@ class AtaraxAIOrchestrator:
                 return VaultInitializationStatus.FAILED
 
             await asyncio.to_thread(
-                self.services.vault_manager.create_and_initialize_vault, master_password
+                self.services.vault_manager.create_and_initialize_vault, master_password  # type: ignore
             )
             await self._set_state(AppState.UNLOCKED)
             await self._initialize_unlocked_services()
@@ -254,7 +260,7 @@ class AtaraxAIOrchestrator:
                     error="Vault manager is not initialized.",
                 )
             unlock_result = await asyncio.to_thread(
-                self.services.vault_manager.unlock_vault, password
+                self.services.vault_manager.unlock_vault, password  # type: ignore
             )
 
             if unlock_result.status == VaultUnlockStatus.SUCCESS:
@@ -369,7 +375,7 @@ class AtaraxAIOrchestrator:
             raise RuntimeError("Chat manager is not initialized.")
         return self.services.chat_manager
 
-    async def get_task_manager(self) -> TaskManager:
+    async def get_chain_task_manager(self) -> ChainTaskManager:
         current_state = await self.get_state()
         if current_state != AppState.UNLOCKED or self.services is None:
             raise AtaraxAILockError(
@@ -408,6 +414,18 @@ class AtaraxAIOrchestrator:
             if self.services is None or self.services.directories is None:
                 raise RuntimeError("App directories are not initialized.")
             return self.services.directories
+
+    async def get_user_preferences_manager(self) -> UserPreferencesManager:
+        async with self._state_lock:
+            if self.services is None or self.services.config_manager is None:
+                raise RuntimeError("User preferences manager is not initialized.")
+            return self.services.config_manager.preferences_manager
+
+    async def get_user_preferences(self) -> UserPreferences:
+        async with self._state_lock:
+            if self.services is None or self.services.config_manager is None:
+                raise RuntimeError("User preferences are not initialized.")
+            return self.services.config_manager.get_user_preferences()
 
 
 class AtaraxAIOrchestratorFactory:
@@ -469,7 +487,7 @@ class AtaraxAIOrchestratorFactory:
 
             return orchestrator
 
-        except Exception as e:
+        except Exception:
             raise
 
 

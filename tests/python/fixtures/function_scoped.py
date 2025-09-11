@@ -1,22 +1,24 @@
-from pydantic import SecretStr
-import pytest
 import datetime
-import time
 import logging
-from unittest.mock import MagicMock
-from fastapi.testclient import TestClient
+import time
 from pathlib import Path
 from typing import Generator
-from fastapi import status
+from unittest.mock import MagicMock
 
-
+import pytest
 import requests
+from fastapi import status
+from fastapi.testclient import TestClient
+from httpx import AsyncClient
+from pydantic import SecretStr
 
 from api import app
 from ataraxai.praxis.ataraxai_orchestrator import (
     AtaraxAIOrchestrator,
     AtaraxAIOrchestratorFactory,
 )
+from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
+from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.app_directories import AppDirectories
@@ -32,12 +34,6 @@ from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 from ataraxai.praxis.utils.services import Services
 from ataraxai.praxis.utils.setup_manager import SetupManager
 from ataraxai.praxis.utils.vault_manager import VaultManager
-from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
-from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-
-
-
-
 
 
 @pytest.fixture(scope="function")
@@ -63,11 +59,10 @@ def client(monkeypatch):
     )
 
     with TestClient(app, base_url="http://test") as test_client:
-        test_client.orchestrator = mock_orchestrator # type: ignore
+        test_client.orchestrator = mock_orchestrator  # type: ignore
         yield test_client
 
     app.dependency_overrides.clear()
-
 
 
 @pytest.fixture(scope="function")
@@ -101,7 +96,7 @@ def app_directories(tmp_path_factory: Path) -> Generator[AppDirectories, None, N
     Yields:
         AppDirectories: An object containing paths to the created config, data, cache, and logs directories.
     """
-    module_tmp_dir = tmp_path_factory.mktemp("integration_module") # type: ignore
+    module_tmp_dir = tmp_path_factory.mktemp("integration_module")  # type: ignore
     config = module_tmp_dir / "config"
     data = module_tmp_dir / "data"
     cache = module_tmp_dir / "cache"
@@ -381,8 +376,8 @@ def integration_client(orchestrator: AtaraxAIOrchestrator):
         lambda: orchestrator
     )
 
-    with TestClient(app, base_url="http://test") as test_client:
-        test_client.app.state.orchestrator = orchestrator # type: ignore
+    with AsyncClient(app, base_url="http://test") as test_client:
+        test_client.app.state.orchestrator = orchestrator  # type: ignore
         yield test_client
 
     app.dependency_overrides.clear()

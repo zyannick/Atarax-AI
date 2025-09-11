@@ -1,9 +1,8 @@
 import asyncio
-import logging
 from pathlib import Path
 from logging import Logger
-from typing import Dict, Any, List, Set
-from watchfiles import awatch, Change
+from typing import Dict, Any, Set
+from watchfiles import awatch, Change # type: ignore
 
 from asyncio import Queue
 

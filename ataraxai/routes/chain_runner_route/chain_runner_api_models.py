@@ -4,7 +4,7 @@ from ataraxai.routes.status import Status
 
 
 class StartChainResponse(BaseModel):
-    status: str
+    status: Status
     message: str
     task_id: str
 

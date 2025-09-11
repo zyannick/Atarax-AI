@@ -8,10 +8,7 @@ from ataraxai.praxis.modules.rag.rag_manifest import RAGManifest
 
 from sentence_transformers import CrossEncoder
 from chromadb import QueryResult
-import numpy as np
-from functools import lru_cache
 from asyncio import Queue
-from typing import Optional
 
 import logging
 from ataraxai.praxis.modules.rag.rag_updater import rag_update_worker_async

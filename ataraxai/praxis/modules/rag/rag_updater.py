@@ -1,22 +1,23 @@
 import asyncio
+import time
 from logging import Logger
 from pathlib import Path
-import time
-from ataraxai.praxis.modules.rag.parser.document_base_parser import DocumentChunk
-from ataraxai.praxis.modules.rag.rag_store import RAGStore
+from typing import Any, Dict, List, Mapping, Union
+
+# import threading
+# import os
+# import queue
+from ataraxai.praxis.modules.rag.parser.base_meta_data import (
+    get_file_hash,
+    set_base_metadata,
+)
 from ataraxai.praxis.modules.rag.rag_manifest import (
     RAGManifest,
 )
-from ataraxai.praxis.modules.rag.smart_chunker import SmartChunker
-import threading
-import os
-import queue
-from ataraxai.praxis.modules.rag.parser.base_meta_data import (
-    set_base_metadata,
-    get_file_hash,
-)
-from typing import Dict, List, Union, Mapping, Any
 
+# from ataraxai.praxis.modules.rag.parser.document_base_parser import DocumentChunk
+from ataraxai.praxis.modules.rag.rag_store import RAGStore
+from ataraxai.praxis.modules.rag.smart_chunker import SmartChunker
 
 MetadataDict = Mapping[str, Union[str, int, float, bool, None]]
 
@@ -39,12 +40,12 @@ async def process_new_file(
         return
 
     try:
-        final_texts = [cd.content for cd in chunked_document_objects]
+        final_texts = [cd.content for cd in chunked_document_objects] # type: ignore
 
         final_metadatas: List[MetadataDict] = []
-        for cd in chunked_document_objects:
+        for cd in chunked_document_objects: # type: ignore
             dict_value: Dict[str, Any] = {}
-            for k, v in cd.metadata.items():
+            for k, v in cd.metadata.items(): # type: ignore
                 dict_value[k] = v
             final_metadatas.append(dict_value)
 
@@ -72,7 +73,6 @@ async def process_new_file(
 
     except Exception as e:
         logger.error(f"Failed to process new file {file_path}: {e}", exc_info=True)
-        
 
         manifest.add_file(
             str(file_path),
@@ -84,8 +84,6 @@ async def process_new_file(
             },
         )
         await asyncio.to_thread(manifest.save)
-
-
 
 
 async def process_modified_file(

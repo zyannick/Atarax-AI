@@ -1,11 +1,13 @@
-from pydantic import BaseModel, Field, computed_field, field_validator
 from typing import List, Optional
+
+from pydantic import BaseModel, Field, computed_field, field_validator
+
 from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo
 
 
 class LlamaModelParams(BaseModel):
-    config_version: float = Field(
-        1.0, description="Version of the model configuration."
+    config_version: str = Field(
+        "1.0", description="Version of the model configuration."
     )
     model_info: Optional[LlamaCPPModelInfo] = Field(
         None, description="Model information including local path and metadata."
@@ -27,8 +29,8 @@ class LlamaModelParams(BaseModel):
 
 
 class GenerationParams(BaseModel):
-    config_version: float = Field(
-        1.0, description="Version of the generation parameters schema."
+    config_version: str = Field(
+        "1.0", description="Version of the generation parameters schema."
     )
     n_predict: int = Field(128, description="Number of tokens to predict.")
     temperature: float = Field(0.8, description="Temperature for sampling.")
@@ -65,8 +67,8 @@ class GenerationParams(BaseModel):
 
 
 class LlamaConfig(BaseModel):
-    config_version: float = Field(
-        default_factory=lambda: 1.0, description="Version of the model configuration."
+    config_version: str = Field(
+        "1.0", description="Version of the model configuration."
     )
     llama_cpp_model_params: LlamaModelParams = Field(default_factory=lambda: LlamaModelParams())  # type: ignore
     generation_params: GenerationParams = Field(default_factory=lambda: GenerationParams())  # type: ignore

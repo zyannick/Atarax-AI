@@ -1,8 +1,9 @@
 import asyncio
-from fastapi.testclient import TestClient
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from fastapi import BackgroundTasks, status
+from fastapi.testclient import TestClient
 
 from api import app
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
@@ -19,11 +20,21 @@ from ataraxai.routes.status import Status
 def orch_mock():
     orch = MagicMock()
     orch.state = AppState.UNLOCKED
-    orch.rag.rebuild_index = AsyncMock(return_value=True)
-    orch.rag.check_manifest_validity = AsyncMock(return_value=True)
-    orch.rag.health_check = AsyncMock(return_value=True)
-    orch.rag.add_watch_directories = AsyncMock(return_value=True)
-    orch.rag.remove_watch_directories = AsyncMock(return_value=True)
+
+    # Create a mock RAG manager
+    rag_manager_mock = MagicMock()
+    rag_manager_mock.rebuild_index = AsyncMock(return_value=True)
+    rag_manager_mock.check_manifest_validity = AsyncMock(return_value=True)
+    rag_manager_mock.health_check = AsyncMock(return_value=True)
+    rag_manager_mock.add_watch_directories = AsyncMock(return_value=True)
+    rag_manager_mock.remove_watch_directories = AsyncMock(return_value=True)
+
+    # Mock get_rag_manager to return the rag_manager_mock
+    orch.get_rag_manager = AsyncMock(return_value=rag_manager_mock)
+
+    # Keep the old orch.rag for backward compatibility with remove_directory test
+    orch.rag = rag_manager_mock
+
     return orch
 
 
@@ -58,10 +69,13 @@ def test_rebuild_index(
     response = client.post("/api/v1/rag/rebuild_index")
     assert response.status_code == 200, f"Expected 200, got {response.text}"
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["result"] == "task123"
 
+    orch_mock.rag.rebuild_index.assert_called_once()
+
     app.dependency_overrides = {}
+
 
 
 def test_get_rebuild_index_result(

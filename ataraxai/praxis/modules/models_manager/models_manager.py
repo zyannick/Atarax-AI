@@ -45,13 +45,13 @@ class LlamaCPPModelInfo(BaseModel):
     )
     file_size: int = Field(0, description="Size of the model file in bytes.")
     quantization_bit: str = Field(
-        "default", description="Bit quantization level for the model."
+        default="default", description="Bit quantization level for the model."
     )
     quantization_scheme: str = Field(
-        "default", description="Quantization scheme for the model."
+        default="default", description="Quantization scheme for the model."
     )
     quantization_modifier: str = Field(
-        "default", description="Quantization modifier for the model."
+        default="default", description="Quantization modifier for the model."
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(),
@@ -505,7 +505,7 @@ class ModelsManager:
 
     def start_download_task(
         self,
-        task_id,
+        task_id : str,
         model_info: LlamaCPPModelInfo,
         progress_callback: Optional[Callable] = None,
     ) -> str:
@@ -682,7 +682,7 @@ class ModelsManager:
         self.manifest["models"].append(model_info.model_dump(mode="json"))
         self._save_manifest()
 
-    def get_download_status(self, task_id: str) -> Optional[Dict]:
+    def get_download_status(self, task_id: str) -> Optional[Dict[str, Any]]:
         """
         Retrieves the download status for a given task ID.
 

@@ -11,7 +11,7 @@ class WhisperModelParams(BaseModel):
 
 
 class WhisperTranscriptionParams(BaseModel):
-    config_version: float = Field(default=1.0, description="Version of the transcription configuration.")
+    config_version: str = Field(default="1.0", description="Version of the transcription configuration.")
     n_threads: int = Field(default=0, description="Number of threads to use for processing.")
     language: str = Field(default="en", description="Language for the transcription.")
     translate: bool = Field(default=False, description="Whether to enable translation.")
@@ -24,7 +24,7 @@ class WhisperTranscriptionParams(BaseModel):
 
 
 class WhisperConfig(BaseModel):
-    config_version: float = Field(default=1.0, description="Version of the Whisper configuration.")
+    config_version: str = Field(default="1.0", description="Version of the Whisper configuration.")
     whisper_model_params: WhisperModelParams = WhisperModelParams()
     whisper_transcription_params: WhisperTranscriptionParams = (
         WhisperTranscriptionParams()

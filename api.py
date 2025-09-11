@@ -1,27 +1,39 @@
-from fastapi import  FastAPI
-from contextlib import asynccontextmanager
-from fastapi.params import Depends
 import os
-from ataraxai.gateway.request_manager import RequestManager
-from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
-from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestratorFactory
-from ataraxai import __version__
-from ataraxai.routes.status import StatusResponse, Status
-from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.params import Depends
+
+from ataraxai import __version__
+from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
+from ataraxai.gateway.request_manager import RequestManager
+from ataraxai.praxis.ataraxai_orchestrator import (
+    AtaraxAIOrchestrator,
+    AtaraxAIOrchestratorFactory,
+)
 from ataraxai.praxis.katalepsis import Katalepsis
-from ataraxai.routes.rag_route.rag import router_rag
-from ataraxai.routes.vault_route.vault import router_vault
-from ataraxai.routes.chat_route.chat import router_chat
-from ataraxai.routes.models_manager_route.models_manager import router_models_manager
-from ataraxai.routes.configs_routes.user_preferences_route.user_preferences import router_user_preferences
-from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config import router_llama_cpp
-from ataraxai.routes.configs_routes.rag_config_route.rag_config_route import router_rag_config
-from ataraxai.routes.core_ai_service.core_ai_service import router_core_ai_service_config
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.routes.chain_runner_route.chain_runner import router_chain_runner
+from ataraxai.routes.chat_route.chat import router_chat
+from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config import (
+    router_llama_cpp,
+)
+from ataraxai.routes.configs_routes.rag_config_route.rag_config_route import (
+    router_rag_config,
+)
+from ataraxai.routes.configs_routes.user_preferences_route.user_preferences import (
+    router_user_preferences,
+)
+from ataraxai.routes.core_ai_service.core_ai_service import (
+    router_core_ai_service_config,
+)
 from ataraxai.routes.dependency_api import get_orchestrator
+from ataraxai.routes.models_manager_route.models_manager import router_models_manager
+from ataraxai.routes.rag_route.rag import router_rag
+from ataraxai.routes.status import Status, StatusResponse
+from ataraxai.routes.vault_route.vault import router_vault
 
 os.environ.setdefault("ENVIRONMENT", "development")  # Default to development if not set
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
@@ -33,15 +45,15 @@ logger = AtaraxAILogger("ataraxai.praxis.api").get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.orchestrator = AtaraxAIOrchestratorFactory.create_orchestrator()
+    app.state.orchestrator = await AtaraxAIOrchestratorFactory.create_orchestrator()
     app.state.katalepsis_monitor = Katalepsis()
     app.state.request_manager = RequestManager()
     app.state.gateway_task_manager = GatewayTaskManager()
     await app.state.request_manager.start()
     yield
     logger.info("API is shutting down. Closing orchestrator resources.")
-    app.state.orchestrator.shutdown()
-    await app.state.request_manager.stop() 
+    await app.state.orchestrator.shutdown()
+    await app.state.request_manager.stop()
 
 
 if ENVIRONMENT == "development":
@@ -52,7 +64,7 @@ if ENVIRONMENT == "development":
         lifespan=lifespan,
     )
     allowed_hosts = ["localhost", "127.0.0.1", "test"]
-    allow_origins=["http://localhost:3000", "http://test"]
+    allow_origins = ["http://localhost:3000", "http://test"]
 else:
     app = FastAPI(
         title="AtaraxAI API",
@@ -63,8 +75,7 @@ else:
         redoc_url="/redoc",
     )
     allowed_hosts = ["localhost", "127.0.0.1"]
-    allow_origins=["http://localhost:3000"]
-
+    allow_origins = ["http://localhost:3000"]
 
 
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
@@ -79,9 +90,10 @@ app.add_middleware(
 
 @app.get("/v1/status", response_model=StatusResponse)
 async def get_state(orch: AtaraxAIOrchestrator = Depends(get_orchestrator)) -> StatusResponse:  # type: ignore
+    state = await orch.get_state()
     return StatusResponse(
         status=Status.SUCCESS,
-        message=f"AtaraxAI is currently in state: {orch.state.name}",
+        message=f"AtaraxAI is currently in state: {state.name}",
     )
 
 

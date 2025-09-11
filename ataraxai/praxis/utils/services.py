@@ -10,7 +10,7 @@ from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManag
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.praxis.modules.prompt_engine.context_manager import ContextManager
 from ataraxai.praxis.modules.prompt_engine.prompt_manager import PromptManager
-from ataraxai.praxis.modules.prompt_engine.task_manager import TaskManager
+from ataraxai.praxis.modules.prompt_engine.chain_task_manager import ChainTaskManager
 from ataraxai.praxis.modules.prompt_engine.chain_runner import ChainRunner
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.input_validator import InputValidator
@@ -169,7 +169,7 @@ class Services:
             config=self.config_manager.rag_config_manager.get_config().model_dump(),
             rag_manager=self.rag_manager,
         )
-        self.task_manager = TaskManager()
+        self.task_manager = ChainTaskManager()
         self.chain_runner = ChainRunner(
             task_manager=self.task_manager,
             context_manager=self.context_manager,

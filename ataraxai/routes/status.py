@@ -1,6 +1,4 @@
-from typing import Any
 from pydantic import BaseModel, Field
-from enum import Enum, auto
 
 from ataraxai.gateway.gateway_task_manager import TaskStatus
 

@@ -1,22 +1,28 @@
+from typing import Annotated
+
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
-from ataraxai.praxis.utils.app_state import AppState
+
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
-from ataraxai.praxis.utils.vault_manager import UnlockResult, VaultUnlockStatus
-from ataraxai.praxis.utils.vault_manager import VaultInitializationStatus
+from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
+from ataraxai.praxis.katalepsis import katalepsis_monitor
+from ataraxai.praxis.utils.app_state import AppState
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from ataraxai.praxis.utils.decorators import handle_api_errors
+from ataraxai.praxis.utils.vault_manager import (
+    UnlockResult,
+    VaultInitializationStatus,
+    VaultUnlockStatus,
+)
+from ataraxai.routes.dependency_api import get_orchestrator, get_unlocked_orchestrator
+from ataraxai.routes.status import Status
 from ataraxai.routes.vault_route.vault_api_models import (
     ConfirmationPhaseRequest,
     ConfirmationPhaseResponse,
+    LockVaultResponse,
     VaultPasswordRequest,
     VaultPasswordResponse,
-    LockVaultResponse,
 )
-from ataraxai.routes.status import Status
-from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator, get_orchestrator
-from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from ataraxai.praxis.katalepsis import katalepsis_monitor
 
 logger = AtaraxAILogger("ataraxai.praxis.vault").get_logger()
 
@@ -27,7 +33,10 @@ router_vault = APIRouter(prefix="/api/v1/vault", tags=["Vault"])
 @router_vault.post("/initialize", response_model=VaultPasswordResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Initialize Vault", logger=logger)
-async def initialize_vault(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Depends(get_orchestrator)) -> VaultPasswordResponse:  # type: ignore
+async def initialize_vault(
+    request: VaultPasswordRequest,
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+) -> VaultPasswordResponse:
     """
     Initializes a new vault with the provided password.
 
@@ -46,20 +55,21 @@ async def initialize_vault(request: VaultPasswordRequest, orch: AtaraxAIOrchestr
         HTTPException: If a critical error occurs during vault initialization.
     """
     logger.info("Initializing vault with provided password.")
-    if orch.state != AppState.FIRST_LAUNCH:
+    state = await orch.get_state()
+    if state != AppState.FIRST_LAUNCH:
         logger.error("Vault is already initialized.")
         return VaultPasswordResponse(
             status=Status.ERROR, message="Vault is already initialized."
         )
     password_bytes = request.password.get_secret_value().encode("utf-8")
-    success : VaultInitializationStatus = orch.initialize_new_vault(SecureString(password_bytes))  # type: ignore
+    success: VaultInitializationStatus = orch.initialize_new_vault(SecureString(password_bytes))  # type: ignore
 
     if success == VaultInitializationStatus.SUCCESS:
         return VaultPasswordResponse(
             status=Status.SUCCESS, message="Vault initialized and unlocked."
         )
     return VaultPasswordResponse(
-        status=Status.FAILURE, message="Failed to initialize vault."
+        status=Status.FAILED, message="Failed to initialize vault."
     )
 
 
@@ -67,7 +77,8 @@ async def initialize_vault(request: VaultPasswordRequest, orch: AtaraxAIOrchestr
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Reinitialize Vault", logger=logger)
 async def reinitialize_vault(
-    request: ConfirmationPhaseRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore
+    request: ConfirmationPhaseRequest,
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
 ) -> ConfirmationPhaseResponse:
     """
     Reinitializes the vault using the provided confirmation phrase.
@@ -90,17 +101,22 @@ async def reinitialize_vault(
 
     if success:
         return ConfirmationPhaseResponse(
-            status=Status.SUCCESS, message="Vault reinitialized for first launch. We need to set a new password."
+            status=Status.SUCCESS,
+            message="Vault reinitialized for first launch. We need to set a new password.",
         )
     else:
         return ConfirmationPhaseResponse(
             status=Status.ERROR, message="Failed to reinitialize vault."
         )
 
+
 @router_vault.post("/unlock", response_model=VaultPasswordResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Unlock Vault", logger=logger)
-async def unlock(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Depends(get_orchestrator)) -> VaultPasswordResponse:  # type: ignore
+async def unlock(
+    request: VaultPasswordRequest,
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_orchestrator)],
+) -> VaultPasswordResponse:
     """
     Unlocks the vault using the provided password.
 
@@ -118,13 +134,14 @@ async def unlock(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Dep
     Raises:
         HTTPException: If unlocking the vault fails, raises a 500 Internal Server Error.
     """
-    if orch.state != AppState.LOCKED:
+    state = await orch.get_state()
+    if state != AppState.LOCKED:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Vault is not locked."
         )
 
     password_bytes = request.password.get_secret_value().encode("utf-8")
-    unlock_result : UnlockResult = orch.unlock(SecureString(password_bytes))
+    unlock_result: UnlockResult = await orch.unlock(SecureString(password_bytes))
 
     if unlock_result.status == VaultUnlockStatus.SUCCESS:
         return VaultPasswordResponse(status=Status.SUCCESS, message="Vault unlocked.")
@@ -149,12 +166,14 @@ async def unlock(request: VaultPasswordRequest, orch: AtaraxAIOrchestrator = Dep
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to unlock vault due to an unexpected error.",
         )
-        
-        
+
+
 @router_vault.post("/lock", response_model=LockVaultResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Lock Vault", logger=logger)
-async def lock(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> LockVaultResponse:  # type: ignore
+async def lock(
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+) -> LockVaultResponse:
     """
     Locks the vault by invoking the orchestrator's lock method.
 
@@ -170,7 +189,7 @@ async def lock(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) 
     Raises:
         HTTPException: If the vault fails to lock, raises an HTTP 500 error with a relevant message.
     """
-    success = orch.lock()
+    success = await orch.lock()
 
     if success:
         return LockVaultResponse(
@@ -178,6 +197,4 @@ async def lock(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) 
         )
     else:
         logger.error("Failed to lock vault.")
-        return LockVaultResponse(
-            status=Status.ERROR, message="Failed to lock vault."
-        )
+        return LockVaultResponse(status=Status.ERROR, message="Failed to lock vault.")

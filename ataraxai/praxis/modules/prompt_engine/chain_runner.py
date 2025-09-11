@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 from .context_manager import ContextManager
 from ataraxai.praxis.modules.prompt_engine.prompt_manager import PromptManager
-from ataraxai.praxis.modules.prompt_engine.task_manager import TaskManager
+from ataraxai.praxis.modules.prompt_engine.chain_task_manager import ChainTaskManager
 from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import TaskDependencies
@@ -11,7 +11,7 @@ from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies impo
 class ChainRunner:
     def __init__(
         self,
-        task_manager: TaskManager,
+        task_manager: ChainTaskManager,
         context_manager: ContextManager,
         prompt_manager: PromptManager,
         core_ai_service_manager: CoreAIServiceManager,  

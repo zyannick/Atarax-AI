@@ -23,9 +23,10 @@ from helpers import (
 
 
 @pytest.fixture(scope="module")
-def module_unlocked_client(module_integration_client):
-    orchestrator = module_integration_client.app.state.orchestrator
-    assert orchestrator.state == AppState.FIRST_LAUNCH
+async def module_unlocked_client(module_integration_client):
+    orchestrator : AtaraxAIOrchestrator = module_integration_client.app.state.orchestrator
+    state = await orchestrator.get_state()
+    assert state == AppState.FIRST_LAUNCH
 
     password_request = VaultPasswordRequest(
         password=SecretStr("Saturate-Heave8-Unfasten-Squealing")
@@ -39,7 +40,8 @@ def module_unlocked_client(module_integration_client):
     data = response.json()
     assert data["status"] == Status.SUCCESS
     assert data["message"] == "Vault initialized and unlocked."
-    assert orchestrator.state == AppState.UNLOCKED
+    state = await orchestrator.get_state()
+    assert state == AppState.UNLOCKED
     return module_integration_client
 
 
@@ -84,9 +86,10 @@ def module_unlocked_client_with_filled_manifest(module_unlocked_client):
 
 
 @pytest.fixture(scope="function")
-def unlocked_client(integration_client):
-    orchestrator = integration_client.app.state.orchestrator
-    assert orchestrator.state == AppState.FIRST_LAUNCH
+async def unlocked_client(integration_client):
+    orchestrator : AtaraxAIOrchestrator = integration_client.app.state.orchestrator
+    state = await orchestrator.get_state()
+    assert state == AppState.FIRST_LAUNCH
 
     password_request = VaultPasswordRequest(
         password=SecretStr("Saturate-Heave8-Unfasten-Squealing")
@@ -100,7 +103,8 @@ def unlocked_client(integration_client):
     data = response.json()
     assert data["status"] == Status.SUCCESS
     assert data["message"] == "Vault initialized and unlocked."
-    assert orchestrator.state == AppState.UNLOCKED
+    state = await orchestrator.get_state()
+    assert state == AppState.UNLOCKED
     return integration_client
 
 

@@ -5,7 +5,7 @@ from typing import Dict, List
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.base_task import BaseTask
 
 
-class TaskManager:
+class ChainTaskManager:
     def __init__(
         self,
         tasks_directory: str = "ataraxai/praxis/modules/prompt_engine/specific_tasks",

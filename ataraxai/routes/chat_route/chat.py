@@ -9,7 +9,6 @@ from ataraxai.routes.chat_route.chat_api_models import (
     ProjectResponseAPI,
     CreateSessionRequestAPI,
     SessionResponseAPI,
-    ChatMessageRequestAPI,
     MessageResponseAPI,
 )
 from ataraxai.routes.status import StatusResponse, TaskStatus as Status
@@ -44,7 +43,7 @@ async def create_new_project(
     task_routine = chat_manager.create_project(
         name=project_data.name, description=project_data.description
     )
-    project = await req_manager.submit_request(
+    project = await req_manager.submit_request( # type: ignore
         coro=task_routine, priority=RequestPriority.HIGH
     )
     return ProjectResponseAPI(
@@ -70,11 +69,11 @@ async def delete_project(
         )
 
     task_routine = chat_manager.delete_project(project_id)
-    future = await req_manager.submit_request(
+    future = await req_manager.submit_request( # type: ignore
         coro=task_routine, priority=RequestPriority.HIGH
     )
 
-    task_id = task_manager.create_task(future)
+    task_id = task_manager.create_task(future) # type: ignore
 
     return StatusResponse(
         status=Status.PENDING,
@@ -100,7 +99,7 @@ async def get_project_deletion_status(
         )
     return StatusResponse(
         status=result.get("status", Status.ERROR),
-        message=f"Project deletion status retrieved.",
+        message="Project deletion status retrieved.",
         task_id=task_id,
     )
 
@@ -116,7 +115,7 @@ async def get_project(
 ):
     chat_manager = await orch.get_chat_manager()
     task_routine = chat_manager.get_project(project_id)
-    project = await req_manager.submit_request(
+    project = await req_manager.submit_request( # type: ignore
         coro=task_routine, priority=RequestPriority.HIGH
     )
     if not project:
@@ -139,7 +138,7 @@ async def list_projects(
 ):
     chat_manager = await orch.get_chat_manager()
     task_routine = chat_manager.list_projects()
-    projects = await req_manager.submit_request(
+    projects = await req_manager.submit_request( # type: ignore
         coro=task_routine, priority=RequestPriority.HIGH
     )
     return [
@@ -163,7 +162,7 @@ async def list_sessions(
 ):
     chat_manager = await orch.get_chat_manager()
     task_routine = chat_manager.list_sessions(project_id)
-    sessions = await req_manager.submit_request(
+    sessions = await req_manager.submit_request( # type: ignore
         coro=task_routine, priority=RequestPriority.HIGH
     )
     return [
@@ -195,7 +194,7 @@ async def create_session(
     task_routine = chat_manager.create_session(
         project_id=session_data.project_id, title=session_data.title
     )
-    session = await req_manager.submit_request(
+    session = await req_manager.submit_request( # type: ignore
         coro=task_routine, priority=RequestPriority.HIGH
     )
 
@@ -222,11 +221,11 @@ async def delete_session(
         )
 
     task_routine = chat_manager.delete_session(session_id)
-    future = await req_manager.submit_request(
+    future = await req_manager.submit_request( # type: ignore
         coro=task_routine, priority=RequestPriority.HIGH
     )
 
-    task_id = task_manager.create_task(future)
+    task_id = task_manager.create_task(future) # type: ignore
     return StatusResponse(
         status=Status.PENDING,
         message=f"Session {session_id} deleted successfully.",
@@ -252,7 +251,7 @@ async def get_delete_session_status(
         )
     return StatusResponse(
         status=result.get("status", Status.ERROR),
-        message=f"Session deletion status retrieved.",
+        message="Session deletion status retrieved.",
         task_id=task_id,
     )
 
