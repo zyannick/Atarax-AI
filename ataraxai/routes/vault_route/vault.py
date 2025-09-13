@@ -35,7 +35,7 @@ router_vault = APIRouter(prefix="/api/v1/vault", tags=["Vault"])
 @handle_api_errors("Initialize Vault", logger=logger)
 async def initialize_vault(
     request: VaultPasswordRequest,
-    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_orchestrator)],
 ) -> VaultPasswordResponse:
     """
     Initializes a new vault with the provided password.
@@ -62,7 +62,7 @@ async def initialize_vault(
             status=Status.ERROR, message="Vault is already initialized."
         )
     password_bytes = request.password.get_secret_value().encode("utf-8")
-    success: VaultInitializationStatus = orch.initialize_new_vault(SecureString(password_bytes))  # type: ignore
+    success: VaultInitializationStatus = await orch.initialize_new_vault(SecureString(password_bytes))  # type: ignore
 
     if success == VaultInitializationStatus.SUCCESS:
         return VaultPasswordResponse(

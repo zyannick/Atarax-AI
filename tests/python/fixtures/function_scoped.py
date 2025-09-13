@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 import time
@@ -20,11 +21,13 @@ from ataraxai.praxis.ataraxai_orchestrator import (
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
+from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
+from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
 from ataraxai.praxis.utils.chat_manager import ChatManager
 from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
     LlamaModelParams,
@@ -34,6 +37,8 @@ from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 from ataraxai.praxis.utils.services import Services
 from ataraxai.praxis.utils.setup_manager import SetupManager
 from ataraxai.praxis.utils.vault_manager import VaultManager
+from ataraxai.routes.dependency_api import get_orchestrator
+from tests.python.fixtures.async_orch import setup_async_orchestrator
 
 
 @pytest.fixture(scope="function")
@@ -106,6 +111,8 @@ def app_directories(tmp_path_factory: Path) -> Generator[AppDirectories, None, N
     data.mkdir(parents=True, exist_ok=True)
     cache.mkdir(parents=True, exist_ok=True)
     logs.mkdir(parents=True, exist_ok=True)
+
+    print(f"Created temporary directories at {module_tmp_dir}")
 
     app_dirs = AppDirectories(config=config, data=data, cache=cache, logs=logs)
     yield app_dirs
@@ -281,9 +288,22 @@ def chat_manager(
 
 
 @pytest.fixture(scope="function")
+def background_task_manager() -> Generator[BackgroundTaskManager, None, None]:
+    """
+    Pytest fixture that provides a BackgroundTaskManager instance for tests.
+
+    Yields:
+        BackgroundTaskManager: An instance of BackgroundTaskManager.
+    """
+    background_task_manager = BackgroundTaskManager()
+    yield background_task_manager
+
+
+@pytest.fixture(scope="function")
 def models_manager(
     app_directories: AppDirectories,
     logger: logging.Logger,
+    background_task_manager: BackgroundTaskManager,
 ) -> Generator[ModelsManager, None, None]:
     """
     Pytest fixture that provides a `ModelsManager` instance initialized with the given
@@ -294,7 +314,11 @@ def models_manager(
     Yields:
         ModelsManager: An instance of ModelsManager for managing models during tests.
     """
-    models_manager = ModelsManager(directories=app_directories, logger=logger)
+    models_manager = ModelsManager(
+        directories=app_directories,
+        logger=logger,
+        background_task_manager=background_task_manager,
+    )
 
     yield models_manager
 
@@ -311,6 +335,7 @@ def services(
     vault_manager: VaultManager,
     models_manager: ModelsManager,
     core_ai_manager: CoreAIServiceManager,
+    background_task_manager: BackgroundTaskManager,
 ) -> Generator[Services, None, None]:
     """
     Creates and yields a `Services` instance initialized with the provided application components.
@@ -338,46 +363,44 @@ def services(
         vault_manager=vault_manager,
         models_manager=models_manager,
         core_ai_service_manager=core_ai_manager,
+        background_task_manager=background_task_manager,
     )
 
     yield services
 
 
 @pytest.fixture(scope="function")
-def orchestrator(
-    settings: AtaraxAISettings,
-    logger: logging.Logger,
-    setup_manager: SetupManager,
-    services: Services,
-) -> Generator[AtaraxAIOrchestrator, None, None]:
-    orchestrator = AtaraxAIOrchestrator(
-        settings=settings,
-        setup_manager=setup_manager,
-        services=services,
-        logger=logger,
-    )
-
-    yield orchestrator
+def event_loop():
+    """Create an instance of the default event loop for each test case."""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest.fixture(scope="function")
-def integration_client(orchestrator: AtaraxAIOrchestrator):
+def integration_client(
+    event_loop: asyncio.AbstractEventLoop, monkeypatch: pytest.MonkeyPatch
+) -> Generator[TestClient, None, None]:
     """
-    Provides a pytest fixture that yields a TestClient instance configured with a custom AtaraxAIOrchestrator.
-    Overrides the dependency injection for AtaraxAIOrchestratorFactory.create_orchestrator to use the provided orchestrator,
-    allowing integration tests to run with a specific orchestrator instance. After the test client is yielded, the dependency
-    overrides are cleared to restore the application's original state.
-    Args:
-        orchestrator (AtaraxAIOrchestrator): The orchestrator instance to inject into the application for testing.
-    Yields:
-        TestClient: A FastAPI TestClient configured with the overridden orchestrator dependency.
+    The master fixture for integration tests. It patches the orchestrator factory,
+    then creates a TestClient, which triggers the lifespan manager.
     """
-    app.dependency_overrides[AtaraxAIOrchestratorFactory.create_orchestrator] = (
-        lambda: orchestrator
-    )
+    from tempfile import TemporaryDirectory
 
-    with AsyncClient(app, base_url="http://test") as test_client:
-        test_client.app.state.orchestrator = orchestrator  # type: ignore
-        yield test_client
+    with TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
 
-    app.dependency_overrides.clear()
+        orchestrator = event_loop.run_until_complete(
+            setup_async_orchestrator(temp_dir_path)
+        )
+
+        monkeypatch.setattr(
+            AtaraxAIOrchestratorFactory,
+            "create_orchestrator",
+            lambda: asyncio.sleep(0, result=orchestrator),
+        )
+
+        with TestClient(app, base_url="http://test") as client:
+            yield client
+
+        event_loop.run_until_complete(orchestrator.shutdown())

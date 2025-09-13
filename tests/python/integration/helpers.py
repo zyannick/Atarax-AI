@@ -12,16 +12,16 @@ from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 import time
 
 DOWNLOAD_TIMEOUT = 180
-MAX_MODELS_TO_DOWNLOAD = 2
+MAX_MODELS_TO_DOWNLOAD = 5
 TEST_PASSWORD = "Saturate-Heave8-Unfasten-Squealing"
 SEARCH_LIMIT = 100
 
 
 def clean_downloaded_models(modified_client: TestClient):
     response = modified_client.post("/api/v1/models_manager/remove_all_models")
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_200_OK, f"Unexpected status code: {response}"
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value, f"Unexpected response data: {data}"
     assert data["message"] == "Model manifests removed successfully."
 
 async def monitor_download_progress(modified_client: TestClient, task_id: str, timeout: int = DOWNLOAD_TIMEOUT):
@@ -30,7 +30,7 @@ async def monitor_download_progress(modified_client: TestClient, task_id: str, t
     
     try:
         print(f"Attempting WebSocket connection for task_id: {task_id}")
-        state = await orchestrator.get_state()
+        state = await orchestrator.get_state() # type: ignore
         print(f"Orchestrator state: {state}") # type: ignore
         with modified_client.websocket_connect(
             f"/api/v1/models_manager/download_progress/{task_id}",

@@ -1,28 +1,29 @@
+import uuid
+from typing import Annotated, List
+
 from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
-from typing import Annotated, List
-import uuid
+
 from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
 from ataraxai.gateway.request_manager import RequestManager, RequestPriority
+from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
+from ataraxai.praxis.katalepsis import katalepsis_monitor
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.chat_route.chat_api_models import (
     CreateProjectRequestAPI,
-    ProjectResponseAPI,
     CreateSessionRequestAPI,
-    SessionResponseAPI,
     MessageResponseAPI,
+    ProjectResponseAPI,
+    SessionResponseAPI,
 )
-from ataraxai.routes.status import StatusResponse, TaskStatus as Status
-from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-
-from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.dependency_api import (
     get_gatewaye_task_manager,
     get_request_manager,
     get_unlocked_orchestrator,
 )
-from ataraxai.praxis.katalepsis import katalepsis_monitor
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-
+from ataraxai.routes.status import StatusResponse
+from ataraxai.routes.status import TaskStatus as Status
 
 logger = AtaraxAILogger("ataraxai.praxis.chat").get_logger()
 
@@ -40,11 +41,11 @@ async def create_new_project(
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ):
     chat_manager = await orch.get_chat_manager()
-    task_routine = chat_manager.create_project(
-        name=project_data.name, description=project_data.description
-    )
-    project = await req_manager.submit_request( # type: ignore
-        coro=task_routine, priority=RequestPriority.HIGH
+    project = await req_manager.submit_request(  # type: ignore
+        func=chat_manager.create_project,
+        name=project_data.name,
+        description=project_data.description,
+        priority=RequestPriority.HIGH,
     )
     return ProjectResponseAPI(
         project_id=project.id, name=project.name, description=project.description
@@ -68,12 +69,12 @@ async def delete_project(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
 
-    task_routine = chat_manager.delete_project(project_id)
     future = await req_manager.submit_request( # type: ignore
-        coro=task_routine, priority=RequestPriority.HIGH
+        func=chat_manager.delete_project,
+        project_id=project_id,
+        priority=RequestPriority.HIGH,
     )
-
-    task_id = task_manager.create_task(future) # type: ignore
+    task_id = task_manager.create_task(future)  # type: ignore
 
     return StatusResponse(
         status=Status.PENDING,
@@ -114,9 +115,10 @@ async def get_project(
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ):
     chat_manager = await orch.get_chat_manager()
-    task_routine = chat_manager.get_project(project_id)
-    project = await req_manager.submit_request( # type: ignore
-        coro=task_routine, priority=RequestPriority.HIGH
+    project = await req_manager.submit_request(  # type: ignore
+        func=chat_manager.get_project,
+        project_id=project_id,
+        priority=RequestPriority.HIGH
     )
     if not project:
         logger.error(f"Project with ID {project_id} not found.")
@@ -137,9 +139,9 @@ async def list_projects(
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ):
     chat_manager = await orch.get_chat_manager()
-    task_routine = chat_manager.list_projects()
-    projects = await req_manager.submit_request( # type: ignore
-        coro=task_routine, priority=RequestPriority.HIGH
+    projects = await req_manager.submit_request(  # type: ignore
+        func=chat_manager.list_projects,
+        priority=RequestPriority.HIGH
     )
     return [
         ProjectResponseAPI(
@@ -161,9 +163,10 @@ async def list_sessions(
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ):
     chat_manager = await orch.get_chat_manager()
-    task_routine = chat_manager.list_sessions(project_id)
-    sessions = await req_manager.submit_request( # type: ignore
-        coro=task_routine, priority=RequestPriority.HIGH
+    sessions = await req_manager.submit_request(  # type: ignore
+        func=chat_manager.list_sessions,
+        project_id=project_id,
+        priority=RequestPriority.HIGH
     )
     return [
         SessionResponseAPI(
@@ -191,11 +194,11 @@ async def create_session(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
 
-    task_routine = chat_manager.create_session(
-        project_id=session_data.project_id, title=session_data.title
-    )
-    session = await req_manager.submit_request( # type: ignore
-        coro=task_routine, priority=RequestPriority.HIGH
+    session = await req_manager.submit_request(  # type: ignore
+        func=chat_manager.create_session,
+        project_id=session_data.project_id,
+        title=session_data.title,
+        priority=RequestPriority.HIGH
     )
 
     return SessionResponseAPI(
@@ -220,12 +223,13 @@ async def delete_session(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
 
-    task_routine = chat_manager.delete_session(session_id)
-    future = await req_manager.submit_request( # type: ignore
-        coro=task_routine, priority=RequestPriority.HIGH
+    future = await req_manager.submit_request(  # type: ignore
+        func=chat_manager.delete_session,
+        session_id=session_id,
+        priority=RequestPriority.HIGH
     )
 
-    task_id = task_manager.create_task(future) # type: ignore
+    task_id = task_manager.create_task(future)  # type: ignore
     return StatusResponse(
         status=Status.PENDING,
         message=f"Session {session_id} deleted successfully.",

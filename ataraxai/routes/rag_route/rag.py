@@ -9,6 +9,7 @@ from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.katalepsis import katalepsis_monitor
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
+from fastapi import status
 from ataraxai.routes.dependency_api import (
     get_gatewaye_task_manager,
     get_request_manager,
@@ -56,11 +57,10 @@ async def rebuild_index(
         HTTPException: If an error occurs during the index rebuild process.
     """
     rag_manager = await orch.get_rag_manager()
-    task_routine = rag_manager.rebuild_index()
-    future = await req_manager.submit_request(
-        coro=task_routine, priority=RequestPriority.HIGH
+    future = await req_manager.submit_request(  # type: ignore
+        func=rag_manager.rebuild_index, priority=RequestPriority.HIGH
     )
-    task_id = task_manager.create_task(future)
+    task_id = task_manager.create_task(future)  # type: ignore
     return RebuildIndexResponse(
         status=Status.SUCCESS,
         message="Index rebuild started successfully.",
@@ -189,11 +189,12 @@ async def add_directory(
         HTTPException: If an error occurs while adding directories, returns HTTP 500 with an error message.
     """
     rag_manager = await orch.get_rag_manager()
-    task_routine = rag_manager.add_watch_directories(request.directories)
-    future = await req_manager.submit_request(
-        coro=task_routine, priority=RequestPriority.HIGH
+    future = await req_manager.submit_request(  # type: ignore
+        func=rag_manager.add_watch_directories,
+        directories=request.directories,
+        priority=RequestPriority.HIGH,
     )
-    task_id = task_manager.create_task(future)
+    task_id = task_manager.create_task(future)  # type: ignore
 
     if not task_id:
         raise HTTPException(
@@ -233,15 +234,17 @@ async def remove_directory(
     Raises:
         HTTPException: If an error occurs while removing directories, returns HTTP 500 with an error message.
     """
-    task_routine = orch.rag.remove_watch_directories(request.directories)
-    future = await req_manager.submit_request(
-        coro=task_routine, priority=RequestPriority.HIGH
+    rag_manager = await orch.get_rag_manager()
+    future = await req_manager.submit_request(  # type: ignore
+        func=rag_manager.remove_watch_directories,
+        directories=request.directories,
+        priority=RequestPriority.HIGH,
     )
-    task_id = task_manager.create_task(future)
+    task_id = task_manager.create_task(future)  # type: ignore
 
     if not task_id:
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to schedule directory removal task.",
         )
     return DirectoriesRemovalResponse(

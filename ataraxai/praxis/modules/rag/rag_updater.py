@@ -40,12 +40,12 @@ async def process_new_file(
         return
 
     try:
-        final_texts = [cd.content for cd in chunked_document_objects] # type: ignore
+        final_texts = [cd.content for cd in chunked_document_objects]  # type: ignore
 
         final_metadatas: List[MetadataDict] = []
-        for cd in chunked_document_objects: # type: ignore
+        for cd in chunked_document_objects:  # type: ignore
             dict_value: Dict[str, Any] = {}
-            for k, v in cd.metadata.items(): # type: ignore
+            for k, v in cd.metadata.items():  # type: ignore
                 dict_value[k] = v
             final_metadatas.append(dict_value)
 
@@ -173,6 +173,11 @@ async def rag_update_worker_async(
             event_type = task.get("event_type")
             file_path = task.get("path")
             dest_path = task.get("dest_path")
+
+            if event_type == "stop":
+                logger.info("RAG Update Worker: Stopping as per 'stop' task.")
+                processing_queue.task_done()
+                break
 
             if not file_path:
                 logger.warning(f"RAG Update Worker: Invalid task, missing path: {task}")

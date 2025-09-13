@@ -18,6 +18,7 @@ from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
+from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
 from ataraxai.praxis.utils.chat_manager import ChatManager
 from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import (
     UserPreferences,
@@ -38,6 +39,35 @@ from ataraxai.praxis.utils.vault_manager import (
 )
 
 
+class OrchestratorStateMachine:
+
+    def __init__(self, initial_state: AppState = AppState.LOCKED):
+        self._state = initial_state
+        self._state = initial_state
+        self._lock = asyncio.Lock()
+        self._valid_transitions = {
+            AppState.FIRST_LAUNCH: [AppState.UNLOCKED, AppState.ERROR],
+            AppState.LOCKED: [AppState.FIRST_LAUNCH, AppState.UNLOCKED, AppState.ERROR],
+            AppState.UNLOCKED: [AppState.LOCKED, AppState.ERROR],
+            AppState.ERROR: [AppState.LOCKED, AppState.FIRST_LAUNCH],
+        }
+
+    async def get_state(self) -> AppState:
+        async with self._lock:
+            return self._state
+
+    async def transition_to(self, new_state: AppState) -> None:
+        if new_state not in self._valid_transitions.get(self._state, []):
+            raise ValueError(
+                f"Invalid state transition from {self._state.name} to {new_state.name}"
+            )
+        async with self._lock:
+            if self._state != new_state:
+                old_state = self._state
+                self._state = new_state
+                logging.info(f"State transition: {old_state.name} -> {new_state.name}")
+
+
 class AtaraxAIOrchestrator:
 
     EXPECTED_RESET_CONFIRMATION_PHRASE = "reset ataraxai vault"
@@ -54,8 +84,8 @@ class AtaraxAIOrchestrator:
         self.services = services
         self.logger = logger
 
-        self._state_lock = asyncio.Lock()
-        self._state: AppState = AppState.LOCKED
+        # self._state_lock = asyncio.Lock()
+        self.state_machine = OrchestratorStateMachine()
         self._initialized = False
         self._shutdown = False
 
@@ -77,17 +107,18 @@ class AtaraxAIOrchestrator:
             return
 
         try:
-            async with self._state_lock:
-                initial_state = await self._determine_initial_state()
-                self._state = initial_state
 
-                if self._state == AppState.FIRST_LAUNCH:
-                    await self._initialize_base_components()
+            self._state = await self._determine_initial_state()
 
-                self._initialized = True
-                self.logger.info(
-                    f"Orchestrator initialized. Current state: {self._state.name}"
-                )
+            self.logger.info(f"directories created {self.services.directories}")
+
+            if await self.state_machine.get_state() == AppState.FIRST_LAUNCH:
+                await self._initialize_base_components()
+
+            self._initialized = True
+            self.logger.info(
+                f"Orchestrator initialized. Current state: {(await self.state_machine.get_state()).name}"
+            )
 
         except Exception as e:
             self.logger.error(f"Failed to initialize orchestrator: {e}", exc_info=True)
@@ -95,32 +126,28 @@ class AtaraxAIOrchestrator:
             raise
 
     async def get_state(self) -> AppState:
-        async with self._state_lock:
-            return self._state
+        return await self.state_machine.get_state()
 
     async def _set_state(self, new_state: AppState) -> None:
-        async with self._state_lock:
-            if self._state != new_state:
-                old_state = self._state
-                self._state = new_state
-                self.logger.info(
-                    f"State transition: {old_state.name} -> {new_state.name}"
-                )
+        await self.state_machine.transition_to(new_state)
 
-    async def _determine_initial_state(self) -> AppState:
+    async def _determine_initial_state(self):
         try:
             if self.services and self.services.vault_manager:
                 check_path = Path(self.services.vault_manager.check_path)
                 path_exists = await asyncio.to_thread(check_path.exists)
-                return AppState.LOCKED if path_exists else AppState.FIRST_LAUNCH
+                if path_exists:
+                    await self.state_machine.transition_to(AppState.LOCKED)
+                else:
+                    await self.state_machine.transition_to(AppState.FIRST_LAUNCH)
             else:
                 self.logger.error(
                     "Vault manager not initialized, defaulting to FIRST_LAUNCH state"
                 )
-                return AppState.FIRST_LAUNCH
+                await self.state_machine.transition_to(AppState.FIRST_LAUNCH)
         except Exception as e:
             self.logger.error(f"Error determining initial state: {e}", exc_info=True)
-            return AppState.ERROR
+            await self.state_machine.transition_to(AppState.ERROR)
 
     async def _initialize_base_components(self) -> None:
         try:
@@ -323,6 +350,12 @@ class AtaraxAIOrchestrator:
         self._shutdown = True
 
         try:
+
+            if self.services and self.services.background_task_manager:
+                await asyncio.to_thread(
+                    self.services.background_task_manager.wait_for_all_tasks
+                )
+
             await self._shutdown_services()
             self.logger.info("Orchestrator shutdown complete.")
         except Exception as e:
@@ -386,43 +419,43 @@ class AtaraxAIOrchestrator:
         return self.services.task_manager
 
     async def get_vault_manager(self) -> VaultManager:
-        async with self._state_lock:
+        async with self.state_machine._lock:
             if self.services is None or self.services.vault_manager is None:
                 raise RuntimeError("Vault manager is not initialized.")
             return self.services.vault_manager
 
     async def get_config_manager(self) -> ConfigurationManager:
-        async with self._state_lock:
+        async with self.state_machine._lock:
             if self.services is None or self.services.config_manager is None:
                 raise RuntimeError("Config manager is not initialized.")
             return self.services.config_manager
 
     async def get_core_ai_service_manager(self) -> CoreAIServiceManager:
-        async with self._state_lock:
+        async with self.state_machine._lock:
             if self.services is None or self.services.core_ai_service_manager is None:
                 raise RuntimeError("Core AI service manager is not initialized.")
             return self.services.core_ai_service_manager
 
     async def get_app_config(self) -> AppConfig:
-        async with self._state_lock:
+        async with self.state_machine._lock:
             if self.services is None or self.services.app_config is None:
                 raise RuntimeError("App config is not initialized.")
             return self.services.app_config
 
     async def get_directories(self) -> AppDirectories:
-        async with self._state_lock:
+        async with self.state_machine._lock:
             if self.services is None or self.services.directories is None:
                 raise RuntimeError("App directories are not initialized.")
             return self.services.directories
 
     async def get_user_preferences_manager(self) -> UserPreferencesManager:
-        async with self._state_lock:
+        async with self.state_machine._lock:
             if self.services is None or self.services.config_manager is None:
                 raise RuntimeError("User preferences manager is not initialized.")
             return self.services.config_manager.preferences_manager
 
     async def get_user_preferences(self) -> UserPreferences:
-        async with self._state_lock:
+        async with self.state_machine._lock:
             if self.services is None or self.services.config_manager is None:
                 raise RuntimeError("User preferences are not initialized.")
             return self.services.config_manager.get_user_preferences()
@@ -433,6 +466,8 @@ class AtaraxAIOrchestratorFactory:
     @staticmethod
     async def create_orchestrator() -> AtaraxAIOrchestrator:
         try:
+
+            print("Creating AtaraxAI Orchestrator...")
             app_config = AppConfig()
             settings = AtaraxAISettings()
             directories = AppDirectories.create_default(settings)
@@ -461,7 +496,13 @@ class AtaraxAIOrchestratorFactory:
                 db_manager=db_manager, logger=logger, vault_manager=vault_manager
             )
 
-            models_manager = ModelsManager(directories=directories, logger=logger)
+            background_task_manager = BackgroundTaskManager()
+
+            models_manager = ModelsManager(
+                directories=directories,
+                logger=logger,
+                background_task_manager=background_task_manager,
+            )
 
             services = Services(
                 directories=directories,
@@ -474,6 +515,7 @@ class AtaraxAIOrchestratorFactory:
                 vault_manager=vault_manager,
                 models_manager=models_manager,
                 core_ai_service_manager=core_ai_manager,
+                background_task_manager=background_task_manager,
             )
 
             orchestrator = AtaraxAIOrchestrator(

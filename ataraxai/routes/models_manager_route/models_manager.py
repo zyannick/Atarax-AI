@@ -12,6 +12,7 @@ from fastapi import (
 from fastapi.params import Depends
 from prometheus_client import Enum
 
+from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
 from ataraxai.gateway.request_manager import RequestManager, RequestPriority
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.katalepsis import katalepsis_monitor
@@ -21,6 +22,7 @@ from ataraxai.praxis.modules.models_manager.models_manager import (
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.dependency_api import (
+    get_gatewaye_task_manager,
     get_request_manager,
     get_unlocked_orchestrator,
     get_unlocked_orchestrator_ws,
@@ -90,7 +92,7 @@ async def start_download_in_thread(
     models_manager = await orch.get_models_manager()
 
     await asyncio.to_thread(
-        models_manager.start_download_task, task_id=task_id, model_info=model_info # type: ignore
+        models_manager.start_download_task, task_id=task_id, model_info=model_info  # type: ignore
     )
 
     return task_id
@@ -108,8 +110,8 @@ async def download_progress_websocket(
 
     try:
         while True:
-            status_data: Optional[Dict[Any, Any]] = ( # type: ignore
-                models_manager.get_download_status(task_id) # type: ignore
+            status_data: Optional[Dict[Any, Any]] = (  # type: ignore
+                models_manager.get_download_status(task_id)  # type: ignore
             )
 
             if status_data:
@@ -199,16 +201,18 @@ async def download_model(
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
 ):
-    task_coroutine = start_download_in_thread(
+
+    task_id = await req_manager.submit_request(  # type: ignore
+        func=start_download_in_thread,
         orch=orch,
         model_info=LlamaCPPModelInfo(**request.model_dump()),
+        priority=RequestPriority.MEDIUM,
     )
 
-    future = await req_manager.submit_request( # type: ignore
-        coro=task_coroutine, priority=RequestPriority.MEDIUM
-    )
+    # print("Future created for download task:")
+    # print(future)
 
-    task_id = await future
+    # task_id = await future
 
     return DownloadModelResponse(
         status=DownloadTaskStatus.PENDING,
@@ -284,19 +288,28 @@ async def get_model_info(
     )
 
 
-@router_models_manager.post("/remove_all_models")
+@router_models_manager.post("/remove_all_models", response_model=StatusResponse)
+@handle_api_errors("Remove All Models", logger=logger)
 async def remove_all_models(
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    req_manager: Annotated[RequestManager, Depends(get_request_manager)],
+    task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ) -> StatusResponse:
-    try:
-        orch.models_manager.remove_all_models()
-        return StatusResponse(
-            status=Status.SUCCESS,
-            message="Model manifests removed successfully.",
+
+    models_manager = await orch.get_models_manager()
+
+    success = await req_manager.submit_request(  # type: ignore
+        func=models_manager.remove_all_models,
+        priority=RequestPriority.HIGH,
+    )
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create task for removing models.",
         )
-    except Exception as e:
-        logger.error(f"Error removing model manifests: {str(e)}")
-        return StatusResponse(
-            status=Status.ERROR,
-            message=f"Failed to remove all model manifests: {str(e)}",
-        )
+
+    return StatusResponse(
+        status=Status.SUCCESS,
+        message="Model manifests removed successfully.",
+    )

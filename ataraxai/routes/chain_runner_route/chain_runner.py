@@ -63,12 +63,11 @@ async def run_chain(
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ) -> StartChainResponse:
 
-    task_coroutine = orch.run_task_chain(
-        request.chain_definition, request.initial_user_query
-    )
-
     future = await req_manager.submit_request(  # type: ignore
-        coro=task_coroutine, priority=RequestPriority.HIGH
+        func=orch.run_task_chain,
+        chain_definition=request.chain_definition,
+        initial_user_query=request.initial_user_query,
+        priority=RequestPriority.MEDIUM,
     )
 
     task_id = task_manager.create_task(future)  # type: ignore

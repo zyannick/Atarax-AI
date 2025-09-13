@@ -134,6 +134,7 @@ class AtaraxAIRAGManager:
     async def stop(self):
         self.logger.info("Stopping RAG manager services...")
         await self.file_watcher_manager.stop()
+        self.logger.info("File watcher manager stopped.")
         if self._rag_worker_task and not self._rag_worker_task.done():
             await self.processing_queue.put({"event_type": "stop"})
             await self._rag_worker_task

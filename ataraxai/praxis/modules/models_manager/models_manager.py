@@ -1,23 +1,26 @@
+import asyncio
+import hashlib
+import json
+import logging
 import os
 import random
-from huggingface_hub import HfApi
-from huggingface_hub.errors import HfHubHTTPError
-import hashlib
+import re
 import threading
-import json
-from typing import Any, List, Dict, Optional, Callable
+from datetime import datetime
+from enum import Enum, auto
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
+
 import requests
 import tqdm
+from huggingface_hub import HfApi, hf_hub_url
+from huggingface_hub.errors import HfHubHTTPError
+from pydantic import BaseModel, Field, field_validator
+
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from enum import Enum, auto
-from datetime import datetime
-from huggingface_hub import hf_hub_url
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
-import logging
-import re
-from pydantic import BaseModel, Field, field_validator
+from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
 
 
 class ModelDownloadStatus(Enum):
@@ -108,13 +111,11 @@ class ModelDownloadInfo(BaseModel):
     cancelled_at: Optional[datetime] = None
     pause_at: Optional[datetime] = None
 
-
     @field_validator("status")
     def validate_status(cls, v):
         if not isinstance(v, ModelDownloadStatus):
             raise ValueError("Invalid status type")
         return v
-
 
 
 def get_file_size(repo_id: str, filename: str) -> int:
@@ -131,7 +132,12 @@ def get_file_size(repo_id: str, filename: str) -> int:
 
 
 class ModelsManager:
-    def __init__(self, directories: AppDirectories, logger: logging.Logger):
+    def __init__(
+        self,
+        directories: AppDirectories,
+        logger: logging.Logger,
+        background_task_manager: BackgroundTaskManager,
+    ):
         """
         Initializes the ModelManager instance.
 
@@ -152,6 +158,7 @@ class ModelsManager:
         """
         self.directories = directories
         self.logger = logger
+        self.background_task_manager = background_task_manager
         self.models_dir = self.directories.data / "models"
         self.models_dir.mkdir(exist_ok=True)
         self.manifest_path = self.models_dir / "models.json"
@@ -202,7 +209,7 @@ class ModelsManager:
                 total=total_size,
                 unit="B",
                 unit_scale=True,
-                desc=f"Downloading {filename}",
+                desc=f"Downloading to {local_path}",
             ) as pbar:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
@@ -264,40 +271,62 @@ class ModelsManager:
         except Exception as e:
             self.logger.error(f"Failed to save manifest: {e}")
 
-    
-    def get_list_of_models_from_manifest(self, search_infos: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def get_list_of_models_from_manifest(
+        self, search_infos: Dict[str, Any]
+    ) -> List[Dict[str, Any]]:
         """
         Retrieves a list of all models in the manifest that match all provided search criteria.
         This search is partial and case-insensitive.
 
         Args:
-            search_infos (Dict[str, Any]): A dictionary with keys like 'repo_id', 
+            search_infos (Dict[str, Any]): A dictionary with keys like 'repo_id',
                                            'filename', or 'organization' for filtering.
 
         Returns:
             List[Dict[str, Any]]: A list of model dictionaries matching all search criteria.
         """
+
+        self.logger.debug(f"Searching models with criteria: {search_infos}")
+        self.logger.debug(f"Current manifest: {len(self.manifest['models'])}")
+
         results = []
-        
-        search_repo_id = search_infos.get("repo_id", "").lower() if search_infos.get("repo_id") else None
-        search_filename = search_infos.get("filename", "").lower() if search_infos.get("filename") else None
-        search_org = search_infos.get("organization", "").lower() if search_infos.get("organization") else None
+
+        search_repo_id = (
+            search_infos.get("repo_id", "").lower()
+            if search_infos.get("repo_id")
+            else None
+        )
+        search_filename = (
+            search_infos.get("filename", "").lower()
+            if search_infos.get("filename")
+            else None
+        )
+        search_org = (
+            search_infos.get("organization", "").lower()
+            if search_infos.get("organization")
+            else None
+        )
 
         for model in self.manifest.get("models", []):
-            
-            if search_repo_id and search_repo_id not in model.get("repo_id", "").lower():
-                continue 
 
-            if search_filename and search_filename not in model.get("filename", "").lower():
-                continue 
-                
+            if (
+                search_repo_id
+                and search_repo_id not in model.get("repo_id", "").lower()
+            ):
+                continue
+
+            if (
+                search_filename
+                and search_filename not in model.get("filename", "").lower()
+            ):
+                continue
+
             if search_org and search_org not in model.get("organization", "").lower():
                 continue
 
             results.append(model)
-            
-        return results
 
+        return results
 
     def _calculate_sha256(self, file_path: Path) -> str:
         """
@@ -423,6 +452,8 @@ class ModelsManager:
             result: List[LlamaCPPModelInfo] = []
             for model in models:
 
+                self.logger.debug(f"Processing model: {model.id}")
+
                 if len(result) == limit:
                     break
 
@@ -434,7 +465,7 @@ class ModelsManager:
                 except Exception as e:
                     self.logger.warning(
                         f"Failed to list gguf files for {model.id}: {e}"
-                    )   
+                    )
                     model_dict["gguf_files"] = []
 
                 for gguf_file in model_dict["gguf_files"]:
@@ -455,9 +486,7 @@ class ModelsManager:
                         local_path=str(self.models_dir / model.id / gguf_file),
                         downloaded_at=datetime.now(),
                         file_size=get_file_size(model.id, gguf_file),
-                        created_at=model_dict.get(
-                            "created_at", datetime.now()
-                        ),
+                        created_at=model_dict.get("created_at", datetime.now()),
                         downloads=model_dict.get("downloads", 0),
                         likes=model_dict.get("likes", 0),
                         quantization_bit=f"Q{bits}" if bits else "default",
@@ -505,7 +534,7 @@ class ModelsManager:
 
     def start_download_task(
         self,
-        task_id : str,
+        task_id: str,
         model_info: LlamaCPPModelInfo,
         progress_callback: Optional[Callable] = None,
     ) -> str:
@@ -541,6 +570,7 @@ class ModelsManager:
             args=(task_id, repo_id, filename, model_info, progress_callback),
             daemon=True,
         )
+        self.background_task_manager.register_task(thread)
         thread.start()
         return task_id
 
@@ -597,6 +627,7 @@ class ModelsManager:
         Exceptions:
             - Catches all exceptions, logs the error, and updates the task status to FAILED.
         """
+        current_thread = threading.current_thread()
         try:
             with self._lock:
                 self._download_tasks[task_id].status = ModelDownloadStatus.DOWNLOADING
@@ -646,6 +677,8 @@ class ModelsManager:
                 self._download_tasks[task_id].status = ModelDownloadStatus.FAILED
                 self._download_tasks[task_id].error = str(e)
                 self._download_tasks[task_id].failed_at = datetime.now()
+        finally:
+            self.background_task_manager.unregister_task(current_thread)
 
     def _add_to_manifest(
         self,
@@ -730,7 +763,7 @@ class ModelsManager:
         """
         return self.manifest.get("models", [])
 
-    def remove_all_models(self) -> bool:
+    async def remove_all_models(self) -> bool:
         """
         Removes all models from the manifest and deletes their local files.
 
@@ -743,19 +776,24 @@ class ModelsManager:
             - Logs information and errors related to the removal process.
         """
         try:
-            for model in self.manifest["models"]:
-                if model.get("local_path") and Path(model["local_path"]).exists():
-                    Path(model["local_path"]).unlink()
 
-            self.manifest["models"] = []
-            self._save_manifest()
-            self.logger.info("Removed all models from manifest and local storage.")
-            return True
+            def _blocking_remove():
+                for model in self.manifest["models"]:  # type: ignore
+                    if model.get("local_path") and Path(model["local_path"]).exists():  # type: ignore
+                        Path(model["local_path"]).unlink()
+
+                self.manifest["models"] = []  # type: ignore
+                self._save_manifest()
+                self.logger.info("Removed all models from manifest and local storage.")
+                return True
+
+            return await asyncio.to_thread(_blocking_remove)
+
         except Exception as e:
             self.logger.error(f"Failed to remove all models: {e}")
-            return False
+            raise
 
-    def remove_model(self, repo_id: str, filename: str) -> bool:
+    async def remove_model(self, repo_id: str, filename: str) -> bool:
         """
         Removes a model from the manifest and deletes its local file if it exists.
 
@@ -772,20 +810,26 @@ class ModelsManager:
             - Logs information and errors related to the removal process.
         """
         try:
-            for i, model in enumerate(self.manifest["models"]):
-                if model["repo_id"] == repo_id and model["filename"] == filename:
-                    if model.get("local_path") and Path(model["local_path"]).exists():
-                        Path(model["local_path"]).unlink()
 
-                    del self.manifest["models"][i]
-                    self._save_manifest()
-                    self.logger.info(f"Removed model: {repo_id}/{filename}")
-                    return True
+            def _blocking_remove():
+                for i, model in enumerate(self.manifest["models"]):  # type: ignore
+                    if model["repo_id"] == repo_id and model["filename"] == filename:
+                        if (
+                            model.get("local_path")  # type: ignore
+                            and Path(model["local_path"]).exists()
+                        ):
+                            Path(model["local_path"]).unlink()
 
-            return False
+                        del self.manifest["models"][i]  # type: ignore
+                        self._save_manifest()
+                        self.logger.info(f"Removed model: {repo_id}/{filename}")
+                        return True
+                return False
+
+            return await asyncio.to_thread(_blocking_remove)
         except Exception as e:
             self.logger.error(f"Failed to remove model {repo_id}/{filename}: {e}")
-            return False
+            raise
 
     def cleanup_old_tasks(self, max_age_hours: int = 24):
         """
@@ -817,17 +861,23 @@ class ModelsManager:
 
 
 if __name__ == "__main__":
-    random.seed(42)  
+    random.seed(42)
     settings = AtaraxAISettings()
     directories = AppDirectories.create_default(settings)
 
     logger = AtaraxAILogger().get_logger()
-    model_manager = ModelsManager(directories, logger)
+    background_task_manager = BackgroundTaskManager()
+    model_manager = ModelsManager(directories, logger, background_task_manager)
 
-    model_manager.remove_all_models()  
-    model_manager.cleanup_old_tasks(max_age_hours=1)  
-    models = model_manager.search_models("phi-2", limit=100)
-    # print(f"Found {len(models)} models matching 'phi-2'.")
+    async def main():
+        await model_manager.remove_all_models()
+        model_manager.cleanup_old_tasks(max_age_hours=1)
+        models = model_manager.search_models("tini_llama", limit=10)
+        print(f"Found {len(models)} models matching 'tini_llama'.")
+
+    import asyncio
+
+    asyncio.run(main())
 
     # print("Available models:")
     # for model in models:

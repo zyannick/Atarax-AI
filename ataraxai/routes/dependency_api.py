@@ -81,7 +81,8 @@ async def get_unlocked_orchestrator(
     orch_state = await orch.get_state()
     if orch_state != AppState.UNLOCKED:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail=Messages.VAULT_LOCKED
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Current state is " + str(orch_state.value),
         )
     return orch
 

@@ -2,7 +2,6 @@ import asyncio
 from pathlib import Path
 from typing import Any, Dict, List
 import logging
-from typing import Optional
 from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
@@ -21,6 +20,7 @@ from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
 from ataraxai.praxis.utils.chat_manager import ChatManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
+from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
 
 
 class Services:
@@ -37,6 +37,7 @@ class Services:
         vault_manager: VaultManager,
         models_manager: ModelsManager,
         core_ai_service_manager: CoreAIServiceManager,
+        background_task_manager: BackgroundTaskManager
     ):
         """
         Initializes the service with required managers, configuration, and logging utilities.
@@ -61,6 +62,7 @@ class Services:
         self.models_manager = models_manager
         self.core_ai_service_manager = core_ai_service_manager
         self.vault_manager = vault_manager
+        self.background_task_manager = background_task_manager
 
     async def initialize(self) -> None:
         """

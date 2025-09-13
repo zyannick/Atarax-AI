@@ -23,6 +23,7 @@ class AppDirectories:
         Returns:
             AppDirectories: An instance with initialized and created directory paths.
         """
+        print("Creating default application directories...")
         dirs = cls(
             config=Path(
                 user_config_dir(
