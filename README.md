@@ -25,7 +25,9 @@
 
 **Fully offline. Multi-modal. Secure. Yours.**
 
+
 Atarax-AI is a full-featured AI assistant that runs entirely offline using llama.cpp, optimized for low-latency, high-accuracy inference on consumer-grade hardware. The assistant supports multi-modal inputs (text, voice, images, and videos), performs real-time reasoning, and integrates with local system APIs (all with zero cloud dependency).
+
 
 ## Architecture Overview
 
