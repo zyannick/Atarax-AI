@@ -26,7 +26,7 @@ from ataraxai.routes.status import Status
 @pytest.mark.asyncio
 async def test_search_models(module_unlocked_client: TestClient):
     search_model_request = SearchModelsRequest(
-        query="tinyllama", limit=10, filters_tags=["llama"]
+        query="llama", limit=10, filters_tags=["llama"]
     )
 
     # client = await module_unlocked_client
@@ -68,9 +68,7 @@ async def test_search_models_no_results(module_unlocked_client: TestClient):
 
 @pytest.mark.asyncio
 async def test_model_download_and_progress_flow(module_unlocked_client: TestClient):
-    search_model_request = SearchModelsRequest(
-        query="tinyllama", limit=SEARCH_LIMIT
-    )
+    search_model_request = SearchModelsRequest(query="llama", limit=SEARCH_LIMIT)
     response = module_unlocked_client.post(
         "/api/v1/models_manager/search_models",
         json=search_model_request.model_dump(mode="json"),
@@ -90,7 +88,7 @@ async def test_model_download_and_progress_flow(module_unlocked_client: TestClie
     validate_model_structure(model_to_download)
 
     download_request = DownloadModelRequest(**model_to_download)
-    orchestrator : AtaraxAIOrchestrator = module_unlocked_client.app.state.orchestrator  # type: ignore
+    orchestrator: AtaraxAIOrchestrator = module_unlocked_client.app.state.orchestrator  # type: ignore
 
     response = module_unlocked_client.post(
         "/api/v1/models_manager/download_model",
@@ -113,7 +111,7 @@ async def test_model_download_and_progress_flow(module_unlocked_client: TestClie
     final_status = await monitor_download_progress(module_unlocked_client, task_id)
 
     expected_file_path: Path = (  # type: ignore
-        orchestrator.services.directories.data # type: ignore
+        orchestrator.services.directories.data  # type: ignore
         / "models"
         / model_to_download["repo_id"]
         / model_to_download["filename"]
@@ -145,10 +143,82 @@ async def test_model_download_not_found(module_unlocked_client: TestClient):
     assert response.json()["detail"] == "No download task found with the provided ID."
 
 
+def _test_manifest_search(
+    modified_client: TestClient,
+    repo_id: str,
+    filename: str,
+    expected_count: int = MAX_MODELS_TO_DOWNLOAD,
+):
+    search_model_request = SearchModelsManifestRequest(
+        repo_id=repo_id, filename=filename
+    )
+    response = modified_client.post(
+        "/api/v1/models_manager/get_model_info_manifest",
+        json=search_model_request.model_dump(mode="json"),
+    )
+
+    assert (
+        response.status_code == status.HTTP_200_OK
+    ), f"Expected 200 OK, got {response.text}"
+    data = response.json()
+
+    assert (
+        data["status"] == Status.SUCCESS.value
+    ), f"Expected success status, got {data}"
+    assert data["message"] == "Model information retrieved successfully."
+    assert isinstance(data["models"], list)
+    assert len(data["models"]) == expected_count
+
+    for model in data["models"]:
+        validate_model_structure(model)
+
+
+def test_get_model_info_manifest_partial(
+    module_unlocked_client_with_filled_manifest: TestClient,
+):
+    _test_manifest_search(
+        module_unlocked_client_with_filled_manifest, repo_id="ll", filename="ma"
+    )
+
+
+# def test_get_model_info_manifest(
+#     module_unlocked_client_with_filled_manifest: TestClient,
+# ):
+#     _test_manifest_search(
+#         module_unlocked_client_with_filled_manifest, repo_id="llama", filename="llama"
+#     )
+
+
+def test_get_model_info_manifest_case_insensitive(
+    module_unlocked_client_with_filled_manifest: TestClient,
+):
+    _test_manifest_search(
+        module_unlocked_client_with_filled_manifest, repo_id="LL", filename="MA"
+    )
+
+
+def test_get_model_info_manifest_no_results(
+    module_unlocked_client_with_filled_manifest: TestClient,
+):
+    search_model_request = SearchModelsManifestRequest(
+        repo_id="nonexistentmodel", filename="nonexistent"
+    )
+    response = module_unlocked_client_with_filled_manifest.post(
+        "/api/v1/models_manager/get_model_info_manifest",
+        json=search_model_request.model_dump(mode="json"),
+    )
+
+    assert (
+        response.status_code == status.HTTP_404_NOT_FOUND
+    ), f"Expected 404 Not Found, got {response.text}"
+    data = response.json()
+    assert data["detail"] == "No models found matching the search criteria."
+
+
 @pytest.mark.asyncio
 async def test_cancel_download(module_unlocked_client: TestClient):
     search_model_request = SearchModelsRequest(
-        query="tinyllama", limit=SEARCH_LIMIT, filters_tags=[]
+        query="llama", limit=SEARCH_LIMIT, filters_tags=[]
     )
     response = module_unlocked_client.post(
         "/api/v1/models_manager/search_models",
@@ -166,7 +236,7 @@ async def test_cancel_download(module_unlocked_client: TestClient):
     download_request = DownloadModelRequest(**model_to_download)
 
     orchestrator: AtaraxAIOrchestrator = module_unlocked_client.app.state.orchestrator  # type: ignore
-    state = await orchestrator.get_state() # type: ignore
+    state = await orchestrator.get_state()  # type: ignore
     assert state == AppState.UNLOCKED, "Orchestrator should be in UNLOCKED state."
 
     # Start download
@@ -196,74 +266,3 @@ async def test_cancel_download(module_unlocked_client: TestClient):
     assert cancel_data["task_id"] == task_id
 
     clean_downloaded_models(module_unlocked_client)
-
-
-def _test_manifest_search(
-    modified_client: TestClient,
-    repo_id: str,
-    filename: str,
-    expected_count: int = MAX_MODELS_TO_DOWNLOAD,
-):
-    search_model_request = SearchModelsManifestRequest(
-        repo_id=repo_id, filename=filename
-    )
-    response = modified_client.post(
-        "/api/v1/models_manager/get_model_info_manifest",
-        json=search_model_request.model_dump(mode="json"),
-    )
-
-    assert (
-        response.status_code == status.HTTP_200_OK
-    ), f"Expected 200 OK, got {response.text}"
-    data = response.json()
-
-    assert data["status"] == Status.SUCCESS.value, f"Expected success status, got {data}"
-    assert data["message"] == "Model information retrieved successfully."
-    assert isinstance(data["models"], list)
-    assert 1 == 2, f"Expected {expected_count} models in the response, got {len(data['models'])}"
-    assert len(data["models"]) == expected_count
-
-    for model in data["models"]:
-        validate_model_structure(model)
-
-
-def test_get_model_info_manifest(
-    module_unlocked_client_with_filled_manifest: TestClient,
-):
-    _test_manifest_search(
-        module_unlocked_client_with_filled_manifest, repo_id="llama", filename="llama"
-    )
-
-
-# def test_get_model_info_manifest_partial(
-#     module_unlocked_client_with_filled_manifest: TestClient,
-# ):
-#     _test_manifest_search(
-#         module_unlocked_client_with_filled_manifest, repo_id="ll", filename="ma"
-#     )
-
-
-# def test_get_model_info_manifest_case_insensitive(
-#     module_unlocked_client_with_filled_manifest: TestClient,
-# ):
-#     _test_manifest_search(
-#         module_unlocked_client_with_filled_manifest, repo_id="LL", filename="MA"
-#     )
-
-
-# def test_get_model_info_manifest_no_results(
-#     module_unlocked_client_with_filled_manifest: TestClient,
-# ):
-#     search_model_request = SearchModelsManifestRequest(
-#         repo_id="nonexistentmodel", filename="nonexistent"
-#     )
-#     response = module_unlocked_client_with_filled_manifest.post(
-#         "/api/v1/models_manager/get_model_info_manifest",
-#         json=search_model_request.model_dump(mode="json"),
-#     )
-
-#     assert (
-#         response.status_code == status.HTTP_404_NOT_FOUND
-#     ), f"Expected 404 Not Found, got {response.text}"
-#     data = response.json()
-#     assert data["detail"] == "No models found matching the search criteria."

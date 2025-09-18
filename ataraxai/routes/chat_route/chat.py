@@ -41,12 +41,14 @@ async def create_new_project(
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ):
     chat_manager = await orch.get_chat_manager()
-    project = await req_manager.submit_request(  # type: ignore
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="Create Project",
         func=chat_manager.create_project,
         name=project_data.name,
         description=project_data.description,
         priority=RequestPriority.HIGH,
     )
+    project = await future
     return ProjectResponseAPI(
         project_id=project.id, name=project.name, description=project.description
     )
@@ -69,7 +71,8 @@ async def delete_project(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
 
-    future = await req_manager.submit_request( # type: ignore
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="Delete Project",
         func=chat_manager.delete_project,
         project_id=project_id,
         priority=RequestPriority.HIGH,
@@ -115,11 +118,14 @@ async def get_project(
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ):
     chat_manager = await orch.get_chat_manager()
-    project = await req_manager.submit_request(  # type: ignore
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="Get Project",
         func=chat_manager.get_project,
         project_id=project_id,
-        priority=RequestPriority.HIGH
+        priority=RequestPriority.HIGH,
     )
+    project = await future
+
     if not project:
         logger.error(f"Project with ID {project_id} not found.")
         raise HTTPException(
@@ -139,10 +145,12 @@ async def list_projects(
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ):
     chat_manager = await orch.get_chat_manager()
-    projects = await req_manager.submit_request(  # type: ignore
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="List Projects",
         func=chat_manager.list_projects,
-        priority=RequestPriority.HIGH
+        priority=RequestPriority.HIGH,
     )
+    projects = await future
     return [
         ProjectResponseAPI(
             project_id=project.id, name=project.name, description=project.description
@@ -163,11 +171,13 @@ async def list_sessions(
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ):
     chat_manager = await orch.get_chat_manager()
-    sessions = await req_manager.submit_request(  # type: ignore
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="List Sessions",
         func=chat_manager.list_sessions,
         project_id=project_id,
-        priority=RequestPriority.HIGH
+        priority=RequestPriority.HIGH,
     )
+    sessions = await future
     return [
         SessionResponseAPI(
             session_id=session.id, title=session.title, project_id=session.project_id
@@ -194,12 +204,14 @@ async def create_session(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
 
-    session = await req_manager.submit_request(  # type: ignore
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="Create Session",
         func=chat_manager.create_session,
         project_id=session_data.project_id,
         title=session_data.title,
-        priority=RequestPriority.HIGH
+        priority=RequestPriority.HIGH,
     )
+    session = await future
 
     return SessionResponseAPI(
         session_id=session.id, title=session.title, project_id=session.project_id
@@ -224,9 +236,10 @@ async def delete_session(
         )
 
     future = await req_manager.submit_request(  # type: ignore
+        request_name="Delete Session",
         func=chat_manager.delete_session,
         session_id=session_id,
-        priority=RequestPriority.HIGH
+        priority=RequestPriority.HIGH,
     )
 
     task_id = task_manager.create_task(future)  # type: ignore

@@ -59,7 +59,8 @@ dependencies = [
     "pytest-asyncio",
     "watchfiles",
     "async_lru",
-    "aiosqlite"
+    "aiosqlite",
+    "colored"
 ]
 
 [tool.isort]

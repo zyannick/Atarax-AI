@@ -1,6 +1,7 @@
-from pathlib import Path
-from typing import Dict, Any, List
 import logging
+from pathlib import Path
+from typing import Any, Dict, List
+
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.configs.config_schemas.rag_config_schema import RAGConfig
 from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
@@ -22,7 +23,7 @@ class PromptManager:
         self._cache: Dict[str, str] = {}
         self.logger.info(f"PromptManager initialized for directory: {self.prompts_dir}")
 
-    def build_prompt_within_limit(
+    async def build_prompt_within_limit(
         self,
         history: List[Dict[str, Any]],
         rag_context: str,
@@ -58,11 +59,11 @@ class PromptManager:
             rag_budget = int(total_content_budget * rag_config.context_allocation_ratio)
             history_budget = total_content_budget - rag_budget
 
-            truncated_rag_context = self._truncate_text_to_budget(
+            truncated_rag_context = await self._truncate_text_to_budget(
                 rag_context, rag_budget, core_ai_service_manager
             )
 
-            final_history_str = self._build_history_within_budget(
+            final_history_str = await self._build_history_within_budget(
                 history, history_budget, core_ai_service_manager
             )
 
@@ -80,9 +81,10 @@ class PromptManager:
 
         except Exception as e:
             self.logger.error(f"Error building prompt within limit: {e}")
-            return prompt_template.format(history="", context="", query=user_query)
+            raise
+            # return prompt_template.format(history="", context="", query=user_query)
 
-    def _truncate_text_to_budget(
+    async def _truncate_text_to_budget(
         self, text: str, budget: int, core_ai_service_manager: CoreAIServiceManager
     ) -> str:
         if not text or budget <= 0:
@@ -95,7 +97,7 @@ class PromptManager:
         truncated_tokens = tokens[:budget]
         return core_ai_service_manager.decode(truncated_tokens)
 
-    def _build_history_within_budget(
+    async def _build_history_within_budget(
         self,
         history: List[Dict[str, Any]],
         budget: int,
@@ -170,17 +172,20 @@ class PromptManager:
 
         template = self._cache[template_name]
 
-        try:
-            return template.format(**kwargs)
-        except KeyError as e:
-            missing_key = str(e).strip("'\"")
-            self.logger.warning(
-                f"Missing placeholder '{missing_key}' for template '{template_name}'. Returning unformatted template."
-            )
-            return template
-        except Exception as e:
-            self.logger.error(f"Error formatting template '{template_name}': {e}")
-            return template
+        return template
+
+        # try:
+        #     return template.format(**kwargs)
+        # except KeyError as e:
+        #     missing_key = str(e).strip("'\"")
+        #     self.logger.warning(
+        #         f"Missing placeholder '{missing_key}' for template '{template_name}'. Returning unformatted template."
+        #     )
+        #     self.logger.debug(f"Template content: {template}")
+        #     return template
+        # except Exception as e:
+        #     self.logger.error(f"Error formatting template '{template_name}': {e}")
+        #     return template
 
     def clear_cache(self) -> None:
         self._cache.clear()

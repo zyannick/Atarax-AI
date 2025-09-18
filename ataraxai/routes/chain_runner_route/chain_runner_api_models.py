@@ -7,6 +7,7 @@ class StartChainResponse(BaseModel):
     status: Status
     message: str
     task_id: str
+    result: Any = None
 
 
 class RunChainRequest(BaseModel):

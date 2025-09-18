@@ -39,7 +39,7 @@ class ChatContextManager:
             self.tokenizer = None
             self.max_tokens = 2048
 
-    def add_message(self, session_id: uuid.UUID, role: str, content: str):
+    async def add_message(self, session_id: uuid.UUID, role: str, content: str):
         """
         Adds a message to the chat session.
 
@@ -52,9 +52,9 @@ class ChatContextManager:
             None
         """
         encrypted_content = self.vault_manager.encrypt(content.encode("utf-8"))
-        self.db_manager.add_message(session_id, role, encrypted_content)
+        await self.db_manager.add_message(session_id, role, encrypted_content)
 
-    def get_messages_for_session(self, session_id: uuid.UUID) -> List[Dict[str, Any]]:
+    async def get_messages_for_session(self, session_id: uuid.UUID) -> List[Dict[str, Any]]:
         """
         Retrieve all messages associated with a given session.
 
@@ -67,14 +67,14 @@ class ChatContextManager:
                 - 'content': The content of the message.
                 - 'date_time': The time the message was sent.
         """
-        messages: List[Message] = self.db_manager.get_messages_for_session(session_id)
+        messages: List[Message] = await self.db_manager.get_messages_for_session(session_id)
         dict_messages: List[Dict[str, Any]] = [
             {"role": msg.role, "content": self.vault_manager.decrypt(bytes(msg.content)).decode("utf-8"), "date_time": msg.date_time}
             for msg in messages
         ]
         return dict_messages
 
-    def get_formatted_context_for_model(
+    async def get_formatted_context_for_model(
         self, session_id: uuid.UUID
     ) -> List[Dict[str, Any]]:
         """
@@ -91,7 +91,7 @@ class ChatContextManager:
             - If a tokenizer is provided, it is used to count tokens; otherwise, tokens are estimated by word count.
             - The conversation history is truncated from the oldest messages if the token limit is exceeded.
         """
-        messages = self.db_manager.get_messages_for_session(session_id)
+        messages = await self.db_manager.get_messages_for_session(session_id)
 
         formatted_history: List[Dict[str, Any]] = []
         current_token_count = 0

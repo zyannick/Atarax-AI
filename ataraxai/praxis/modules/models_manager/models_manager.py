@@ -89,13 +89,14 @@ class ModelDownloadInfo(BaseModel):
     status: ModelDownloadStatus = Field(
         ..., description="Current status of the download task."
     )
-    percentage: float = Field(0.0, description="Download progress percentage.")
+    percentage: float = Field(default=0.0, description="Download progress percentage.")
     repo_id: str = Field(
         ..., description="Repository ID of the model on Hugging Face Hub."
     )
     filename: str = Field(..., description="Name of the model file.")
     message: str = Field(
-        "Download task started.", description="Status message for the download task."
+        default="Download task started.",
+        description="Status message for the download task.",
     )
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(),
@@ -246,7 +247,7 @@ class ModelsManager:
         try:
             if self.manifest_path.exists():
                 with open(self.manifest_path, "r") as f:
-                    self.manifest = json.load(f)
+                    self.manifest: List[Dict[str, Any]] = json.load(f)
             else:
                 self.manifest = {"models": [], "last_updated": None}
         except Exception as e:

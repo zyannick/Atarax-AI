@@ -18,12 +18,10 @@ def test_reinitialize_vault_success(integration_client: TestClient):
         password=SecretStr("Saturate-Heave8-Unfasten-Squealing")
     )
 
-    # Initialize the vault first
     integration_client.post(
         "/api/v1/vault/initialize", json=password_request.model_dump(mode="json")
     )
 
-    # Override the specific dependency used by the reinitialize endpoint
     integration_client.app.dependency_overrides[get_unlocked_orchestrator] = (
         lambda: orchestrator
     )

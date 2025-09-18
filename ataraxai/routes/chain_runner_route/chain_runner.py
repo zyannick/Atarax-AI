@@ -64,6 +64,7 @@ async def run_chain(
 ) -> StartChainResponse:
 
     future = await req_manager.submit_request(  # type: ignore
+        request_name="Run Chain",
         func=orch.run_task_chain,
         chain_definition=request.chain_definition,
         initial_user_query=request.initial_user_query,
@@ -75,6 +76,7 @@ async def run_chain(
     return StartChainResponse(
         status=Status.SUCCESS,
         message="Chain execution started successfully.",
+        result=None,
         task_id=task_id,
     )
 

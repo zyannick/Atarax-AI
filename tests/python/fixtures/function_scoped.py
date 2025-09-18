@@ -4,7 +4,7 @@ import logging
 import time
 from pathlib import Path
 from typing import Generator
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import requests
@@ -40,31 +40,47 @@ from ataraxai.praxis.utils.vault_manager import VaultManager
 from ataraxai.routes.dependency_api import get_orchestrator
 from tests.python.fixtures.async_orch import setup_async_orchestrator
 
+# @pytest.fixture(scope="function")
+# def client(monkeypatch):
+#     """
+#     Pytest fixture that provides a test client for the FastAPI application with a mocked orchestrator.
+
+#     This fixture uses `monkeypatch` to replace the `AtaraxAIOrchestratorFactory.create_orchestrator` method
+#     with a lambda that returns a `MagicMock` instance. It then creates a `TestClient` for the FastAPI app,
+#     attaches the mocked orchestrator to the client, and yields the client for use in tests. After the test,
+#     it clears any dependency overrides set on the app.
+
+#     Args:
+#         monkeypatch: Pytest's monkeypatch fixture for safely patching objects during tests.
+
+#     Yields:
+#         TestClient: A FastAPI TestClient instance with a mocked orchestrator attached.
+#     """
+#     mock_orchestrator = MagicMock()
+
+#     monkeypatch.setattr(
+#         AtaraxAIOrchestratorFactory, "create_orchestrator", lambda: mock_orchestrator
+#     )
+
+#     with TestClient(app, base_url="http://test") as test_client:
+#         test_client.orchestrator = mock_orchestrator  # type: ignore
+#         yield test_client
+
+#     app.dependency_overrides.clear()
+
 
 @pytest.fixture(scope="function")
-def client(monkeypatch):
-    """
-    Pytest fixture that provides a test client for the FastAPI application with a mocked orchestrator.
+def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
+    mock_orchestrator = AsyncMock()
 
-    This fixture uses `monkeypatch` to replace the `AtaraxAIOrchestratorFactory.create_orchestrator` method
-    with a lambda that returns a `MagicMock` instance. It then creates a `TestClient` for the FastAPI app,
-    attaches the mocked orchestrator to the client, and yields the client for use in tests. After the test,
-    it clears any dependency overrides set on the app.
-
-    Args:
-        monkeypatch: Pytest's monkeypatch fixture for safely patching objects during tests.
-
-    Yields:
-        TestClient: A FastAPI TestClient instance with a mocked orchestrator attached.
-    """
-    mock_orchestrator = MagicMock()
+    async def mock_create_orchestrator():
+        return mock_orchestrator
 
     monkeypatch.setattr(
-        AtaraxAIOrchestratorFactory, "create_orchestrator", lambda: mock_orchestrator
+        AtaraxAIOrchestratorFactory, "create_orchestrator", mock_create_orchestrator
     )
 
     with TestClient(app, base_url="http://test") as test_client:
-        test_client.orchestrator = mock_orchestrator  # type: ignore
         yield test_client
 
     app.dependency_overrides.clear()

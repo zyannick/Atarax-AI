@@ -1,14 +1,13 @@
 import asyncio
+import logging
 import time
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Any, Callable, Coroutine, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, Optional
 
 from pybreaker import CircuitBreaker, CircuitBreakerError
 
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-
-logger = AtaraxAILogger("RequestManager").get_logger()
 
 
 class RequestPriority(IntEnum):
@@ -59,6 +58,7 @@ class RequestManager:
         concurrent_workers: int = 5,
         default_timeout: Optional[float] = None,
         cleanup_interval: float = 30.0,
+        logger: logging.Logger = AtaraxAILogger("RequestManager").get_logger(),
     ):
         """
         Initializes the RequestManager with rate limiting, circuit breaking, and request queue management.
@@ -80,7 +80,7 @@ class RequestManager:
         self._concurrent_workers = concurrent_workers
         self._default_timeout = default_timeout
         self._cleanup_interval = cleanup_interval
-
+        self.logger = logger
         self._rate_limit = rate_limit
         self._bucket_capacity = float(bucket_capacity)
         self._tokens = self._bucket_capacity
@@ -90,6 +90,8 @@ class RequestManager:
         self._breaker = CircuitBreaker(
             fail_max=breaker_fail_max, reset_timeout=breaker_reset_timeout
         )
+
+        self._running_requests: set[asyncio.Task] = set()
 
         self._metrics = {
             "requests_submitted": 0,
@@ -101,16 +103,16 @@ class RequestManager:
             "circuit_open_count": 0,
         }
 
-        logger.info(
+        self.logger.info(
             f"RequestManager initialized with rate limit: {rate_limit}/s, burst capacity: {bucket_capacity}"
         )
-        logger.info(
+        self.logger.info(
             f"Circuit Breaker initialized with fail_max={breaker_fail_max}, reset_timeout={breaker_reset_timeout}s"
         )
-        logger.info(
+        self.logger.info(
             f"Queue max size: {max_queue_size}, concurrent workers: {concurrent_workers}"
         )
-        logger.info(
+        self.logger.info(
             f"Default timeout: {default_timeout}s, cleanup interval: {cleanup_interval}s"
         )
 
@@ -141,6 +143,7 @@ class RequestManager:
 
     async def submit_request(
         self,
+        request_name: str,
         func: Callable,
         *args: Any,
         priority: RequestPriority = RequestPriority.MEDIUM,
@@ -167,6 +170,9 @@ class RequestManager:
             asyncio.QueueFull: If the request queue is full
             RequestTimeoutError: If the request times out
         """
+        self.logger.debug(
+            f"Submitting request '{request_name}' with priority {priority.name}"
+        )
         if self._breaker.current_state == "open":
             self._metrics["requests_rejected"] += 1
             raise CircuitBreakerError("Circuit breaker is open")
@@ -191,98 +197,96 @@ class RequestManager:
             timeout_info = (
                 f" (timeout: {effective_timeout}s)" if effective_timeout else ""
             )
-            logger.info(
+            self.logger.info(
                 f"Submitted request with priority {priority.name}{timeout_info}. Queue size: {self._queue.qsize()}"
             )
         except asyncio.QueueFull:
             self._metrics["requests_rejected"] += 1
-            logger.warning(
+            self.logger.warning(
                 f"Queue is full! Rejecting request with priority {priority.name}"
             )
             raise
 
-        return await future
+        return future
 
     async def _execute_request(self, request: PrioritizedRequest):
         try:
             if request.is_expired():
                 self._metrics["requests_expired_in_queue"] += 1
                 error_msg = f"Request expired in queue after {request.timeout}s"
-                logger.warning(error_msg)
                 request.future.set_exception(
                     RequestTimeoutError(request.timeout, error_msg)
                 )
                 return
 
             remaining_timeout = request.remaining_time()
-
-            if remaining_timeout is not None:
-                if remaining_timeout <= 0:
-                    self._metrics["requests_timed_out"] += 1
-                    error_msg = f"Request timed out before execution (timeout: {request.timeout}s)"
-                    logger.warning(error_msg)
-                    request.future.set_exception(
-                        RequestTimeoutError(request.timeout, error_msg)
-                    )
-                    return
-
-                logger.debug(
-                    f"Executing request with {remaining_timeout:.2f}s remaining timeout"
+            if remaining_timeout is not None and remaining_timeout <= 0:
+                self._metrics["requests_timed_out"] += 1
+                error_msg = (
+                    f"Request timed out before execution (timeout: {request.timeout}s)"
                 )
-                result = await asyncio.wait_for(
+                request.future.set_exception(
+                    RequestTimeoutError(request.timeout, error_msg)
+                )
+                return
+
+            result = await (
+                asyncio.wait_for(
                     self._breaker.call_async(
                         request.func, *request.args, **request.kwargs
                     ),
                     timeout=remaining_timeout,
                 )
-            else:
-                result = await self._breaker.call_async(
+                if remaining_timeout is not None
+                else self._breaker.call_async(
                     request.func, *request.args, **request.kwargs
                 )
-
-            request.future.set_result(result)
-            self._metrics["requests_processed"] += 1
-            logger.debug(
-                f"Request with priority {request.priority} completed successfully"
             )
+
+            if not request.future.done():
+                request.future.set_result(result)
+            self._metrics["requests_processed"] += 1
+
+        except asyncio.CancelledError:
+            # 🚨 Ensure cancellation propagates
+            if not request.future.done():
+                request.future.cancel()
+            raise
 
         except asyncio.TimeoutError:
             self._metrics["requests_timed_out"] += 1
             timeout_duration = request.timeout or 0
             error_msg = f"Request execution timed out after {timeout_duration}s"
-            logger.warning(error_msg)
-            request.future.set_exception(
-                RequestTimeoutError(timeout_duration, error_msg)
-            )
+            if not request.future.done():
+                request.future.set_exception(
+                    RequestTimeoutError(timeout_duration, error_msg)
+                )
 
         except CircuitBreakerError as e:
-            logger.error(f"Circuit is open! Rejecting request. Error: {e}")
-            request.future.set_exception(e)
+            if not request.future.done():
+                request.future.set_exception(e)
             self._metrics["requests_rejected"] += 1
             self._metrics["circuit_open_count"] += 1
 
         except Exception as e:
-            logger.error(f"Request failed. Error: {e}")
-            request.future.set_exception(e)
+            if not request.future.done():
+                request.future.set_exception(e)
             self._metrics["requests_failed"] += 1
 
     async def _cleanup_expired_requests(self):
         """Background task to clean up expired requests from the queue"""
-        logger.info("Started expired request cleanup task")
+        self.logger.info("Started expired request cleanup task")
 
         while not self._shutdown_event.is_set():
             try:
-                # Create a temporary list to hold non-expired requests
                 temp_requests = []
                 expired_count = 0
 
-                # Process all items currently in queue
                 while not self._queue.empty():
                     try:
                         request = self._queue.get_nowait()
 
                         if request.is_expired():
-                            # Mark as expired and notify the future
                             expired_count += 1
                             self._metrics["requests_expired_in_queue"] += 1
                             error_msg = (
@@ -293,48 +297,45 @@ class RequestManager:
                             )
                             self._queue.task_done()
                         else:
-                            # Keep non-expired request
                             temp_requests.append(request)
                     except asyncio.QueueEmpty:
                         break
 
-                # Put non-expired requests back in queue
                 for request in temp_requests:
                     try:
                         self._queue.put_nowait(request)
                     except asyncio.QueueFull:
-                        # Queue is full, we'll have to drop this request
-                        logger.warning("Queue full during cleanup, dropping request")
+                        self.logger.warning(
+                            "Queue full during cleanup, dropping request"
+                        )
                         request.future.set_exception(
                             Exception("Queue full during cleanup")
                         )
 
                 if expired_count > 0:
-                    logger.info(
+                    self.logger.info(
                         f"Cleaned up {expired_count} expired requests from queue"
                     )
 
-                # Wait before next cleanup
                 try:
                     await asyncio.wait_for(
                         self._shutdown_event.wait(), timeout=self._cleanup_interval
                     )
-                    break  # Shutdown event was set
+                    break
                 except asyncio.TimeoutError:
-                    continue  # Continue with next cleanup cycle
+                    continue
 
             except asyncio.CancelledError:
-                logger.info("Cleanup task cancelled")
+                self.logger.info("Cleanup task cancelled")
                 break
             except Exception as e:
-                logger.error(f"Error in cleanup task: {e}", exc_info=True)
-                # Wait a bit before retrying
+                self.logger.error(f"Error in cleanup task: {e}", exc_info=True)
                 await asyncio.sleep(1.0)
 
-        logger.info("Expired request cleanup task stopped")
+        self.logger.info("Expired request cleanup task stopped")
 
     async def _process_requests(self, worker_id: int):
-        logger.info(f"Request processor worker {worker_id} started.")
+        self.logger.info(f"Request processor worker {worker_id} started.")
 
         while not self._shutdown_event.is_set():
             try:
@@ -345,64 +346,62 @@ class RequestManager:
                 except asyncio.TimeoutError:
                     continue
 
-                logger.debug(
+                self.logger.debug(
                     f"Worker {worker_id} processing request with priority {request.priority}. Queue size: {self._queue.qsize()}"
                 )
 
                 if not await self._wait_for_token():
-                    # Service is shutting down, put request back if possible
                     try:
                         self._queue.put_nowait(request)
                     except asyncio.QueueFull:
                         request.future.set_exception(Exception("Service shutting down"))
                     break
 
-                await self._execute_request(request)
+                task = asyncio.create_task(self._execute_request(request))
+                self._running_requests.add(task)
+                task.add_done_callback(lambda t: self._running_requests.discard(t))
+
                 self._queue.task_done()
 
             except asyncio.CancelledError:
-                logger.info(f"Request processor worker {worker_id} shutting down.")
+                self.logger.info(f"Request processor worker {worker_id} shutting down.")
                 break
             except Exception as e:
-                logger.error(
+                self.logger.error(
                     f"Unexpected error in worker {worker_id}: {e}", exc_info=True
                 )
 
-        logger.info(f"Request processor worker {worker_id} stopped.")
+        self.logger.info(f"Request processor worker {worker_id} stopped.")
 
     async def start(self):
         if self._processor_tasks:
-            logger.warning("RequestManager is already running.")
+            self.logger.warning("RequestManager is already running.")
             return
 
         self._shutdown_event.clear()
         self._processor_tasks = []
 
-        # Start worker tasks
         for i in range(self._concurrent_workers):
             task = asyncio.create_task(self._process_requests(i))
             self._processor_tasks.append(task)
 
-        # Start cleanup task if we have timeouts enabled
         if self._default_timeout is not None or self._cleanup_interval > 0:
             self._cleanup_task = asyncio.create_task(self._cleanup_expired_requests())
 
-        logger.info(
+        self.logger.info(
             f"RequestManager started with {self._concurrent_workers} processor workers."
         )
         if self._cleanup_task:
-            logger.info("Started expired request cleanup task.")
+            self.logger.info("Started expired request cleanup task.")
 
     async def stop(self, timeout: float = 5.0):
         if not self._processor_tasks:
-            logger.info("RequestManager is not running.")
+            self.logger.info("RequestManager is not running.")
             return
 
-        logger.info("Stopping RequestManager...")
-
+        self.logger.info("Stopping RequestManager...")
         self._shutdown_event.set()
 
-        # Collect all tasks to wait for
         all_tasks = self._processor_tasks[:]
         if self._cleanup_task:
             all_tasks.append(self._cleanup_task)
@@ -412,21 +411,24 @@ class RequestManager:
                 asyncio.gather(*all_tasks, return_exceptions=True), timeout=timeout
             )
         except asyncio.TimeoutError:
-            logger.warning("Graceful shutdown timed out, cancelling tasks.")
+            self.logger.warning("Graceful shutdown timed out, cancelling tasks.")
             for task in all_tasks:
                 if not task.done():
                     task.cancel()
-
             try:
                 await asyncio.wait_for(
                     asyncio.gather(*all_tasks, return_exceptions=True), timeout=1.0
                 )
             except asyncio.TimeoutError:
-                logger.error("Failed to cancel all tasks.")
+                self.logger.error("Failed to cancel all tasks.")
+
+        for task in list(self._running_requests):
+            if not task.done():
+                task.cancel()
 
         self._processor_tasks = []
         self._cleanup_task = None
-        logger.info("RequestManager stopped.")
+        self.logger.info("RequestManager stopped.")
 
     def get_metrics(self) -> Dict[str, Any]:
         return {

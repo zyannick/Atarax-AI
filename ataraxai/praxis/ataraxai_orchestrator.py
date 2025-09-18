@@ -43,7 +43,6 @@ class OrchestratorStateMachine:
 
     def __init__(self, initial_state: AppState = AppState.LOCKED):
         self._state = initial_state
-        self._state = initial_state
         self._lock = asyncio.Lock()
         self._valid_transitions = {
             AppState.FIRST_LAUNCH: [AppState.UNLOCKED, AppState.ERROR],
@@ -84,7 +83,6 @@ class AtaraxAIOrchestrator:
         self.services = services
         self.logger = logger
 
-        # self._state_lock = asyncio.Lock()
         self.state_machine = OrchestratorStateMachine()
         self._initialized = False
         self._shutdown = False
@@ -325,6 +323,7 @@ class AtaraxAIOrchestrator:
     async def run_task_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
+        # assert 1 == 2 , "Orchestrator run_task_chain should be called"
         current_state = await self.get_state()
         if current_state != AppState.UNLOCKED:
             raise AtaraxAILockError(

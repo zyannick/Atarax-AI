@@ -202,17 +202,22 @@ async def download_model(
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
 ):
 
-    task_id = await req_manager.submit_request(  # type: ignore
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="Download Model",
         func=start_download_in_thread,
         orch=orch,
         model_info=LlamaCPPModelInfo(**request.model_dump()),
         priority=RequestPriority.MEDIUM,
     )
 
-    # print("Future created for download task:")
-    # print(future)
+    print(
+        "Future created for download task: **************************************************************************************************************"
+    )
+    print(future)
 
-    # task_id = await future
+    task_id = await future
+
+    print(task_id)
 
     return DownloadModelResponse(
         status=DownloadTaskStatus.PENDING,
@@ -298,10 +303,13 @@ async def remove_all_models(
 
     models_manager = await orch.get_models_manager()
 
-    success = await req_manager.submit_request(  # type: ignore
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="Remove All Models",
         func=models_manager.remove_all_models,
         priority=RequestPriority.HIGH,
     )
+
+    success = await future
 
     if not success:
         raise HTTPException(

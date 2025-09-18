@@ -16,12 +16,12 @@ def fake_settings():
 @mock.patch("ataraxai.praxis.utils.app_directories.user_log_dir")
 @mock.patch.object(AppDirectories, "create_directories")
 def test_create_default_calls_appdirs_and_creates_dirs(
-    mock_create_dirs,
-    mock_log_dir,
-    mock_cache_dir,
-    mock_data_dir,
-    mock_config_dir,
-    fake_settings,
+    mock_create_dirs : mock.Mock,
+    mock_log_dir : mock.Mock,
+    mock_cache_dir : mock.Mock,
+    mock_data_dir : mock.Mock,
+    mock_config_dir : mock.Mock,
+    fake_settings : object,
 ):
     mock_config_dir.return_value = "/tmp/config"
     mock_data_dir.return_value = "/tmp/data"
@@ -36,7 +36,7 @@ def test_create_default_calls_appdirs_and_creates_dirs(
     assert dirs.logs == Path("/tmp/logs")
     mock_create_dirs.assert_called_once()
 
-def test_create_directories_creates_all_dirs(tmp_path):
+def test_create_directories_creates_all_dirs(tmp_path : Path):
     dirs = AppDirectories(
         config=tmp_path / "config",
         data=tmp_path / "data",

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from fastapi.params import Depends
 
 from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
@@ -9,7 +9,6 @@ from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.katalepsis import katalepsis_monitor
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
-from fastapi import status
 from ataraxai.routes.dependency_api import (
     get_gatewaye_task_manager,
     get_request_manager,
@@ -58,7 +57,9 @@ async def rebuild_index(
     """
     rag_manager = await orch.get_rag_manager()
     future = await req_manager.submit_request(  # type: ignore
-        func=rag_manager.rebuild_index, priority=RequestPriority.HIGH
+        request_name="Rebuild Index",
+        func=rag_manager.rebuild_index,
+        priority=RequestPriority.HIGH,
     )
     task_id = task_manager.create_task(future)  # type: ignore
     return RebuildIndexResponse(
@@ -121,7 +122,7 @@ async def cancel_rebuild_index(
     was_cancelled = task_manager.cancel_task(task_id)
     if not was_cancelled:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Task with ID {task_id} not found or could not be canceled.",
         )
     return RebuildIndexResponse(
@@ -190,6 +191,7 @@ async def add_directory(
     """
     rag_manager = await orch.get_rag_manager()
     future = await req_manager.submit_request(  # type: ignore
+        request_name="Add Directories",
         func=rag_manager.add_watch_directories,
         directories=request.directories,
         priority=RequestPriority.HIGH,
@@ -198,13 +200,13 @@ async def add_directory(
 
     if not task_id:
         raise HTTPException(
-            status_code=500,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to schedule directory addition task.",
         )
     return DirectoriesAdditionResponse(
         status=Status.SUCCESS,
         message="Directories started to be added for indexing.",
-        result=task_id,  # Assuming task_id is the result of the addition operation
+        result=task_id,
     )
 
 
@@ -236,6 +238,7 @@ async def remove_directory(
     """
     rag_manager = await orch.get_rag_manager()
     future = await req_manager.submit_request(  # type: ignore
+        request_name="Remove Directories",
         func=rag_manager.remove_watch_directories,
         directories=request.directories,
         priority=RequestPriority.HIGH,

@@ -1,26 +1,27 @@
 import asyncio
+import logging
 from pathlib import Path
 from typing import Any, Dict, List
-import logging
-from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
-from ataraxai.praxis.utils.vault_manager import VaultManager
+
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
-from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
+from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
+from ataraxai.praxis.modules.prompt_engine.chain_runner import ChainRunner
+from ataraxai.praxis.modules.prompt_engine.chain_task_manager import ChainTaskManager
 from ataraxai.praxis.modules.prompt_engine.context_manager import ContextManager
 from ataraxai.praxis.modules.prompt_engine.prompt_manager import PromptManager
-from ataraxai.praxis.modules.prompt_engine.chain_task_manager import ChainTaskManager
-from ataraxai.praxis.modules.prompt_engine.chain_runner import ChainRunner
+from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
+from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.app_directories import AppDirectories
-from ataraxai.praxis.utils.input_validator import InputValidator
+from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
+from ataraxai.praxis.utils.chat_manager import ChatManager
+from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
+from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 from ataraxai.praxis.utils.exceptions import (
     ValidationError,
 )
-from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
-from ataraxai.praxis.utils.chat_manager import ChatManager
-from ataraxai.praxis.utils.app_config import AppConfig
-from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
-from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
+from ataraxai.praxis.utils.input_validator import InputValidator
+from ataraxai.praxis.utils.vault_manager import VaultManager
 
 
 class Services:
@@ -37,7 +38,7 @@ class Services:
         vault_manager: VaultManager,
         models_manager: ModelsManager,
         core_ai_service_manager: CoreAIServiceManager,
-        background_task_manager: BackgroundTaskManager
+        background_task_manager: BackgroundTaskManager,
     ):
         """
         Initializes the service with required managers, configuration, and logging utilities.
@@ -120,8 +121,6 @@ class Services:
         await self.rag_manager.start()
         self.logger.info(f"Added watch directory: {directory}")
 
-    
-
     def _init_database(self) -> None:
         """
         Initializes the application's database and related managers.
@@ -173,23 +172,25 @@ class Services:
         )
         self.task_manager = ChainTaskManager()
         self.chain_runner = ChainRunner(
-            task_manager=self.task_manager,
+            chain_task_manager=self.task_manager,
             context_manager=self.context_manager,
             prompt_manager=self.prompt_manager,
             core_ai_service_manager=self.core_ai_service_manager,
             chat_context=self.chat_context,
             rag_manager=self.rag_manager,
+            logger=self.logger,
         )
         self.logger.info("Prompt engine initialized successfully")
 
     async def run_task_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
+
+        # assert 1 == 2, "service run_task_chain should be called"
         InputValidator.validate_string(initial_user_query, "Initial user query")
 
         if not chain_definition:
             raise ValidationError("Chain definition cannot be empty")
-
 
         self.logger.info(f"Executing chain for query: '{initial_user_query}'")
         try:

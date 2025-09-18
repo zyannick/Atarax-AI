@@ -1,6 +1,6 @@
 import asyncio
 from typing import Generator
-
+from typing import Any, Generator
 import pytest
 import pytest_asyncio
 from fastapi import status
@@ -133,9 +133,9 @@ def module_unlocked_client_new(
     event_loop.run_until_complete(relock_vault())
 
 
-@pytest.fixture(scope="module")
-def module_unlocked_client_with_filled_manifest(module_unlocked_client):
-    search_model_request = SearchModelsRequest(query="tinyllama", limit=SEARCH_LIMIT)
+@pytest_asyncio.fixture(scope="module")
+async def module_unlocked_client_with_filled_manifest(module_unlocked_client : TestClient) :
+    search_model_request = SearchModelsRequest(query="llama", limit=SEARCH_LIMIT)
     response = module_unlocked_client.post(
         "/api/v1/models_manager/search_models",
         json=search_model_request.model_dump(mode="json"),
@@ -163,7 +163,7 @@ def module_unlocked_client_with_filled_manifest(module_unlocked_client):
         task_id = download_data["task_id"]
         assert task_id is not None, "Task ID should not be None."
 
-        monitor_download_progress(module_unlocked_client, task_id)
+        await monitor_download_progress(module_unlocked_client, task_id)
 
     orchestrator: AtaraxAIOrchestrator = module_unlocked_client.app.state.orchestrator  # type: ignore
     if orchestrator.services.background_task_manager:
@@ -174,7 +174,7 @@ def module_unlocked_client_with_filled_manifest(module_unlocked_client):
     clean_downloaded_models(module_unlocked_client)
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def unlocked_client(integration_client):
     orchestrator: AtaraxAIOrchestrator = integration_client.app.state.orchestrator
     state = await orchestrator.get_state()
@@ -192,16 +192,17 @@ async def unlocked_client(integration_client):
         response.status_code == status.HTTP_200_OK
     ), f"Unexpected status code: {response.text}"
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["message"] == "Vault initialized and unlocked."
     state = await orchestrator.get_state()
     assert state == AppState.UNLOCKED
     return integration_client
 
 
-@pytest.fixture(scope="function")
-def unlocked_client_with_filled_manifest(unlocked_client):
-    search_model_request = SearchModelsRequest(query="tinyllama", limit=SEARCH_LIMIT)
+@pytest_asyncio.fixture(scope="function")
+async def unlocked_client_with_filled_manifest(unlocked_client : TestClient):
+    search_model_request = SearchModelsRequest(query="llama", limit=SEARCH_LIMIT)
+    # unlocked_client = await unlocked_client
     response = unlocked_client.post(
         "/api/v1/models_manager/search_models",
         json=search_model_request.model_dump(mode="json"),
@@ -209,7 +210,7 @@ def unlocked_client_with_filled_manifest(unlocked_client):
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert isinstance(data["models"], list)
 
     sorted_models = sorted(data["models"], key=lambda x: x["file_size"])
@@ -229,7 +230,7 @@ def unlocked_client_with_filled_manifest(unlocked_client):
         task_id = download_data["task_id"]
         assert task_id is not None, "Task ID should not be None."
 
-        monitor_download_progress(unlocked_client, task_id)
+        await monitor_download_progress(unlocked_client, task_id)
 
     yield unlocked_client
 
