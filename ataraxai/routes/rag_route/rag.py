@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, HTTPException, status
 from fastapi.params import Depends
 
 from ataraxai.gateway.gateway_task_manager import GatewayTaskManager

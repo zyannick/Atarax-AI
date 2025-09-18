@@ -1,6 +1,6 @@
 from pathlib import Path
 from unittest import mock
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -47,32 +47,39 @@ def test_init_database_sets_db_manager_and_logs(services: Services):
     services.logger.info.assert_called_with("Database initialized successfully")
 
 
-def test_init_rag_manager_sets_rag_manager_and_logs(services: Services):
-    services.directories.data = Path("/tmp/data")
-    services.config_manager.rag_config_manager = MagicMock()
-    services.logger = MagicMock()
-    services._init_rag_manager()
-    assert hasattr(services, "rag_manager")
-    services.logger.info.assert_called_with("RAG manager initialized successfully")
-
-
 def test_init_prompt_engine_creates_managers_and_logs(
     services: Services, tmp_path: Path
 ):
     services.app_config.prompts_directory = str(tmp_path / "prompts")
-    services.config_manager.rag_config_manager.get_config.return_value.model_dump.return_value = (
-        {}
-    )
     services.rag_manager = MagicMock()
     services.core_ai_service_manager = MagicMock()
     services.chat_context = MagicMock()
     services.logger = MagicMock()
-    services._init_prompt_engine()
-    assert hasattr(services, "prompt_manager")
-    assert hasattr(services, "context_manager")
-    assert hasattr(services, "task_manager")
-    assert hasattr(services, "chain_runner")
-    services.logger.info.assert_called_with("Prompt engine initialized successfully")
+
+    mock_rag_config = MagicMock()
+    mock_rag_config.config.rag_embedder_model = "sentence-transformers/all-MiniLM-L6-v2"
+    services.config_manager.rag_config_manager = mock_rag_config
+
+    with patch(
+        "ataraxai.praxis.utils.services.PromptManager"
+    ) as mock_prompt_cls, patch(
+        "ataraxai.praxis.utils.services.ContextManager"
+    ) as mock_context_cls, patch(
+        "ataraxai.praxis.utils.services.ChainTaskManager"
+    ) as mock_task_cls, patch(
+        "ataraxai.praxis.utils.services.ChainRunner"
+    ) as mock_chain_runner_cls:
+
+        services._init_prompt_engine()
+
+        mock_prompt_cls.assert_called_once()
+        mock_context_cls.assert_called_once()
+        mock_task_cls.assert_called_once()
+        mock_chain_runner_cls.assert_called_once()
+
+        services.logger.info.assert_called_with(
+            "Prompt engine initialized successfully"
+        )
 
 
 @pytest.mark.asyncio

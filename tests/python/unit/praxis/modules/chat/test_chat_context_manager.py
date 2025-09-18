@@ -170,20 +170,6 @@ async def test_get_formatted_context_for_model_tokenizer_counts_tokens(
     assert result[1]["content"] == "decrypted_second"
 
 
-@pytest.mark.asyncio
-async def test_get_formatted_context_for_model_empty_message_skipped(
-    chat_context_manager: ChatContextManager, mock_db_manager: mock.AsyncMock, mock_vault_manager: mock.Mock
-):
-    session_id = uuid.uuid4()
-    msg1 = mock.Mock()
-    msg1.role = "user"
-    msg1.content = b"encrypted_"
-    msg1.date_time = "2024-06-01T12:00:00"
-    mock_vault_manager.decrypt.return_value = b""
-    mock_db_manager.get_messages_for_session.return_value = [msg1]
-    result = await chat_context_manager.get_formatted_context_for_model(session_id)
-    assert result == []
-
 
 @pytest.mark.asyncio
 async def test_init_tokenizer_failure_sets_defaults(

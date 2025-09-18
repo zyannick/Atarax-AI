@@ -360,8 +360,8 @@ class AtaraxAIOrchestrator:
         except Exception as e:
             self.logger.error(f"Error during shutdown: {e}", exc_info=True)
         finally:
-            self.services = None
-            self.setup_manager = None
+            self.services = None # type: ignore
+            self.setup_manager = None # type: ignore
 
     def _ensure_initialized(self) -> None:
         if not self._initialized:

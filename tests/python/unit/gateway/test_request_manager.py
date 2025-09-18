@@ -212,8 +212,9 @@ async def test_stop_cancels_tasks(request_manager: RequestManager):
     await asyncio.sleep(0.1)
 
     assert future.done()
-    if future.exception():
-        assert isinstance(future.exception(), (asyncio.CancelledError, Exception))
+    assert future.cancelled()
+    # if future.exception():
+    #     assert isinstance(future.exception(), (asyncio.CancelledError, Exception))
 
 
 def test_get_metrics_structure(request_manager: RequestManager):

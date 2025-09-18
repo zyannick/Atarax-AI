@@ -3,7 +3,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from enum import IntEnum
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from pybreaker import CircuitBreaker, CircuitBreakerError
 
@@ -17,7 +17,7 @@ class RequestPriority(IntEnum):
 
 
 class RequestTimeoutError(Exception):
-    def __init__(self, timeout_duration: float, message: str = None):
+    def __init__(self, timeout_duration: float, message: str = ""):
         self.timeout_duration = timeout_duration
         default_message = f"Request timed out after {timeout_duration} seconds"
         super().__init__(message or default_message)
@@ -73,8 +73,10 @@ class RequestManager:
             default_timeout (float, optional): Default timeout for requests in seconds. None means no timeout.
             cleanup_interval (float, optional): Interval for cleaning up expired requests. Defaults to 30.0.
         """
-        self._queue = asyncio.PriorityQueue(maxsize=max_queue_size)
-        self._processor_tasks = []
+        self._queue: asyncio.PriorityQueue = asyncio.PriorityQueue(
+            maxsize=max_queue_size
+        )
+        self._processor_tasks: List[asyncio.Task] = []
         self._cleanup_task = None
         self._shutdown_event = asyncio.Event()
         self._concurrent_workers = concurrent_workers
@@ -179,7 +181,7 @@ class RequestManager:
 
         effective_timeout = timeout if timeout is not None else self._default_timeout
 
-        future = asyncio.Future()
+        future = asyncio.Future() # type: ignore
 
         request = PrioritizedRequest(
             priority=priority.value,
@@ -215,7 +217,7 @@ class RequestManager:
                 self._metrics["requests_expired_in_queue"] += 1
                 error_msg = f"Request expired in queue after {request.timeout}s"
                 request.future.set_exception(
-                    RequestTimeoutError(request.timeout, error_msg)
+                    RequestTimeoutError(request.timeout if request.timeout else 0.0, error_msg)
                 )
                 return
 
@@ -226,7 +228,7 @@ class RequestManager:
                     f"Request timed out before execution (timeout: {request.timeout}s)"
                 )
                 request.future.set_exception(
-                    RequestTimeoutError(request.timeout, error_msg)
+                    RequestTimeoutError(request.timeout if request.timeout else 0.0, error_msg)
                 )
                 return
 

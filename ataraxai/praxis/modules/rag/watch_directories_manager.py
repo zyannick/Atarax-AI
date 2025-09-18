@@ -57,7 +57,7 @@ class WatchedDirectoriesManager:
             return False
 
         for directory in directories_to_add:
-            await asyncio.to_thread(self._scan_and_queue_files, directory, "add")
+            await asyncio.to_thread(self._scan_and_queue_files, directory, "add") # type: ignore
 
         self.logger.info(f"Added directories to watch: {directories_to_add}")
         return True
@@ -68,7 +68,7 @@ class WatchedDirectoriesManager:
         await self._update_config(new_dirs)
 
         for directory in directories_to_remove:
-            await asyncio.to_thread(self._scan_and_queue_files, directory, "remove")
+            await asyncio.to_thread(self._scan_and_queue_files, directory, "remove") # type: ignore
 
         self.logger.info(f"Removed directories from watch: {directories_to_remove}")
         return True
