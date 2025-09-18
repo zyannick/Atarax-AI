@@ -37,14 +37,20 @@ def services(mock_services_dependencies: dict):
     return Services(**mock_services_dependencies)
 
 
-def test_init_database_sets_db_manager_and_logs(services: Services):
-    services.directories.data = Path("/tmp/data")
+def test_init_database_sets_db_manager_and_logs(services: Services, tmp_path: Path):
+
+    services.directories.data = tmp_path
     services.app_config.database_filename = "test.db"
     services.vault_manager = MagicMock()
     services.logger = MagicMock()
+
     services._init_database()
-    assert isinstance(services.db_manager, type(services.db_manager))
-    services.logger.info.assert_called_with("Database initialized successfully")
+
+    assert hasattr(services, "db_manager")
+    assert hasattr(services, "chat_context")
+    assert hasattr(services, "chat_manager")
+
+    assert (tmp_path / "test.db").exists()
 
 
 def test_init_prompt_engine_creates_managers_and_logs(

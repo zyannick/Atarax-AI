@@ -55,7 +55,7 @@ dependencies = [
     "nvitop",
     "python-ulid",
     "isort",
-    "pybreaker",
+    "pybreaker[asyncio]",
     "pytest-asyncio",
     "watchfiles",
     "async_lru",
