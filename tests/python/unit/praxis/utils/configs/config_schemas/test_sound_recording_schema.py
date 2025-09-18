@@ -3,7 +3,7 @@ from ataraxai.praxis.utils.configs.config_schemas.sound_recording_schema import 
 
 def test_default_values():
     params = SoundRecordingParams()
-    assert params.config_version == 1.0
+    assert params.config_version == "1.0"
     assert params.sample_rate == 16000
     assert params.frame_duration_ms == 30
     assert params.channels == 1
@@ -15,7 +15,7 @@ def test_default_values():
 
 def test_custom_values():
     params = SoundRecordingParams(
-        config_version=2.0,
+        config_version="2.0",
         sample_rate=44100,
         frame_duration_ms=50,
         channels=2,
@@ -25,7 +25,7 @@ def test_custom_values():
         max_recording_duration=120,
         format="mp3"
     )
-    assert params.config_version == 2.0
+    assert params.config_version == "2.0"
     assert params.sample_rate == 44100
     assert params.frame_duration_ms == 50
     assert params.channels == 2

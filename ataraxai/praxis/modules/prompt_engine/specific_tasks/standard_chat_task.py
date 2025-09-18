@@ -5,7 +5,6 @@ from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies impo
     TaskDependencies,
 )
 
-
 class StandardChatTask(BaseTask):
     def __init__(self):
         self.id = "standard_chat"
@@ -17,14 +16,18 @@ class StandardChatTask(BaseTask):
     def _load_resources(self) -> None:
         pass
 
-    def execute(
+    async def execute(
         self,
         processed_input: Dict[str, Any],
         dependencies: TaskDependencies,
     ) -> str:
-
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(f"Executing StandardChatTask with input: {processed_input}")
         user_query = processed_input["user_query"]
         session_id = processed_input["session_id"]
+
+
+        print(f"Dependencies available: {list(dependencies.keys())}")
 
         chat_context = dependencies["chat_context"]
         rag_manager = dependencies["rag_manager"]
@@ -34,18 +37,28 @@ class StandardChatTask(BaseTask):
 
         model_context_limit = core_ai_service_manager.get_llama_cpp_model_context_size()
 
-        chat_context.add_message(session_id, role="user", content=user_query)
-        session_history = chat_context.get_messages_for_session(session_id)
+        # print(f"Model context limit: {model_context_limit}")
 
-        rag_results = context_manager.get_context(context_key="relevant_document_chunks", user_inputs=user_query)
+        await chat_context.add_message(session_id, role="user", content=user_query)
+        session_history = await chat_context.get_messages_for_session(session_id)
+
+        # print(f"Session history: {session_history}")
+
+        rag_results = await context_manager.get_context(
+            context_key="relevant_document_chunks", user_inputs=user_query
+        )
         if not rag_results:
             rag_context_str = ""
         else:
             rag_context_str = "\n".join(rag_results)
 
+        # print(f"RAG context: {rag_context_str}")
+
         prompt_template_str = prompt_manager.load_template(self.prompt_template_name)
 
-        final_prompt = prompt_manager.build_prompt_within_limit(
+        # print(f"Prompt template: {prompt_template_str}")
+
+        final_prompt = await prompt_manager.build_prompt_within_limit(
             history=session_history,
             rag_context=rag_context_str,
             user_query=user_query,
@@ -55,7 +68,9 @@ class StandardChatTask(BaseTask):
             rag_config=rag_manager.rag_config_manager.config,
         )
 
-        model_response_text = core_ai_service_manager.process_prompt(final_prompt)
+        # print(f"Final prompt: {final_prompt}")
+
+        model_response_text = await core_ai_service_manager.process_prompt(final_prompt)
 
         assistant_response = model_response_text.strip()
         if not assistant_response:
@@ -63,7 +78,7 @@ class StandardChatTask(BaseTask):
         else:
             assistant_response = assistant_response.split("assistant:")[-1].strip()
 
-        chat_context.add_message(
+        await chat_context.add_message(
             session_id, role="assistant", content=assistant_response
         )
 

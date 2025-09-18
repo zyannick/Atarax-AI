@@ -1,33 +1,43 @@
 import asyncio
-from typing import Any, Dict, Optional
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from typing import Annotated, Any, Dict, Optional
+
+import ulid
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.params import Depends
 from prometheus_client import Enum
-import ulid
-from ataraxai.routes.status import Status, StatusResponse
+
+from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
+from ataraxai.gateway.request_manager import RequestManager, RequestPriority
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
+from ataraxai.praxis.katalepsis import katalepsis_monitor
+from ataraxai.praxis.modules.models_manager.models_manager import (
+    LlamaCPPModelInfo,
+)
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.dependency_api import (
+    get_gatewaye_task_manager,
+    get_request_manager,
     get_unlocked_orchestrator,
     get_unlocked_orchestrator_ws,
 )
-from ataraxai.praxis.katalepsis import katalepsis_monitor
 from ataraxai.routes.models_manager_route.models_manager_api_models import (
+    DownloadModelRequest,
     DownloadModelResponse,
     DownloadTaskStatus,
     ModelInfoResponse,
     ModelInfoResponsePaginated,
     SearchModelsManifestRequest,
-    SearchModelsResponsePaginated,
     SearchModelsRequest,
-    DownloadModelRequest,
+    SearchModelsResponsePaginated,
 )
-from ataraxai.praxis.modules.models_manager.models_manager import (
-    LlamaCPPModelInfo,
-)
-from fastapi import WebSocket, WebSocketDisconnect
-
+from ataraxai.routes.status import Status, StatusResponse
 
 logger = AtaraxAILogger("ataraxai.praxis.models_manager").get_logger()
 
@@ -42,8 +52,13 @@ router_models_manager = APIRouter(
 )
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
 @handle_api_errors("Search Models", logger=logger)
-async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> SearchModelsResponsePaginated:  # type: ignore
-    models = orch.models_manager.search_models(
+async def search_models(
+    request: SearchModelsRequest,
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+) -> SearchModelsResponsePaginated:
+
+    models_manager = await orch.get_models_manager()
+    models = models_manager.search_models(
         query=request.query,
         limit=request.limit,
         filter_tags=request.filters_tags,
@@ -69,18 +84,34 @@ async def search_models(request: SearchModelsRequest, orch: AtaraxAIOrchestrator
     )
 
 
+async def start_download_in_thread(
+    orch: AtaraxAIOrchestrator, model_info: LlamaCPPModelInfo
+) -> str:
+    task_id = str(ulid.ULID())
+
+    models_manager = await orch.get_models_manager()
+
+    await asyncio.to_thread(
+        models_manager.start_download_task, task_id=task_id, model_info=model_info  # type: ignore
+    )
+
+    return task_id
+
+
 @router_models_manager.websocket("/download_progress/{task_id}")
 async def download_progress_websocket(
     websocket: WebSocket,
     task_id: str,
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator_ws),  # type: ignore
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator_ws)],
 ):
     await websocket.accept()
 
+    models_manager = await orch.get_models_manager()
+
     try:
         while True:
-            status_data: Optional[Dict[Any, Any]] = (
-                orch.models_manager.get_download_status(task_id)
+            status_data: Optional[Dict[Any, Any]] = (  # type: ignore
+                models_manager.get_download_status(task_id)  # type: ignore
             )
 
             if status_data:
@@ -116,9 +147,10 @@ async def download_progress_websocket(
 @router_models_manager.get("/download_status/{task_id}")
 async def get_download_status(
     task_id: str,
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
 ) -> DownloadModelResponse:
-    progress = orch.models_manager.get_download_status(task_id)
+    models_manager = await orch.get_models_manager()
+    progress = models_manager.get_download_status(task_id)
     print(progress)
     if progress is None:
         raise HTTPException(
@@ -137,10 +169,11 @@ async def get_download_status(
 @router_models_manager.post("/cancel_download/{task_id}")
 async def cancel_download(
     task_id: str,
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
 ) -> DownloadModelResponse:
     try:
-        orch.models_manager.cancel_download(task_id)
+        models_manager = await orch.get_models_manager()
+        models_manager.cancel_download(task_id)
         return DownloadModelResponse(
             status=DownloadTaskStatus.CANCELLED,
             message="Download task has been cancelled.",
@@ -164,33 +197,70 @@ async def cancel_download(
 )
 @handle_api_errors("Download Models", logger=logger)
 async def download_model(
-    background_tasks: BackgroundTasks,
     request: DownloadModelRequest,
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
-) -> DownloadModelResponse:
-    task_id = str(ulid.ULID())
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    req_manager: Annotated[RequestManager, Depends(get_request_manager)],
+):
 
-    try:
-        background_tasks.add_task(
-            orch.models_manager.start_download_task,
-            task_id=task_id,
-            model_info=LlamaCPPModelInfo(**request.model_dump()),
-        )
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="Download Model",
+        func=start_download_in_thread,
+        orch=orch,
+        model_info=LlamaCPPModelInfo(**request.model_dump()),
+        priority=RequestPriority.MEDIUM,
+    )
 
-        return DownloadModelResponse(
-            status=DownloadTaskStatus.PENDING,
-            message="Download task has been created.",
-            task_id=task_id,
-            percentage=0,
-        )
-    except Exception as e:
-        logger.error(f"Error creating download task: {str(e)}")
-        return DownloadModelResponse(
-            status=DownloadTaskStatus.FAILED,
-            message=f"Failed to create download task: {str(e)}",
-            task_id=task_id,
-            percentage=0,
-        )
+    print(
+        "Future created for download task: **************************************************************************************************************"
+    )
+    print(future)
+
+    task_id = await future
+
+    print(task_id)
+
+    return DownloadModelResponse(
+        status=DownloadTaskStatus.PENDING,
+        message="Download task has been created.",
+        task_id=task_id,
+        percentage=0,
+    )
+
+
+# @router_models_manager.post(
+#     "/download_model",
+#     response_model=DownloadModelResponse,
+#     status_code=status.HTTP_202_ACCEPTED,
+# )
+# @handle_api_errors("Download Models", logger=logger)
+# async def download_model(
+#     background_tasks: BackgroundTasks,
+#     request: DownloadModelRequest,
+#     orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+# ) -> DownloadModelResponse:
+
+
+#     try:
+#         background_tasks.add_task(
+#             orch.models_manager.start_download_task,
+#             task_id=task_id,
+#             model_info=LlamaCPPModelInfo(**request.model_dump()),
+#         )
+
+#         return DownloadModelResponse(
+#             status=DownloadTaskStatus.PENDING,
+#             message="Download task has been created.",
+#             task_id=task_id,
+#             percentage=0,
+#         )
+#     except Exception as e:
+#         logger.error(f"Error creating download task: {str(e)}")
+#         return DownloadModelResponse(
+#             status=DownloadTaskStatus.FAILED,
+#             message=f"Failed to create download task: {str(e)}",
+#             task_id=task_id,
+#             percentage=0,
+#         )
 
 
 @router_models_manager.post(
@@ -199,9 +269,10 @@ async def download_model(
 @handle_api_errors("Get Model Info", logger=logger)
 async def get_model_info(
     request: SearchModelsManifestRequest,
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
 ) -> ModelInfoResponsePaginated:
-    results = orch.models_manager.get_list_of_models_from_manifest(
+    models_manager = await orch.get_models_manager()
+    results = models_manager.get_list_of_models_from_manifest(
         search_infos=request.model_dump(mode="json"),
     )
     if not results:
@@ -222,19 +293,31 @@ async def get_model_info(
     )
 
 
-@router_models_manager.post("/remove_all_models")
+@router_models_manager.post("/remove_all_models", response_model=StatusResponse)
+@handle_api_errors("Remove All Models", logger=logger)
 async def remove_all_models(
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    req_manager: Annotated[RequestManager, Depends(get_request_manager)],
+    task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
 ) -> StatusResponse:
-    try:
-        orch.models_manager.remove_all_models()
-        return StatusResponse(
-            status=Status.SUCCESS,
-            message="Model manifests removed successfully.",
+
+    models_manager = await orch.get_models_manager()
+
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="Remove All Models",
+        func=models_manager.remove_all_models,
+        priority=RequestPriority.HIGH,
+    )
+
+    success = await future
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create task for removing models.",
         )
-    except Exception as e:
-        logger.error(f"Error removing model manifests: {str(e)}")
-        return StatusResponse(
-            status=Status.ERROR,
-            message=f"Failed to remove all model manifests: {str(e)}",
-        )
+
+    return StatusResponse(
+        status=Status.SUCCESS,
+        message="Model manifests removed successfully.",
+    )

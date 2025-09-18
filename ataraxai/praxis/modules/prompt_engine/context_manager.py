@@ -32,11 +32,11 @@ class ContextManager:
             "file_content": self._get_file_content,
         }
 
-    def get_context(
+    async def get_context(
         self,
         context_key: str,
         user_inputs: Optional[Dict] = None,
-    ) -> Any:
+    ) -> Optional[List[str] | str]:
         if context_key == "current_date":
             return self._get_current_date()
         elif context_key == "default_role_prompt":
@@ -55,33 +55,33 @@ class ContextManager:
             and "query" in user_inputs
         ):
             print(user_inputs["query"])
-            return self._get_relevant_document_chunks(user_inputs["query"])
+            return await self._get_relevant_document_chunks(user_inputs["query"])
         elif context_key == "user_calendar_today":
-            return self._get_calendar_events_today()
+            return await self._get_calendar_events_today()
         elif (
             context_key == "file_content" and user_inputs and "file_path" in user_inputs
         ):
-            return self._get_file_content(user_inputs["file_path"])
+            return await self._get_file_content(user_inputs["file_path"])
         else:
             return None
 
-    def _get_relevant_document_chunks(self, user_inputs: Dict[str, Any]) -> List[str]:
+    async def _get_relevant_document_chunks(self, user_inputs: Dict[str, Any]) -> List[str]:
         query: Optional[str] = user_inputs.get("query", None)
         if not query:
             return []
 
-        query_results: List[str] = self.rag_manager.query_knowledge(query_text=query)
+        query_results: List[str] = await self.rag_manager.query_knowledge(query_text=query)
 
         return query_results if query_results else []
 
     def _get_current_date(self) -> str:
         return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    def _get_calendar_events_today(self) -> list[str]:
+    async def _get_calendar_events_today(self) -> list[str]:
         # TODO: Implement the logic to retrieve calendar events for today.
         return []
 
-    def _get_file_content(self, file_path: str) -> str | None:
+    async def _get_file_content(self, file_path: str) -> str | None:
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 return f.read()

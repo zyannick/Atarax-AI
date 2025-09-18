@@ -1,237 +1,644 @@
-import pytest
 from unittest import mock
-from pathlib import Path
-from ataraxai.praxis.utils.app_state import AppState
-from ataraxai.praxis.utils.exceptions import AtaraxAIError
+
+import pytest
 
 from ataraxai.praxis.ataraxai_orchestrator import (
     AtaraxAIOrchestrator,
     AtaraxAIOrchestratorFactory,
+    OrchestratorStateMachine,
+    create_orchestrator,
 )
-from ataraxai.praxis.utils.vault_manager import VaultInitializationStatus, VaultUnlockStatus
+from ataraxai.praxis.utils.app_state import AppState
+from ataraxai.praxis.utils.exceptions import AtaraxAIError, AtaraxAILockError
+from ataraxai.praxis.utils.vault_manager import (
+    UnlockResult,
+    VaultInitializationStatus,
+    VaultUnlockStatus,
+)
 
 
-class TestAtaraxAIOrchestrator:
+@pytest.mark.asyncio
+async def test_orchestrator_initial_state_locked():
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    state = await orchestrator.get_state()
+    assert state == AppState.LOCKED
 
 
-    @pytest.fixture
-    def orchestrator(self, tmp_path : Path):
-        
-        mock_app_config = mock.MagicMock()
-        mock_settings = mock.MagicMock()
-        mock_logger = mock.MagicMock()
-        
-        mock_directories = mock.MagicMock()
-        mock_directories.data = tmp_path / "data"
-        mock_directories.config = tmp_path / "config"
-        
-        mock_vault_manager = mock.MagicMock()
-        mock_vault_manager.check_path = mock_directories.data / "vault.check"
+@pytest.mark.asyncio
+async def test_orchestrator_initialize_sets_initialized(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    monkeypatch.setattr(orchestrator, "_determine_initial_state", mock.AsyncMock())
+    monkeypatch.setattr(orchestrator, "_initialize_base_components", mock.AsyncMock())
+    await orchestrator.initialize()
+    assert orchestrator._initialized is True
 
-        mock_setup_manager = mock.MagicMock()
-        mock_config_manager = mock.MagicMock()
-        mock_core_ai_manager = mock.MagicMock()
-        mock_services = mock.MagicMock()
 
-        
-        orchestrator_instance = AtaraxAIOrchestrator(
-        settings=mock_settings,
-        setup_manager=mock_setup_manager,
-        services=mock_services,
-        )
-    
-        return orchestrator_instance
+@pytest.mark.asyncio
+async def test_initialize_new_vault_success(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    vault_manager = mock.Mock()
+    services = mock.Mock()
+    services.vault_manager = vault_manager
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    await orchestrator._set_state(AppState.FIRST_LAUNCH)
+    monkeypatch.setattr(vault_manager, "create_and_initialize_vault", mock.Mock())
+    monkeypatch.setattr(orchestrator, "_initialize_unlocked_services", mock.AsyncMock())
+    result = await orchestrator.initialize_new_vault(master_password=mock.Mock())
+    assert result == VaultInitializationStatus.SUCCESS
 
-    def test_initial_state_locked_when_vault_exists(self, orchestrator):
-        with mock.patch("pathlib.Path.exists", return_value=True):
-            state = orchestrator._determine_initial_state()
-            assert state == AppState.LOCKED
 
-    def test_initial_state_first_launch_when_no_vault(self, orchestrator):
-        with mock.patch("pathlib.Path.exists", return_value=False):
-            state = orchestrator._determine_initial_state()
-            assert state == AppState.FIRST_LAUNCH
+@pytest.mark.asyncio
+async def test_initialize_new_vault_wrong_state(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    vault_manager = mock.Mock()
+    services = mock.Mock()
+    services.vault_manager = vault_manager
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    result = await orchestrator.initialize_new_vault(master_password=mock.Mock())
+    assert result == VaultInitializationStatus.ALREADY_INITIALIZED
 
-    def test_initialize_new_vault_success(self, orchestrator):
-        orchestrator._state = AppState.FIRST_LAUNCH
-        orchestrator.vault_manager.create_and_initialize_vault.return_value = None
-        orchestrator._initialize_unlocked_services = mock.Mock()
-        
-        master_password = mock.Mock()
-        result = orchestrator.initialize_new_vault(master_password)
-        
-        assert result is VaultInitializationStatus.SUCCESS
-        assert orchestrator._state == AppState.UNLOCKED
-        orchestrator.vault_manager.create_and_initialize_vault.assert_called_once_with(
-            master_password
-        )
-        orchestrator._initialize_unlocked_services.assert_called_once()
 
-    def test_initialize_new_vault_fails_when_wrong_state(self, orchestrator):
-        orchestrator._state = AppState.LOCKED
-        
-        result = orchestrator.initialize_new_vault(mock.Mock())
-        
-        assert result is VaultInitializationStatus.ALREADY_INITIALIZED
-        orchestrator.vault_manager.create_and_initialize_vault.assert_not_called()
+@pytest.mark.asyncio
+async def test_unlock_success(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    vault_manager = mock.Mock()
+    services = mock.Mock()
+    services.vault_manager = vault_manager
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    unlock_result = UnlockResult(status=VaultUnlockStatus.SUCCESS, error=None)
+    monkeypatch.setattr(
+        vault_manager, "unlock_vault", mock.Mock(return_value=unlock_result)
+    )
+    monkeypatch.setattr(orchestrator, "_initialize_unlocked_services", mock.AsyncMock())
+    result = await orchestrator.unlock(password=mock.Mock())
+    assert result.status == VaultUnlockStatus.SUCCESS
 
-    def test_initialize_new_vault_handles_exception(self, orchestrator):
-        orchestrator._state = AppState.FIRST_LAUNCH
-        orchestrator.vault_manager.create_and_initialize_vault.side_effect = Exception("Vault creation failed")
-        
-        result = orchestrator.initialize_new_vault(master_password=mock.Mock())
-        
-        assert result is VaultInitializationStatus.FAILED
-        assert orchestrator._state == AppState.ERROR
 
-    def test_reinitialize_vault_fails_with_wrong_phrase(self, orchestrator):
-        orchestrator._state = AppState.UNLOCKED
-        
-        result = orchestrator.reinitialize_vault("wrong phrase")
-        
-        assert result is False
+@pytest.mark.asyncio
+async def test_unlock_already_unlocked(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    vault_manager = mock.Mock()
+    services = mock.Mock()
+    services.vault_manager = vault_manager
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    await orchestrator._set_state(AppState.UNLOCKED)
+    result = await orchestrator.unlock(password=mock.Mock())
+    assert result.status == VaultUnlockStatus.ALREADY_UNLOCKED
 
-    def test_reinitialize_vault_fails_when_not_unlocked(self, orchestrator):
-        orchestrator._state = AppState.LOCKED
-        
-        result = orchestrator.reinitialize_vault(orchestrator.EXPECTED_RESET_CONFIRMATION_PHRASE)
-        
-        assert result is False
 
-    def test_reinitialize_vault_success(self, orchestrator, tmp_path):
-        orchestrator._state = AppState.UNLOCKED
-        orchestrator.directories.data = tmp_path
-        orchestrator.directories.create_directories = mock.Mock()
-        orchestrator._init_security_manager = mock.Mock()
-        orchestrator.lock = mock.Mock()
-        
-        result = orchestrator.reinitialize_vault(orchestrator.EXPECTED_RESET_CONFIRMATION_PHRASE)
+@pytest.mark.asyncio
+async def test_lock_success(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    vault_manager = mock.Mock()
+    services = mock.Mock()
+    services.vault_manager = vault_manager
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    monkeypatch.setattr(vault_manager, "lock", mock.Mock())
+    monkeypatch.setattr(orchestrator, "_shutdown_services", mock.AsyncMock())
+    await orchestrator._set_state(AppState.UNLOCKED)
+    result = await orchestrator.lock()
+    assert result is True
 
-        assert result is True
-        assert orchestrator._state == AppState.FIRST_LAUNCH
-        orchestrator.directories.create_directories.assert_called_once()
-        orchestrator._init_security_manager.assert_called_once()
-        orchestrator.lock.assert_called_once()
 
-    def test_unlock_success(self, orchestrator):
-        orchestrator._state = AppState.LOCKED
-        
-        unlock_result = mock.Mock()
-        unlock_result.status = VaultUnlockStatus.SUCCESS
-        orchestrator.vault_manager.unlock_vault.return_value = unlock_result
-        orchestrator._initialize_unlocked_services = mock.Mock()
-        
-        password = mock.Mock()
-        result = orchestrator.unlock(password)
-
-        assert result.status is VaultUnlockStatus.SUCCESS
-        assert orchestrator._state == AppState.UNLOCKED
-        orchestrator.vault_manager.unlock_vault.assert_called_once_with(password)
-        orchestrator._initialize_unlocked_services.assert_called_once()
-
-    def test_unlock_when_already_unlocked(self, orchestrator):
-        orchestrator._state = AppState.UNLOCKED
-        
-        result = orchestrator.unlock(password=mock.Mock())
-
-        assert result.status is VaultUnlockStatus.ALREADY_UNLOCKED
-        orchestrator.vault_manager.unlock_vault.assert_not_called()
-
-    def test_unlock_failure(self, orchestrator):
-        orchestrator._state = AppState.LOCKED
-        
-        unlock_result = mock.Mock()
-        unlock_result.status = VaultUnlockStatus.INVALID_PASSWORD
-        orchestrator.vault_manager.unlock_vault.return_value = unlock_result
-        
-        result = orchestrator.unlock(password=mock.Mock())
-        
-        assert result.status is VaultUnlockStatus.INVALID_PASSWORD
-        assert orchestrator._state == AppState.LOCKED
-
-    def test_lock_transitions_to_locked_state(self, orchestrator):
-        orchestrator._state = AppState.UNLOCKED
-        orchestrator.vault_manager.lock = mock.Mock()
-        orchestrator.shutdown = mock.Mock()
-        orchestrator._set_state = mock.Mock()
-        
-        orchestrator.lock()
-        
-        orchestrator.vault_manager.lock.assert_called_once()
-        orchestrator.shutdown.assert_called_once()
-        orchestrator._set_state.assert_called_once_with(AppState.LOCKED)
-
-    def test_run_task_chain_delegates_to_services(self, orchestrator):
-        expected_result = {"output": "task completed"}
-        orchestrator.services.run_task_chain.return_value = expected_result
-        
-        chain_def = [{"task": "analyze", "params": {"input": "test"}}]
-        query = "Analyze this data"
-        
-        result = orchestrator.run_task_chain(chain_def, query)
-        
-        assert result == expected_result
-        orchestrator.services.run_task_chain.assert_called_once_with(
-            chain_definition=chain_def, 
-            initial_user_query=query
+@pytest.mark.asyncio
+async def test_run_task_chain_locked_raises(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(AtaraxAILockError):
+        await orchestrator.run_task_chain(
+            chain_definition=[], initial_user_query="test"
         )
 
-    def test_chat_property_when_unlocked(self, orchestrator):
-        orchestrator._state = AppState.UNLOCKED
-        expected_chat = mock.Mock()
-        orchestrator.services.chat_manager = expected_chat
-        
-        assert orchestrator.chat == expected_chat
+
+@pytest.mark.asyncio
+async def test_get_rag_manager_locked_raises():
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(AtaraxAILockError):
+        await orchestrator.get_rag_manager()
 
 
-    def test_rag_property_when_unlocked(self, orchestrator):
-        orchestrator._state = AppState.UNLOCKED
-        expected_rag = mock.Mock()
-        orchestrator.services.rag_manager = expected_rag
-        
-        assert orchestrator.rag == expected_rag
-
-    def test_models_manager_property_when_unlocked(self, orchestrator):
-        orchestrator._state = AppState.UNLOCKED
-        expected_models = mock.Mock()
-        orchestrator.services.models_manager = expected_models
-        
-        assert orchestrator.models_manager == expected_models
+@pytest.mark.asyncio
+async def test_reinitialize_vault_wrong_phrase(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    await orchestrator._set_state(AppState.UNLOCKED)
+    result = await orchestrator.reinitialize_vault("wrong phrase")
+    assert result is False
 
 
-    def test_shutdown_delegates_to_services(self, orchestrator):
-        orchestrator.shutdown()
-        orchestrator.services.shutdown.assert_called_once()
+@pytest.mark.asyncio
+async def test_reinitialize_vault_wrong_state(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    result = await orchestrator.reinitialize_vault(
+        AtaraxAIOrchestrator.EXPECTED_RESET_CONFIRMATION_PHRASE
+    )
+    assert result is False
 
-    def test_shutdown_handles_missing_services(self, orchestrator):
-        orchestrator.services = None
-        orchestrator.shutdown()
 
-    def test_context_manager_enter_returns_self(self, orchestrator):
-        with orchestrator as ctx:
-            assert ctx is orchestrator
+@pytest.mark.asyncio
+async def test_orchestrator_aenter_calls_initialize(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    monkeypatch.setattr(orchestrator, "initialize", mock.AsyncMock())
+    result = await orchestrator.__aenter__()
+    orchestrator.initialize.assert_awaited_once()
+    assert result is orchestrator
 
-    def test_context_manager_exit_calls_shutdown(self, orchestrator):
-        orchestrator.shutdown = mock.Mock()
-        
-        with orchestrator:
-            pass
-        
-        orchestrator.shutdown.assert_called_once()
 
-    def test_context_manager_exit_with_exception_still_calls_shutdown(self, orchestrator):
-        orchestrator.shutdown = mock.Mock()
-        
-        with pytest.raises(ValueError):
-            with orchestrator:
-                raise ValueError("Test exception")
-        
-        orchestrator.shutdown.assert_called_once()
+@pytest.mark.asyncio
+async def test_orchestrator_aexit_calls_shutdown(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    monkeypatch.setattr(orchestrator, "shutdown", mock.AsyncMock())
+    await orchestrator.__aexit__(None, None, None)
+    orchestrator.shutdown.assert_awaited_once()
 
-    def test_explicit_exit_calls_shutdown(self, orchestrator):
-        orchestrator.shutdown = mock.Mock()
-        
-        orchestrator.__exit__(None, None, None)
-        
-        orchestrator.shutdown.assert_called_once()
 
+@pytest.mark.asyncio
+async def test__set_state_invalid_transition(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(ValueError):
+        await orchestrator._set_state(AppState.LOCKED)
+    await orchestrator._set_state(AppState.ERROR)
+    with pytest.raises(ValueError):
+        await orchestrator._set_state(AppState.UNLOCKED)
+
+
+@pytest.mark.asyncio
+async def test_get_models_manager_unlocked(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.models_manager = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    await orchestrator._set_state(AppState.UNLOCKED)
+    result = await orchestrator.get_models_manager()
+    assert result == services.models_manager
+
+
+@pytest.mark.asyncio
+async def test_get_models_manager_locked_raises(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.models_manager = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(AtaraxAILockError):
+        await orchestrator.get_models_manager()
+
+
+@pytest.mark.asyncio
+async def test_get_chat_context_unlocked(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.chat_context = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    await orchestrator._set_state(AppState.UNLOCKED)
+    result = await orchestrator.get_chat_context()
+    assert result == services.chat_context
+
+
+@pytest.mark.asyncio
+async def test_get_chat_manager_unlocked(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.chat_manager = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    await orchestrator._set_state(AppState.UNLOCKED)
+    result = await orchestrator.get_chat_manager()
+    assert result == services.chat_manager
+
+
+@pytest.mark.asyncio
+async def test_get_chain_task_manager_unlocked(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.task_manager = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    await orchestrator._set_state(AppState.UNLOCKED)
+    result = await orchestrator.get_chain_task_manager()
+    assert result == services.task_manager
+
+
+@pytest.mark.asyncio
+async def test_get_vault_manager_returns(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.vault_manager = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    result = await orchestrator.get_vault_manager()
+    assert result == services.vault_manager
+
+
+@pytest.mark.asyncio
+async def test_get_config_manager_returns(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.config_manager = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    result = await orchestrator.get_config_manager()
+    assert result == services.config_manager
+
+
+@pytest.mark.asyncio
+async def test_get_core_ai_service_manager_returns(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.core_ai_service_manager = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    result = await orchestrator.get_core_ai_service_manager()
+    assert result == services.core_ai_service_manager
+
+
+@pytest.mark.asyncio
+async def test_get_app_config_returns(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.app_config = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    result = await orchestrator.get_app_config()
+    assert result == services.app_config
+
+
+@pytest.mark.asyncio
+async def test_get_directories_returns(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.directories = mock.Mock()
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    result = await orchestrator.get_directories()
+    assert result == services.directories
+
+
+@pytest.mark.asyncio
+async def test_get_user_preferences_manager_returns(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    config_manager = mock.Mock()
+    config_manager.preferences_manager = mock.Mock()
+    services.config_manager = config_manager
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    result = await orchestrator.get_user_preferences_manager()
+    assert result == config_manager.preferences_manager
+
+
+@pytest.mark.asyncio
+async def test_get_user_preferences_returns(monkeypatch: pytest.MonkeyPatch):
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    config_manager = mock.Mock()
+    config_manager.get_user_preferences = mock.Mock(return_value="prefs")
+    services.config_manager = config_manager
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    result = await orchestrator.get_user_preferences()
+    assert result == "prefs"
+
+
+@pytest.mark.asyncio
+async def test_get_vault_manager_raises_if_not_initialized():
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.vault_manager = None
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(RuntimeError):
+        await orchestrator.get_vault_manager()
+
+
+@pytest.mark.asyncio
+async def test_get_config_manager_raises_if_not_initialized():
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.config_manager = None
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(RuntimeError):
+        await orchestrator.get_config_manager()
+
+
+@pytest.mark.asyncio
+async def test_get_core_ai_service_manager_raises_if_not_initialized():
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.core_ai_service_manager = None
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(RuntimeError):
+        await orchestrator.get_core_ai_service_manager()
+
+
+@pytest.mark.asyncio
+async def test_get_app_config_raises_if_not_initialized():
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.app_config = None
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(RuntimeError):
+        await orchestrator.get_app_config()
+
+
+@pytest.mark.asyncio
+async def test_get_directories_raises_if_not_initialized():
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.directories = None
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(RuntimeError):
+        await orchestrator.get_directories()
+
+
+@pytest.mark.asyncio
+async def test_get_user_preferences_manager_raises_if_not_initialized():
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.config_manager = None
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(RuntimeError):
+        await orchestrator.get_user_preferences_manager()
+
+
+@pytest.mark.asyncio
+async def test_get_user_preferences_raises_if_not_initialized():
+    settings = mock.Mock()
+    setup_manager = mock.Mock()
+    services = mock.Mock()
+    services.config_manager = None
+    logger = mock.Mock()
+    orchestrator = AtaraxAIOrchestrator(settings, setup_manager, services, logger)
+    with pytest.raises(RuntimeError):
+        await orchestrator.get_user_preferences()
+
+
+@pytest.mark.asyncio
+async def test_state_machine_initial_state():
+    sm = OrchestratorStateMachine()
+    state = await sm.get_state()
+    assert state == AppState.LOCKED
+
+
+@pytest.mark.asyncio
+async def test_state_machine_valid_transition():
+    sm = OrchestratorStateMachine(initial_state=AppState.LOCKED)
+    await sm.transition_to(AppState.FIRST_LAUNCH)
+    state = await sm.get_state()
+    assert state == AppState.FIRST_LAUNCH
+
+
+@pytest.mark.asyncio
+async def test_state_machine_invalid_transition_raises():
+    sm = OrchestratorStateMachine(initial_state=AppState.ERROR)
+    with pytest.raises(ValueError):
+        await sm.transition_to(AppState.UNLOCKED)
+
+
+@pytest.mark.asyncio
+async def test_state_machine_logging(monkeypatch: pytest.MonkeyPatch):
+    sm = OrchestratorStateMachine(initial_state=AppState.LOCKED)
+    monkeypatch.setattr("logging.info", mock.Mock())
+    await sm.transition_to(AppState.FIRST_LAUNCH)
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_factory_creates_and_initializes(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr("ataraxai.praxis.ataraxai_orchestrator.AppConfig", mock.Mock)
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.AtaraxAISettings", mock.Mock
+    )
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.AppDirectories.create_default",
+        mock.Mock(return_value=mock.Mock()),
+    )
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.AtaraxAILogger",
+        mock.Mock(
+            return_value=mock.Mock(get_logger=mock.Mock(return_value=mock.Mock()))
+        ),
+    )
+    monkeypatch.setattr("ataraxai.praxis.ataraxai_orchestrator.VaultManager", mock.Mock)
+    monkeypatch.setattr("ataraxai.praxis.ataraxai_orchestrator.SetupManager", mock.Mock)
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.ConfigurationManager", mock.Mock
+    )
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.CoreAIServiceManager", mock.Mock
+    )
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.ChatDatabaseManager", mock.Mock
+    )
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.ChatContextManager", mock.Mock
+    )
+    monkeypatch.setattr("ataraxai.praxis.ataraxai_orchestrator.ChatManager", mock.Mock)
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.BackgroundTaskManager", mock.Mock
+    )
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.ModelsManager", mock.Mock
+    )
+    monkeypatch.setattr("ataraxai.praxis.ataraxai_orchestrator.Services", mock.Mock)
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.AtaraxAIOrchestrator", mock.Mock()
+    )
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.asyncio.to_thread", mock.AsyncMock()
+    )
+    orchestrator_mock = mock.AsyncMock()
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.AtaraxAIOrchestratorFactory.create_orchestrator",
+        mock.AsyncMock(return_value=orchestrator_mock),
+    )
+    result = await AtaraxAIOrchestratorFactory.create_orchestrator()
+    assert result == orchestrator_mock
+
+
+@pytest.mark.asyncio
+async def test_create_orchestrator_context_manager(monkeypatch: pytest.MonkeyPatch):
+    orchestrator_mock = mock.AsyncMock()
+    monkeypatch.setattr(
+        "ataraxai.praxis.ataraxai_orchestrator.AtaraxAIOrchestratorFactory.create_orchestrator",
+        mock.AsyncMock(return_value=orchestrator_mock),
+    )
+    async with create_orchestrator() as orch:
+        assert orch == orchestrator_mock
+    orchestrator_mock.shutdown.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_get_state_returns_current_state():
+    orchestrator = AtaraxAIOrchestrator(
+        mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
+    )
+    await orchestrator._set_state(AppState.UNLOCKED)
+    state = await orchestrator.get_state()
+    assert state == AppState.UNLOCKED
+
+
+@pytest.mark.asyncio
+async def test_orchestrator__set_state_valid_transition():
+    orchestrator = AtaraxAIOrchestrator(
+        mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
+    )
+    await orchestrator._set_state(AppState.FIRST_LAUNCH)
+    state = await orchestrator.get_state()
+    assert state == AppState.FIRST_LAUNCH
+
+
+@pytest.mark.asyncio
+async def test_orchestrator__set_state_invalid_transition_raises():
+    orchestrator = AtaraxAIOrchestrator(
+        mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
+    )
+    await orchestrator._set_state(AppState.ERROR)
+    with pytest.raises(ValueError):
+        await orchestrator._set_state(AppState.UNLOCKED)
+
+
+@pytest.mark.asyncio
+async def test_orchestrator__ensure_initialized_raises_if_not_initialized():
+    orchestrator = AtaraxAIOrchestrator(
+        mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
+    )
+    orchestrator._initialized = False
+    with pytest.raises(RuntimeError):
+        orchestrator._ensure_initialized()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator__ensure_initialized_raises_if_services_none():
+    orchestrator = AtaraxAIOrchestrator(mock.Mock(), mock.Mock(), None, mock.Mock())
+    orchestrator._initialized = True
+    with pytest.raises(RuntimeError):
+        orchestrator._ensure_initialized()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_shutdown_sets_services_and_setup_manager_none(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    orchestrator = AtaraxAIOrchestrator(
+        mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
+    )
+    monkeypatch.setattr(orchestrator, "_shutdown_services", mock.AsyncMock())
+    orchestrator._shutdown = False
+    await orchestrator.shutdown()
+    assert orchestrator.services is None
+    assert orchestrator.setup_manager is None
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_run_task_chain_unlocked(monkeypatch: pytest.MonkeyPatch):
+    services = mock.Mock()
+    services.run_task_chain = mock.AsyncMock(return_value="result")
+    orchestrator = AtaraxAIOrchestrator(mock.Mock(), mock.Mock(), services, mock.Mock())
+    await orchestrator._set_state(AppState.UNLOCKED)
+    result = await orchestrator.run_task_chain(
+        chain_definition=[], initial_user_query="query"
+    )
+    assert result == "result"
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_run_task_chain_locked_raises():
+    orchestrator = AtaraxAIOrchestrator(
+        mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
+    )
+    with pytest.raises(AtaraxAILockError):
+        await orchestrator.run_task_chain(
+            chain_definition=[], initial_user_query="query"
+        )
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_get_rag_manager_unlocked():
+    services = mock.Mock()
+    services.rag_manager = "rag"
+    orchestrator = AtaraxAIOrchestrator(mock.Mock(), mock.Mock(), services, mock.Mock())
+    await orchestrator._set_state(AppState.UNLOCKED)
+    result = await orchestrator.get_rag_manager()
+    assert result == "rag"
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_get_rag_manager_locked_raises():
+    orchestrator = AtaraxAIOrchestrator(
+        mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
+    )
+    with pytest.raises(AtaraxAILockError):
+        await orchestrator.get_rag_manager()

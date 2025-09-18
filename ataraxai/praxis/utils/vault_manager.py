@@ -17,6 +17,7 @@ class VaultUnlockStatus(Enum):
     ALREADY_UNLOCKED = auto()
     INCORRECT_PASSWORD = auto()
     UNINITIALIZED = auto()
+    ERROR = auto()
 
 class VaultInitializationStatus(Enum):
     SUCCESS = auto()

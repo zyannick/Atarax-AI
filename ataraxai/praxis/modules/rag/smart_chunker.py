@@ -8,6 +8,7 @@ from ataraxai.praxis.modules.rag.parser.pdf_parser import PDFParser
 from ataraxai.praxis.modules.rag.parser.docx_parser import DOCXParser
 from ataraxai.praxis.modules.rag.parser.pptx_parser import PPTXParser
 from typing import Callable
+from logging import Logger
 
 
 EXT_PARSER_MAP: Dict[str, Any] = {
@@ -25,6 +26,7 @@ class SmartChunker:
         chunk_overlap_tokens: int = 50,
         separators: List[str] | None = None,
         keep_separator: bool = True,
+        logger : Logger = Logger(__name__),
     ):
         """
         Initializes the SmartChunker with a tokenizer and a recursive character text splitter.
@@ -43,11 +45,12 @@ class SmartChunker:
             - If the specified model is not found in tiktoken, defaults to "cl100k_base" encoding.
             - Uses LangChain's RecursiveCharacterTextSplitter for chunking text.
         """
+        self.logger = logger
         try:
             self._tokenizer = tiktoken.encoding_for_model(model_name_for_tiktoken)
         except KeyError:
-            print(
-                f"Warning: Model '{model_name_for_tiktoken}' not found for tiktoken. Defaulting to 'cl100k_base' for token counting."
+            self.logger.warning(
+                f"Model '{model_name_for_tiktoken}' not found for tiktoken. Defaulting to 'cl100k_base' for token counting."
             )
             self._tokenizer = tiktoken.get_encoding("cl100k_base")
 
@@ -68,12 +71,12 @@ class SmartChunker:
             keep_separator=keep_separator,
             add_start_index=True,
         )
-        print(
+        self.logger.info(
             f"SmartChunker initialized with LangChain RecursiveCharacterTextSplitter: "
             f"chunk_size={chunk_size_tokens} tokens, overlap={chunk_overlap_tokens} tokens."
         )
 
-    def ingest_file(self, file_path: Path) -> List[DocumentChunk]:
+    async def ingest_file(self, file_path: Path) -> List[DocumentChunk]:
         """
         Ingests a file, parses its content into document chunks, and applies smart chunking.
 
@@ -88,15 +91,15 @@ class SmartChunker:
             Prints status and error messages to the console.
         """
         if not file_path.is_file():
-            print(f"[!] {file_path} is not a valid file.")
+            self.logger.warning(f"{file_path} is not a valid file.")
             return []
 
         parser = EXT_PARSER_MAP.get(file_path.suffix.lower())
         if not parser:
-            print(f"[!] No parser available for {file_path.suffix}. Skipping.")
+            self.logger.warning(f"No parser available for {file_path.suffix}. Skipping.")
             return []
 
-        print(f"[+] Parsing: {file_path}")
+        self.logger.info(f"Parsing: {file_path}")
         try:
             raw_chunks: List[DocumentChunk] = parser.parse(file_path)
             smart_chunks = self.chunk(raw_chunks)
@@ -104,37 +107,6 @@ class SmartChunker:
         except Exception as e:
             print(f"[!] Failed to process {file_path}: {e}")
             return []
-
-    def ingest_directory(self, directory: Path) -> List[DocumentChunk]:
-        """
-        Ingests all files from the specified directory, recursively parsing and chunking their contents.
-
-        Args:
-            directory (Path): The root directory to search for files.
-
-        Returns:
-            List[DocumentChunk]: A list of processed and chunked document objects extracted from all files.
-
-        Notes:
-            - Only files with extensions present in EXT_PARSER_MAP are processed.
-            - Each file is parsed using its corresponding parser, then further chunked using the `chunk` method.
-            - Files that cannot be processed are skipped, and an error message is printed.
-        """
-        all_chunks: List[DocumentChunk] = []
-
-        for path in directory.rglob("*"):
-            if not path.is_file():
-                continue
-            parser = EXT_PARSER_MAP.get(path.suffix.lower())
-            if parser:
-                print(f"[+] Parsing: {path}")
-                try:
-                    raw_chunks: List[DocumentChunk] = parser.parse(path)
-                    smart_chunks = self.chunk(raw_chunks)
-                    all_chunks.extend(smart_chunks)
-                except Exception as e:
-                    print(f"[!] Failed to process {path}: {e}")
-        return all_chunks
 
     def _chunk_single_document_content(
         self, document_content: str, source_path: str, base_metadata: Dict[str, Any]
@@ -181,7 +153,7 @@ class SmartChunker:
                 )
             )
 
-        print(
+        self.logger.info(
             f"SmartChunker: Document from '{source_path}' split into {len(final_chunks)} chunks."
         )
         return final_chunks
@@ -203,8 +175,8 @@ class SmartChunker:
         all_resulting_chunks: List[DocumentChunk] = []
         for original_doc_chunk in documents_to_chunk:
             if not isinstance(original_doc_chunk, DocumentChunk):
-                print(
-                    f"Warning: SmartChunker.chunk expected DocumentChunk, got {type(original_doc_chunk)}. Skipping."
+                self.logger.warning(
+                    f"SmartChunker.chunk expected DocumentChunk, got {type(original_doc_chunk)}. Skipping."
                 )
                 continue
 

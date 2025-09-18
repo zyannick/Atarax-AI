@@ -1,3 +1,4 @@
+from typing import Annotated
 from fastapi import APIRouter
 from fastapi.params import Depends
 
@@ -26,16 +27,17 @@ router_llama_cpp = APIRouter(
     prefix="/api/v1/llama_cpp_config", tags=["Llama CPP Config"]
 )
 
-def get_llama_config_manager(
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator) # type: ignore
+async def get_llama_config_manager(
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)]
 ) -> LlamaConfigManager:
-    return orch.config_manager.llama_config_manager
+    config_manager = await orch.get_config_manager()
+    return config_manager.llama_config_manager
 
 
 @router_llama_cpp.get("/get_llama_cpp_config", response_model=LlamaCPPConfigResponse)
 @handle_api_errors("Get Llama CPP Config", logger=logger)
 async def get_llama_cpp_config(
-    llama_config_manager: LlamaConfigManager = Depends(get_llama_config_manager),  # type: ignore
+    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)]
 ) -> LlamaCPPConfigResponse:
     """
     Endpoint to retrieve the current Llama CPP configuration.
@@ -49,7 +51,7 @@ async def get_llama_cpp_config(
     config: LlamaModelParams = llama_config_manager.get_llama_cpp_params()
     if not config:
         return LlamaCPPConfigResponse(
-            status=Status.FAILURE,
+            status=Status.FAILED,
             message="Llama CPP configuration not found.",
             config=None,
         )
@@ -73,7 +75,7 @@ async def get_llama_cpp_config(
 @handle_api_errors("Update Llama CPP Config", logger=logger)
 async def update_llama_cpp_config(
     config: LlamaCPPConfigAPI,
-    llama_config_manager: LlamaConfigManager = Depends(get_llama_config_manager),  # type: ignore
+    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)],  # type: ignore
 ) -> LlamaCPPConfigResponse:
     """
     Endpoint to update the Llama CPP configuration.
@@ -110,7 +112,7 @@ async def update_llama_cpp_config(
 )
 @handle_api_errors("Get Llama CPP Generation Params", logger=logger)
 async def get_llama_cpp_generation_params(
-    llama_config_manager: LlamaConfigManager = Depends(get_llama_config_manager),  # type: ignore
+    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)],  # type: ignore
 ) -> LlamaCPPGenerationParamsResponse:
     """
     Endpoint to retrieve the current Llama CPP generation parameters.
@@ -124,7 +126,7 @@ async def get_llama_cpp_generation_params(
     generation_params = llama_config_manager.get_generation_params()
     if not generation_params:
         return LlamaCPPGenerationParamsResponse(
-            status=Status.FAILURE,
+            status=Status.FAILED,
             message="Llama CPP generation parameters not found.",
             params=None,
         )
@@ -142,7 +144,7 @@ async def get_llama_cpp_generation_params(
 @handle_api_errors("Update Llama CPP Generation Params", logger=logger)
 async def update_llama_cpp_generation_params(
     generation_params: LlamaCPPGenerationParamsAPI,
-    llama_config_manager: LlamaConfigManager = Depends(get_llama_config_manager),  # type: ignore
+    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)],  # type: ignore
 ) -> LlamaCPPGenerationParamsResponse:
     """
     Endpoint to update the Llama CPP generation parameters.

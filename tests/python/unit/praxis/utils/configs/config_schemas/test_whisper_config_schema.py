@@ -1,9 +1,9 @@
 import pytest
 
 from ataraxai.praxis.utils.configs.config_schemas.whisper_config_schema import (
+    WhisperConfig,
     WhisperModelParams,
     WhisperTranscriptionParams,
-    WhisperConfig,
 )
 
 
@@ -24,7 +24,7 @@ def test_whisper_model_params_custom_values():
         flash_attn=False,
         audio_ctx=128,
         model="custom/model.bin",
-        language="fr"
+        language="fr",
     )
     assert params.n_threads == 4
     assert params.use_gpu is False
@@ -36,7 +36,7 @@ def test_whisper_model_params_custom_values():
 
 def test_whisper_transcription_params_defaults():
     params = WhisperTranscriptionParams()
-    assert params.config_version == 1.0
+    assert params.config_version == "1.0"
     assert params.n_threads == 0
     assert params.language == "en"
     assert params.translate is False
@@ -50,7 +50,7 @@ def test_whisper_transcription_params_defaults():
 
 def test_whisper_transcription_params_custom_values():
     params = WhisperTranscriptionParams(
-        config_version=2.0,
+        config_version="2.0",
         n_threads=8,
         language="es",
         translate=True,
@@ -59,9 +59,9 @@ def test_whisper_transcription_params_custom_values():
         no_context=False,
         max_len=1024,
         single_segment=True,
-        temperature=0.5
+        temperature=0.5,
     )
-    assert params.config_version == 2.0
+    assert params.config_version == "2.0"
     assert params.n_threads == 8
     assert params.language == "es"
     assert params.translate is True
@@ -75,7 +75,7 @@ def test_whisper_transcription_params_custom_values():
 
 def test_whisper_config_defaults():
     config = WhisperConfig()
-    assert config.config_version == 1.0
+    assert config.config_version == "1.0"
     assert isinstance(config.whisper_model_params, WhisperModelParams)
     assert isinstance(config.whisper_transcription_params, WhisperTranscriptionParams)
 
@@ -84,11 +84,11 @@ def test_whisper_config_custom_values():
     model_params = WhisperModelParams(n_threads=2, language="de")
     transcription_params = WhisperTranscriptionParams(language="de", temperature=0.3)
     config = WhisperConfig(
-        config_version=2.1,
+        config_version="2.1",
         whisper_model_params=model_params,
-        whisper_transcription_params=transcription_params
+        whisper_transcription_params=transcription_params,
     )
-    assert config.config_version == 2.1
+    assert config.config_version == "2.1"
     assert config.whisper_model_params.n_threads == 2
     assert config.whisper_model_params.language == "de"
     assert config.whisper_transcription_params.language == "de"

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import asyncio
 from typing import Any, List, Dict
 from ataraxai.praxis.modules.prompt_engine.specific_tasks.task_dependencies import (
     TaskDependencies,
@@ -42,31 +43,24 @@ class BaseTask(ABC):
             self._initialized = True
             print(f"Resources for '{self.id}' loaded successfully.")
 
-    def run(
+    async def run(
         self,
         input_data: Dict[str, Any],
         dependencies: TaskDependencies,
     ) -> Any:
-        """
-        Executes the main logic of the task, handling input validation, preprocessing, execution, and postprocessing steps.
-
-        Args:
-            input_data (Dict[str, Any]): The input data required for the task.
-            context (TaskContext): The context object containing task-specific information.
-            dependencies (Dict[str, Any]): A dictionary of dependencies required for task execution.
-
-        Returns:
-            Any: The final processed output of the task.
-
-        Raises:
-            Exception: Any exception raised during the execution is handled by the handle_error method.
-        """
         try:
             self.load_if_needed()
             self.validate_inputs(input_data)
             processed_input = self.preprocess(input_data)
-            raw_output = self.execute(processed_input, dependencies)
+
+            raw_output = await self.execute(processed_input, dependencies)
+
             return self.postprocess(raw_output)
+
+        except asyncio.CancelledError:
+            print(f"Task '{self.id}' was cancelled.")
+            raise
+
         except Exception as e:
             return self.handle_error(e)
 

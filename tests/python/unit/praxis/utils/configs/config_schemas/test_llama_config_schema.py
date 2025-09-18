@@ -9,7 +9,7 @@ from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
 
 def test_llama_model_params_defaults():
     params = LlamaModelParams()
-    assert params.config_version == 1.0
+    assert params.config_version == "1.0"
     assert params.n_ctx == 2048
     assert params.n_gpu_layers == 0
     assert params.main_gpu == 0
@@ -28,7 +28,7 @@ def test_llama_model_params_with_model_info():
 
 def test_generation_params_defaults():
     params = GenerationParams()
-    assert params.config_version == 1.0
+    assert params.config_version == "1.0"
     assert params.n_predict == 128
     assert params.temperature == 0.8
     assert params.top_k == 40
@@ -54,7 +54,7 @@ def test_generation_params_negative_values(field, value):
 
 def test_llama_config_defaults():
     config = LlamaConfig()
-    assert config.config_version == 1.0
+    assert config.config_version == "1.0"
     assert isinstance(config.llama_cpp_model_params, LlamaModelParams)
     assert isinstance(config.generation_params, GenerationParams)
     assert not config.is_setup_complete()
