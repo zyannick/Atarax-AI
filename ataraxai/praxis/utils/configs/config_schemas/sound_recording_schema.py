@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class SoundRecordingParams(BaseModel):
-    config_version: float = 1.0
+    config_version: str = "1.0"
     sample_rate: int = Field(
         default=16000, description="Sample rate for audio recording"
     )

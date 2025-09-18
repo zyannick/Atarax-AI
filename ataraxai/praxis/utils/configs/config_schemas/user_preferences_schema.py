@@ -8,7 +8,7 @@ class AppTheme(str, Enum):
     DARK = auto()
 
 class UserPreferences(BaseModel):
-    config_version: float = Field(1.0, description="Version of the user preferences configuration.")
+    config_version: str = Field("1.0", description="Version of the user preferences configuration.")
 
     index_on_startup: bool = Field(True, description="Whether to index on startup.")
     realtime_monitoring: bool = Field(False, description="Whether to enable real-time monitoring.")

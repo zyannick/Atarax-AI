@@ -1,28 +1,39 @@
-from pydantic import SecretStr
-import pytest
+import asyncio
 import datetime
-import time
 import logging
-from unittest.mock import MagicMock
-from fastapi.testclient import TestClient
+import shutil
+import tempfile
+import time
+import unittest.mock
 from pathlib import Path
-from typing import Generator
-from fastapi import status
+from tempfile import TemporaryDirectory
+from typing import Any, Generator
+from unittest import mock
+from unittest.mock import MagicMock
 
-
+import pytest
 import requests
+from fastapi import status
+from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
 from api import app
 from ataraxai.praxis.ataraxai_orchestrator import (
     AtaraxAIOrchestrator,
     AtaraxAIOrchestratorFactory,
 )
-from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
+from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
+from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
+from ataraxai.praxis.modules.models_manager.models_manager import (
+    LlamaCPPModelInfo,
+    ModelsManager,
+)
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
+from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
 from ataraxai.praxis.utils.chat_manager import ChatManager
 from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
     LlamaModelParams,
@@ -32,15 +43,12 @@ from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 from ataraxai.praxis.utils.services import Services
 from ataraxai.praxis.utils.setup_manager import SetupManager
 from ataraxai.praxis.utils.vault_manager import VaultManager
-from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
-from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo
 from ataraxai.routes.status import Status
 from ataraxai.routes.vault_route.vault_api_models import VaultPasswordRequest
-
-
+from tests.python.fixtures.async_orch import setup_async_orchestrator
 
 # module scope fixtures
+
 
 @pytest.fixture(scope="module")
 def module_app_config() -> Generator[AppConfig, None, None]:
@@ -65,7 +73,9 @@ def module_settings() -> Generator[AtaraxAISettings, None, None]:
 
 
 @pytest.fixture(scope="module")
-def module_app_directories(tmp_path_factory: Path) -> Generator[AppDirectories, None, None]:
+def module_app_directories(
+    tmp_path_factory: Path,
+) -> Generator[AppDirectories, None, None]:
     """
     Creates temporary application directories for configuration, data, cache, and logs within a given base path.
     Args:
@@ -73,7 +83,7 @@ def module_app_directories(tmp_path_factory: Path) -> Generator[AppDirectories, 
     Yields:
         AppDirectories: An object containing paths to the created config, data, cache, and logs directories.
     """
-    module_tmp_dir = tmp_path_factory.mktemp("integration_module") # type: ignore
+    module_tmp_dir: Path = tmp_path_factory.mktemp("integration_module")  # type: ignore
     config = module_tmp_dir / "config"
     data = module_tmp_dir / "data"
     cache = module_tmp_dir / "cache"
@@ -84,12 +94,15 @@ def module_app_directories(tmp_path_factory: Path) -> Generator[AppDirectories, 
     cache.mkdir(parents=True, exist_ok=True)
     logs.mkdir(parents=True, exist_ok=True)
 
-    app_dirs = AppDirectories(config=config, data=data, cache=cache, logs=logs)
-    yield app_dirs
+    directories = AppDirectories(config=config, data=data, cache=cache, logs=logs)
+    # await asyncio.to_thread(directories.create_directories)
+    yield directories
 
 
 @pytest.fixture(scope="module")
-def module_logger(module_app_directories: AppDirectories) -> Generator[logging.Logger, None, None]:
+def module_logger(
+    module_app_directories: AppDirectories,
+) -> Generator[logging.Logger, None, None]:
     """
     Creates and yields a configured logger for the application.
 
@@ -145,7 +158,9 @@ def module_setup_manager(
     Yields:
         SetupManager: An initialized SetupManager object for use in tests.
     """
-    setup_manager = SetupManager(module_app_directories, module_app_config, logger=module_logger)
+    setup_manager = SetupManager(
+        module_app_directories, module_app_config, logger=module_logger
+    )
 
     yield setup_manager
 
@@ -183,7 +198,9 @@ def module_core_ai_manager(
     Yields:
         CoreAIServiceManager: An initialized CoreAIServiceManager object.
     """
-    core_ai_manager = CoreAIServiceManager(config_manager=module_config_manager, logger=module_logger)
+    core_ai_manager = CoreAIServiceManager(
+        config_manager=module_config_manager, logger=module_logger
+    )
 
     yield core_ai_manager
 
@@ -252,15 +269,28 @@ def module_chat_manager(
         ChatManager: An instance of ChatManager configured with the provided dependencies.
     """
     chat_manager = ChatManager(
-        db_manager=module_chat_db_manager, logger=module_logger, vault_manager=module_vault_manager
+        db_manager=module_chat_db_manager,
+        logger=module_logger,
+        vault_manager=module_vault_manager,
     )
     yield chat_manager
 
+@pytest.fixture(scope="module")
+def module_background_task_manager() -> Generator[BackgroundTaskManager, None, None]:
+    """
+    Pytest fixture that provides a BackgroundTaskManager instance for tests.
+
+    Yields:
+        BackgroundTaskManager: An instance of BackgroundTaskManager.
+    """
+    background_task_manager = BackgroundTaskManager()
+    yield background_task_manager
 
 @pytest.fixture(scope="module")
 def module_models_manager(
     module_app_directories: AppDirectories,
     module_logger: logging.Logger,
+    module_background_task_manager: BackgroundTaskManager
 ) -> Generator[ModelsManager, None, None]:
     """
     Pytest fixture that provides a `ModelsManager` instance initialized with the given
@@ -271,9 +301,14 @@ def module_models_manager(
     Yields:
         ModelsManager: An instance of ModelsManager for managing models during tests.
     """
-    models_manager = ModelsManager(directories=module_app_directories, logger=module_logger)
+    models_manager = ModelsManager(
+        directories=module_app_directories, logger=module_logger, background_task_manager=module_background_task_manager
+    )
 
     yield models_manager
+
+
+
 
 
 @pytest.fixture(scope="module")
@@ -288,6 +323,7 @@ def module_services(
     module_vault_manager: VaultManager,
     module_models_manager: ModelsManager,
     module_core_ai_manager: CoreAIServiceManager,
+    module_background_task_manager: BackgroundTaskManager
 ) -> Generator[Services, None, None]:
     """
     Creates and yields a `Services` instance initialized with the provided application components.
@@ -315,67 +351,87 @@ def module_services(
         vault_manager=module_vault_manager,
         models_manager=module_models_manager,
         core_ai_service_manager=module_core_ai_manager,
+        background_task_manager=module_background_task_manager
     )
 
     yield services
 
 
 @pytest.fixture(scope="module")
-def module_orchestrator(
-    module_app_config: AppConfig,
-    module_settings: AtaraxAISettings,
-    module_logger: logging.Logger,
-    module_app_directories: AppDirectories,
-    module_vault_manager: VaultManager,
-    module_setup_manager: SetupManager,
-    module_config_manager: ConfigurationManager,
-    module_core_ai_manager: CoreAIServiceManager,
-    module_services: Services,
-) -> Generator[AtaraxAIOrchestrator, None, None]:
-    """
-    Pytest fixture that provides an instance of AtaraxAIOrchestrator configured with the given dependencies.
-
-    Args:
-        app_config (AppConfig): The application configuration object.
-        settings (AtaraxAISettings): The settings for AtaraxAI.
-        logger (logging.Logger): Logger instance for logging.
-        app_directories (AppDirectories): Object managing application directories.
-        vault_manager (VaultManager): Manager for secure vault operations.
-        setup_manager (SetupManager): Manager for application setup procedures.
-        config_manager (ConfigurationManager): Manager for configuration operations.
-        core_ai_manager (CoreAIServiceManager): Manager for core AI services.
-        services (Services): Collection of service instances.
-
-    Yields:
-        AtaraxAIOrchestrator: An orchestrator instance initialized with the provided dependencies.
-    """
-    orchestrator = AtaraxAIOrchestrator(
-        settings=module_settings,
-        setup_manager=module_setup_manager,
-        services=module_services,
-    )
-
-    yield orchestrator
+def event_loop():
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
 
 
 @pytest.fixture(scope="module")
-def module_integration_client(module_orchestrator: AtaraxAIOrchestrator):
-    """
-    Provides a pytest fixture that yields a TestClient instance configured with a custom AtaraxAIOrchestrator.
-    Overrides the dependency injection for AtaraxAIOrchestratorFactory.create_orchestrator to use the provided orchestrator,
-    allowing integration tests to run with a specific orchestrator instance. After the test client is yielded, the dependency
-    overrides are cleared to restore the application's original state.
-    Args:
-        orchestrator (AtaraxAIOrchestrator): The orchestrator instance to inject into the application for testing.
-    Yields:
-        TestClient: A FastAPI TestClient configured with the overridden orchestrator dependency.
-    """
-    app.dependency_overrides[AtaraxAIOrchestratorFactory.create_orchestrator] = (
-        lambda: module_orchestrator
-    )
+def module_integration_client(
+    event_loop: asyncio.AbstractEventLoop,
+) -> Generator[TestClient, None, None]:
 
-    with TestClient(app, base_url="http://test") as test_client:
-        test_client.app.state.orchestrator = module_orchestrator # type: ignore
-        yield test_client
+    temp_dir = tempfile.mkdtemp()
+    temp_dir_path = Path(temp_dir)
 
-    app.dependency_overrides.clear()
+    orchestrator = None
+    try:
+        orchestrator = event_loop.run_until_complete(
+            setup_async_orchestrator(temp_dir_path)
+        )
+
+        # Use mock.patch as a context manager to avoid scope mismatch
+        with mock.patch.object(
+            AtaraxAIOrchestratorFactory,
+            "create_orchestrator",
+            return_value=orchestrator,
+        ):
+            with TestClient(app, base_url="http://test") as client:
+                yield client
+
+    finally:
+        print("\n--- Tearing down integration test environment ---")
+        print(f"Temporary directory was at: {temp_dir}")
+        if orchestrator:
+            event_loop.run_until_complete(orchestrator.shutdown())
+
+        shutil.rmtree(temp_dir)
+
+
+# @pytest.fixture(scope="module")
+# def integration_client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]:
+#     """
+#     The master fixture for integration tests. It creates a temporary directory,
+#     initializes a real orchestrator, patches the factory, and yields a TestClient.
+#     It ensures graceful shutdown and cleanup in the correct order.
+#     """
+#     # 1. Create the temporary directory manually.
+#     temp_dir = tempfile.mkdtemp()
+#     temp_dir_path = Path(temp_dir)
+
+#     # Create a new event loop for this test module.
+#     loop = asyncio.get_event_loop_policy().new_event_loop()
+#     asyncio.set_event_loop(loop)
+
+#     try:
+#         # 2. Run the async setup to get a fully initialized orchestrator.
+#         orchestrator = loop.run_until_complete(setup_async_orchestrator(temp_dir_path))
+
+#         # 3. Patch the factory to return our test-specific orchestrator.
+#         #    The lambda must be async to match the original signature.
+#         monkeypatch.setattr(
+#             AtaraxAIOrchestratorFactory,
+#             "create_orchestrator",
+#             lambda: asyncio.sleep(0, result=orchestrator),
+#         )
+
+#         # 4. Create the TestClient, which will now use our patched factory.
+#         with TestClient(app, base_url="http://test") as client:
+#             yield client
+
+#     finally:
+#         print("\n--- Tearing down integration test environment ---")
+#         if "orchestrator" in locals() and orchestrator:
+#             loop.run_until_complete(orchestrator.shutdown())
+
+#         shutil.rmtree(temp_dir)
+
+#         loop.close()

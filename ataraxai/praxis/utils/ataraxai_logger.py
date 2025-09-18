@@ -46,6 +46,7 @@ class AtaraxAILogger:
         """
         self.logger = logging.getLogger("AtaraxaiLogger")
         self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
         
         if log_dir is None:
             log_dir = Path("logs")
@@ -58,7 +59,7 @@ class AtaraxAILogger:
             file_handler.setLevel(logging.DEBUG)
 
             console_handler = logging.StreamHandler()
-            console_handler.setLevel(logging.INFO)
+            console_handler.setLevel(logging.DEBUG)
             console_handler.setFormatter(CustomFormatter())
 
             formatter = logging.Formatter(

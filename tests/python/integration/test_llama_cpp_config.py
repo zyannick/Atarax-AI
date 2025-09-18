@@ -1,5 +1,6 @@
 from fastapi import status
 from fastapi.testclient import TestClient
+
 from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo
 from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config_api_models import (
     LlamaCPPConfigAPI,
@@ -24,7 +25,9 @@ def test_llama_cpp_config(module_unlocked_client_with_filled_manifest: TestClien
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
 
-    assert data["status"] == Status.SUCCESS, f"Expected success status, got {data}"
+    assert (
+        data["status"] == Status.SUCCESS.value
+    ), f"Expected success status, got {data}"
     assert data["message"] == "Model information retrieved successfully."
     assert isinstance(data["models"], list)
     assert len(data["models"]) > 0, "Expected at least one model in the response."
@@ -52,7 +55,7 @@ def test_llama_cpp_config(module_unlocked_client_with_filled_manifest: TestClien
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
 
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["message"] == "Llama CPP configuration updated successfully."
     assert "config" in data
     assert isinstance(data["config"], dict)
@@ -64,7 +67,7 @@ def test_llama_cpp_config(module_unlocked_client_with_filled_manifest: TestClien
         response.status_code == status.HTTP_200_OK
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["message"] == "Llama CPP configuration retrieved successfully."
     assert "config" in data
     assert isinstance(data["config"], dict)
@@ -78,7 +81,9 @@ def test_llama_cpp_config(module_unlocked_client_with_filled_manifest: TestClien
     assert data["config"]["use_mlock"] is False
 
 
-def test_llama_cpp_generation_params(module_unlocked_client_with_filled_manifest: TestClient):
+def test_llama_cpp_generation_params(
+    module_unlocked_client_with_filled_manifest: TestClient,
+):
     response = module_unlocked_client_with_filled_manifest.get(
         "/api/v1/llama_cpp_config/get_llama_cpp_generation_params"
     )
@@ -86,12 +91,12 @@ def test_llama_cpp_generation_params(module_unlocked_client_with_filled_manifest
         response.status_code == status.HTTP_200_OK
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["message"] == "Llama CPP generation parameters retrieved successfully."
     assert "params" in data
     assert isinstance(data["params"], dict)
 
-    new_generation_params : LlamaCPPGenerationParamsAPI = LlamaCPPGenerationParamsAPI(
+    new_generation_params: LlamaCPPGenerationParamsAPI = LlamaCPPGenerationParamsAPI(
         n_predict=256,
         temperature=0.7,
         top_k=50,
@@ -99,8 +104,8 @@ def test_llama_cpp_generation_params(module_unlocked_client_with_filled_manifest
         repeat_penalty=1.2,
         penalty_last_n=64,
         penalty_freq=0.8,
-        penalty_present= 1.0,
-        stop_sequences= ["<|endoftext|>"],
+        penalty_present=1.0,
+        stop_sequences=["<|endoftext|>"],
         n_batch=1,
         n_threads=4,
     )
@@ -114,7 +119,7 @@ def test_llama_cpp_generation_params(module_unlocked_client_with_filled_manifest
         response.status_code == status.HTTP_200_OK
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["message"] == "Llama CPP generation parameters updated successfully."
     assert "params" in data
     assert isinstance(data["params"], dict)

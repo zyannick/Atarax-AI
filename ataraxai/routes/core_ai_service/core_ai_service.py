@@ -1,5 +1,11 @@
+from pathlib import Path
+from typing import Annotated, Any, Dict
+
 from fastapi import APIRouter
 from fastapi.params import Depends
+
+from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
     LlamaModelParams,
 )
@@ -10,13 +16,8 @@ from ataraxai.praxis.utils.exceptions import ServiceInitializationError
 from ataraxai.routes.core_ai_service.core_ai_service_api_models import (
     CoreAiServiceInitializationResponse,
 )
-from ataraxai.routes.status import Status
-from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.routes.dependency_api import get_unlocked_orchestrator
-from typing import Dict, Any
-from pathlib import Path
-
+from ataraxai.routes.status import Status
 
 logger = AtaraxAILogger("ataraxai.praxis.core_ai_service").get_logger()
 
@@ -25,21 +26,22 @@ router_core_ai_service_config = APIRouter(
 )
 
 
-def get_config_manager(
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+async def get_config_manager(
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
 ) -> ConfigurationManager:
-    return orch.config_manager
+    config_manager = await orch.get_config_manager()
+    return config_manager
 
 
 def get_llama_config_manager(
-    config_manager: ConfigurationManager = Depends(get_config_manager),  # type: ignore
+    config_manager: Annotated[ConfigurationManager, Depends(get_config_manager)],
 ) -> LlamaConfigManager:
     return config_manager.llama_config_manager
 
 
-def get_core_ai_service_manager(
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
-    llama_config_manager: LlamaConfigManager = Depends(get_llama_config_manager),  # type: ignore
+async def get_core_ai_service_manager(
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)],
 ) -> CoreAIServiceManager:
     llama_cpp_params: LlamaModelParams = llama_config_manager.get_llama_cpp_params()
     if llama_cpp_params.model_info is None:
@@ -61,19 +63,19 @@ def get_core_ai_service_manager(
         raise ServiceInitializationError(
             f"Llama CPP model file {model_path} has an unsupported extension. Supported extensions are .bin and .gguf."
         )
-    return orch.core_ai_manager
+    core_ai_manager = await orch.get_core_ai_service_manager()
+    return core_ai_manager
 
 
 @router_core_ai_service_config.post(
     "/initialize_core_ai_service", response_model=CoreAiServiceInitializationResponse
 )
 def initialize_core_ai_service(
-    service_manager: CoreAIServiceManager = Depends(get_core_ai_service_manager),  # type: ignore
-    orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator),  # type: ignore
+    service_manager: Annotated[CoreAIServiceManager, Depends(get_core_ai_service_manager)],
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
 ) -> CoreAiServiceInitializationResponse:
     try:
         service_manager.initialize()
-        # orch.services.set_core_ai_manager(service_manager)
         logger.info("Core AI Service initialized successfully")
         return CoreAiServiceInitializationResponse(
             status=Status.SUCCESS, message="Core AI Service initialized successfully."
@@ -90,7 +92,7 @@ def initialize_core_ai_service(
     "/get_core_ai_service_status", response_model=CoreAiServiceInitializationResponse
 )
 def get_core_ai_service_status(
-    service_manager: CoreAIServiceManager = Depends(get_core_ai_service_manager),  # type: ignore
+    service_manager: Annotated[CoreAIServiceManager, Depends(get_core_ai_service_manager)],
 ) -> CoreAiServiceInitializationResponse:
     """
     Endpoint to retrieve the current status of the Core AI Service.

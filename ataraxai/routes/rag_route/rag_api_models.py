@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator
-from typing import List
+from typing import Any, List
 from ataraxai.routes.status import Status
 
 
@@ -51,15 +51,17 @@ class RebuildIndexResponse(BaseModel):
     message: str = Field(
         ..., description="Detailed message about the index rebuild operation."
     )
+    result : Any
 
 
-class ScanAndIndexResponse(BaseModel):
-    status: Status = Field(
-        ..., description="Status of the scan and indexing operation."
-    )
-    message: str = Field(
-        ..., description="Detailed message about the scan and indexing operation."
-    )
+# class ScanAndIndexResponse(BaseModel):
+#     status: Status = Field(
+#         ..., description="Status of the scan and indexing operation."
+#     )
+#     message: str = Field(
+#         ..., description="Detailed message about the scan and indexing operation."
+#     )
+#     result: Any
 
 
 class DirectoriesAdditionResponse(BaseModel):
@@ -69,6 +71,7 @@ class DirectoriesAdditionResponse(BaseModel):
     message: str = Field(
         ..., description="Detailed message about the directories addition operation."
     )
+    result : Any
 
 
 class DirectoriesRemovalResponse(BaseModel):
@@ -78,3 +81,5 @@ class DirectoriesRemovalResponse(BaseModel):
     message: str = Field(
         ..., description="Detailed message about the directories removal operation."
     )
+
+    result: Any

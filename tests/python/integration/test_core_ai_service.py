@@ -1,15 +1,8 @@
-from fastapi import APIRouter
-from fastapi.params import Depends
-from fastapi.testclient import TestClient
 import pytest
 from fastapi import status
-
+from fastapi.testclient import TestClient
 
 from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo
-from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
-    LlamaModelParams,
-    GenerationParams,
-)
 from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config_api_models import (
     LlamaCPPConfigAPI,
     LlamaCPPGenerationParamsAPI,
@@ -18,10 +11,6 @@ from ataraxai.routes.models_manager_route.models_manager_api_models import (
     SearchModelsManifestRequest,
 )
 from ataraxai.routes.status import Status
-from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator
 
 
 @pytest.fixture
@@ -39,7 +28,9 @@ def unlock_client_with_llama_config_set(
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
 
-    assert data["status"] == Status.SUCCESS, f"Expected success status, got {data}"
+    assert (
+        data["status"] == Status.SUCCESS.value
+    ), f"Expected success status, got {data}"
     assert data["message"] == "Model information retrieved successfully."
     assert isinstance(data["models"], list)
     assert len(data["models"]) > 0, "Expected at least one model in the response."
@@ -87,7 +78,7 @@ def unlock_client_with_llama_config_set(
         response.status_code == status.HTTP_200_OK
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["message"] == "Llama CPP generation parameters updated successfully."
 
     return module_unlocked_client_with_filled_manifest
@@ -102,6 +93,5 @@ def test_initialize_core_ai_service(unlock_client_with_llama_config_set: TestCli
         response.status_code == status.HTTP_200_OK
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["message"] == "Core AI Service initialized successfully."
-    assert True, "This test is currently disabled due to initialization issues."

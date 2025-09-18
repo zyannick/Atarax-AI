@@ -41,6 +41,6 @@ def test_vault_password_response_valid():
     assert resp.message == "Vault unlocked"
 
 def test_lock_vault_response_valid():
-    resp = LockVaultResponse(status=Status.FAILURE, message="Vault lock failed")
-    assert resp.status == Status.FAILURE
+    resp = LockVaultResponse(status=Status.FAILED, message="Vault lock failed")
+    assert resp.status == Status.FAILED
     assert resp.message == "Vault lock failed"

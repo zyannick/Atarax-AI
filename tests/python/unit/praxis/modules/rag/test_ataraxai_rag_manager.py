@@ -5,177 +5,129 @@ from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 
 
 
+
+
 @pytest.fixture
 def mock_rag_config_manager():
-    m = mock.Mock()
-    m.get.side_effect = lambda key, default=None: {
-        "rag_embedder_model": "test-embedder",
-        "rag_use_reranking": False,
-        "n_result": 5,
-        "n_result_final": 3,
-        "use_hyde": True,
-        "rag_chunk_config": {},
-        "rag_cross_encoder_model": "test-cross-encoder",
-    }.get(key, default)
-    return m
+    config = mock.Mock()
+    config.rag_embedder_model = "test-embedder"
+    config.rag_use_reranking = False
+    config.rag_n_result = 3
+    config.rag_n_result_final = 2
+    config.rag_use_hyde = False
+    config.rag_watched_directories = []
+    config.rag_cross_encoder_model = "test-cross-encoder"
+    config.model_dump.return_value = {"dummy": "config"}
+    rag_config_manager = mock.Mock()
+    rag_config_manager.config = config
+    return rag_config_manager
 
 @pytest.fixture
 def mock_core_ai_service():
-    m = mock.Mock()
-    m.generate_completion.return_value = "Hypothetical answer."
-    return m
+    service = mock.Mock()
+    service.generate_completion.return_value = "Hypothetical answer"
+    return service
 
 @pytest.fixture
-def tmp_app_data_root(tmp_path):
-    return tmp_path
-
-@pytest.fixture
-def manager(mock_rag_config_manager, tmp_app_data_root, mock_core_ai_service):
+def manager(tmp_path : Path, mock_rag_config_manager : mock.Mock, mock_core_ai_service : mock.Mock):
     with mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.AtaraxAIEmbedder"), \
-         mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.RAGStore") as rag_store_cls, \
-         mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.RAGManifest"):
-        rag_store = rag_store_cls.return_value
-        rag_store.collection_name = "ataraxai_knowledge"
-        rag_store.client.get_or_create_collection.return_value = mock.Mock()
-        rag_store.client.delete_collection.return_value = None
-        rag_store.query.return_value = {"documents": [["doc1", "doc2", "doc3"]]}
+         mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.RAGStore"), \
+         mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.RAGManifest"), \
+         mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.WatchedDirectoriesManager"), \
+         mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.ResilientIndexer"):
         return AtaraxAIRAGManager(
             rag_config_manager=mock_rag_config_manager,
-            app_data_root_path=tmp_app_data_root,
+            app_data_root_path=tmp_path,
             core_ai_service=mock_core_ai_service,
         )
 
-def test_check_manifest_validity(manager):
-    manager.manifest.is_valid.return_value = True
-    assert manager.check_manifest_validity() is True
-    manager.manifest.is_valid.return_value = False
-    assert manager.check_manifest_validity() is False
+@pytest.mark.asyncio
+async def test_query_knowledge_simple(manager : AtaraxAIRAGManager):
+    manager.rag_store.query = mock.Mock(return_value={"documents": [["doc1", "doc2", "doc3"]]})
+    result = await manager.query_knowledge("test query")
+    assert result == ["doc1", "doc2", "doc3"]
 
-def test_rebuild_index_success(manager):
-    manager.perform_initial_scan = mock.Mock(return_value=2)
-    result = manager.rebuild_index_for_watches(["/tmp"])
-    assert result is True
-    manager.perform_initial_scan.assert_called_once()
-
-def test_rebuild_index_no_dirs(manager):
-    result = manager.rebuild_index_for_watches([])
-    assert result is False
-
-def test_perform_initial_scan_no_dirs(manager):
-    assert manager.perform_initial_scan([]) == 0
-
-def test_perform_initial_scan_files(tmp_path, manager):
-    d = tmp_path / "dir"
-    d.mkdir()
-    f = d / "file.txt"
-    f.write_text("test")
-    manager.manifest.is_file_in_manifest.return_value = False
-    files_found = manager.perform_initial_scan([str(d)])
-    assert files_found == 1
-
-def test_start_file_monitoring_success(manager):
-    with mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.start_rag_file_monitoring") as start_monitor:
-        start_monitor.return_value = mock.Mock(is_alive=lambda: True)
-        result = manager.start_file_monitoring(["/tmp"])
-        assert result is True
-
-def test_start_file_monitoring_no_dirs(manager):
-    result = manager.start_file_monitoring([])
-    assert result is False
-
-def test_stop_file_monitoring(manager):
-    observer = mock.Mock(is_alive=lambda: True)
-    manager.file_observer = observer
-    manager.stop_file_monitoring()
-    observer.stop.assert_called_once()
-    observer.join.assert_called_once()
-
-def test_stop_file_monitoring_no_active(manager):
-    manager.file_observer = None
-    # Should not raise
-    manager.stop_file_monitoring()
-
-def test_cleanup(manager):
-    manager._cross_encoder = mock.Mock()
-    manager._cross_encoder_initialized = True
-    manager.stop_file_monitoring = mock.Mock()
-    manager.cleanup()
-    assert manager._cross_encoder is None
-    assert manager._cross_encoder_initialized is False
-    manager.stop_file_monitoring.assert_called_once()
-
-def test_cross_encoder_lazy_load(manager):
-    manager.rag_use_reranking = True
-    manager.core_ai_service = True
-    with mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.CrossEncoder") as ce:
-        ce.return_value = "cross_encoder_instance"
-        manager._cross_encoder_initialized = False
-        result = manager.cross_encoder
-        assert result == "cross_encoder_instance"
-
-def test_generate_hypothetical_document(manager):
-    out = manager._generate_hypothetical_document("What is AI?")
-    assert out == "Hypothetical answer."
-
-def test_rerank_documents_no_cross_encoder(manager):
-    manager._cross_encoder = None
-    manager._cross_encoder_initialized = True
-    docs = ["a", "b"]
-    out = manager._rerank_documents("q", docs)
-    assert out == docs
-
-def test_rerank_documents_with_cross_encoder(manager):
-    ce = mock.Mock()
-    ce.predict.return_value = [0.2, 0.9]
-    manager._cross_encoder = ce
-    manager._cross_encoder_initialized = True
-    docs = ["a", "b"]
-    out = manager._rerank_documents("q", docs)
-    assert out == ["b", "a"]
-
-def test_query_knowledge_simple(manager):
-    manager._should_use_advanced_retrieval = mock.Mock(return_value=False)
-    manager._simple_query = mock.Mock(return_value=["doc1"])
-    result = manager.query_knowledge("test")
-    assert result == ["doc1"]
-
-def test_query_knowledge_advanced(manager):
-    manager._should_use_advanced_retrieval = mock.Mock(return_value=True)
-    manager._advanced_query = mock.Mock(return_value=["doc2"])
-    result = manager.query_knowledge("test")
-    assert result == ["doc2"]
-
-def test_query_knowledge_empty_query(manager):
+@pytest.mark.asyncio
+async def test_query_knowledge_empty_query(manager : AtaraxAIRAGManager):
     with pytest.raises(ValueError):
-        manager.query_knowledge("")
+        await manager.query_knowledge("")
 
-def test_simple_query_returns_docs(manager):
-    manager.rag_store.query.return_value = {"documents": [["doc1", "doc2"]]}
-    docs = manager._simple_query("q", None)
-    assert docs == ["doc1", "doc2"]
+@pytest.mark.asyncio
+async def test_query_knowledge_error_logs_and_returns_empty(manager : AtaraxAIRAGManager):
+    with mock.patch.object(manager, "_simple_query", side_effect=Exception("fail")):
+        result = await manager.query_knowledge("test query")
+        assert result == []
 
-def test_simple_query_returns_empty(manager):
-    manager.rag_store.query.return_value = {"documents": []}
-    docs = manager._simple_query("q", None)
+@pytest.mark.asyncio
+async def test_simple_query_returns_documents(manager : AtaraxAIRAGManager):
+    manager.rag_store.query = mock.Mock(return_value={"documents": [["docA", "docB"]]})
+    docs = await manager._simple_query("query", None)
+    assert docs == ["docA", "docB"]
+
+@pytest.mark.asyncio
+async def test_simple_query_returns_empty_if_no_documents(manager : AtaraxAIRAGManager):
+    manager.rag_store.query = mock.Mock(return_value={"documents": [[]]})
+    docs = await manager._simple_query("query", None)
     assert docs == []
 
-def test_advanced_query_with_hyde_and_reranking(manager):
-    manager.use_hyde = True
-    manager.rag_use_reranking = True
-    manager._generate_hypothetical_document = mock.Mock(return_value="hyde doc")
-    manager.rag_store.query.return_value = {"documents": [["d1", "d2", "d3"]]}
-    manager._rerank_documents = mock.Mock(return_value=["d3", "d2", "d1"])
-    manager.n_result_final = 2
-    docs = manager._advanced_query("q", None)
-    assert docs == ["d3", "d2"]
+@pytest.mark.asyncio
+async def test_advanced_query_no_docs_returns_empty(manager : AtaraxAIRAGManager):
+    manager.rag_config_manager.config.rag_use_reranking = True
+    manager.rag_store.query = mock.Mock(return_value={"documents": [[]]})
+    docs = await manager._advanced_query("query", None)
+    assert docs == []
 
-def test_get_stats(manager):
-    manager.rag_store.collection.count.return_value = 10
-    manager.manifest.get_all_files.return_value = ["a", "b"]
-    manager.file_observer = mock.Mock(is_alive=lambda: True)
-    manager.worker_thread = mock.Mock(is_alive=lambda: True)
-    stats = manager.get_stats()
-    assert stats["total_documents"] == 10
-    assert stats["manifest_files"] == 2
-    assert stats["monitoring_active"] is True
-    assert stats["worker_thread_active"] is True
+@pytest.mark.asyncio
+async def test_advanced_query_with_reranking(manager : AtaraxAIRAGManager):
+    manager.rag_config_manager.config.rag_use_reranking = True
+    manager.rag_config_manager.config.rag_n_result_final = 2
+    manager.rag_store.query = mock.Mock(return_value={"documents": [["d1", "d2", "d3"]]})
+    with mock.patch.object(manager, "_rerank_documents", return_value=["d3", "d2", "d1"]):
+        docs = await manager._advanced_query("query", None)
+        assert docs == ["d3", "d2"]
+
+@pytest.mark.asyncio
+async def test_generate_hypothetical_document_success(manager : AtaraxAIRAGManager):
+    result = await manager._generate_hypothetical_document("What is AI?")
+    assert result == "Hypothetical answer"
+
+@pytest.mark.asyncio
+async def test_generate_hypothetical_document_error_returns_query(manager : AtaraxAIRAGManager):
+    manager.core_ai_service.generate_completion.side_effect = Exception("fail")
+    result = await manager._generate_hypothetical_document("What is AI?")
+    assert result == "What is AI?"
+
+@pytest.mark.asyncio
+async def test_get_cross_encoder_initializes_once(manager : AtaraxAIRAGManager  ):
+    manager.rag_config_manager.config.rag_use_reranking = True
+    with mock.patch("ataraxai.praxis.modules.rag.ataraxai_rag_manager.CrossEncoder") as mock_ce:
+        mock_ce.return_value = mock.Mock()
+        ce = await manager.get_cross_encoder()
+        assert ce is not None
+        ce2 = await manager.get_cross_encoder()
+        assert ce2 is ce
+
+@pytest.mark.asyncio
+async def test_rerank_documents_returns_sorted(manager : AtaraxAIRAGManager):
+    ce_mock = mock.Mock()
+    ce_mock.predict.return_value = [0.2, 0.9, 0.5]
+    with mock.patch.object(manager, "get_cross_encoder", return_value=ce_mock):
+        docs = await manager._rerank_documents("q", ["a", "b", "c"])
+        assert docs == ["b", "c", "a"]
+
+@pytest.mark.asyncio
+async def test_add_and_remove_watch_directories(manager : AtaraxAIRAGManager):
+    manager.directory_manager.add_directories = mock.AsyncMock(return_value=True)
+    manager.directory_manager.remove_directories = mock.AsyncMock(return_value=True)
+    assert await manager.add_watch_directories(["/tmp"]) is True
+    assert await manager.remove_watch_directories(["/tmp"]) is True
+
+@pytest.mark.asyncio
+async def test_start_and_stop(manager : AtaraxAIRAGManager):
+    manager.file_watcher_manager.start = mock.AsyncMock()
+    manager.file_watcher_manager.stop = mock.AsyncMock()
+    manager.directory_manager.add_directories = mock.AsyncMock()
+    with mock.patch("asyncio.create_task") as create_task:
+        create_task.return_value = mock.Mock(done=mock.Mock(return_value=True))
+        await manager.start()
+        await manager.stop()

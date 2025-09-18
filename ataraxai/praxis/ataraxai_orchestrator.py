@@ -1,39 +1,70 @@
+import asyncio
 import logging
+import shutil
+from contextlib import asynccontextmanager
 from pathlib import Path
 from types import TracebackType
 from typing import Any, Dict, List, Optional, Type
-import shutil
+
 from ataraxai import __version__  # type: ignore
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
-
+from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
+from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
-from ataraxai.praxis.modules.prompt_engine.task_manager import TaskManager
+from ataraxai.praxis.modules.prompt_engine.chain_task_manager import ChainTaskManager
+from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
+from ataraxai.praxis.utils.app_config import AppConfig
+from ataraxai.praxis.utils.app_directories import AppDirectories
+from ataraxai.praxis.utils.app_state import AppState
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
+from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
+from ataraxai.praxis.utils.chat_manager import ChatManager
+from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import (
+    UserPreferences,
+)
+from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
+from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
+from ataraxai.praxis.utils.exceptions import (
+    AtaraxAILockError,
+)
+from ataraxai.praxis.utils.services import Services
+from ataraxai.praxis.utils.setup_manager import SetupManager
+from ataraxai.praxis.utils.user_preferences_manager import UserPreferencesManager
 from ataraxai.praxis.utils.vault_manager import (
     UnlockResult,
     VaultInitializationStatus,
     VaultManager,
-)
-from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
-from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
-import threading
-from ataraxai.praxis.utils.app_state import AppState
-from ataraxai.praxis.utils.app_directories import AppDirectories
-from ataraxai.praxis.utils.exceptions import (
-    AtaraxAILockError,
-)
-from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
-from ataraxai.praxis.utils.vault_manager import (
     VaultUnlockStatus,
 )
-from ataraxai.praxis.utils.setup_manager import SetupManager
-from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
-from ataraxai.praxis.utils.chat_manager import ChatManager
-from ataraxai.praxis.utils.app_config import AppConfig
-from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
-from ataraxai.praxis.utils.user_preferences_manager import UserPreferencesManager
-from ataraxai.praxis.utils.services import Services
+
+
+class OrchestratorStateMachine:
+
+    def __init__(self, initial_state: AppState = AppState.LOCKED):
+        self._state = initial_state
+        self._lock = asyncio.Lock()
+        self._valid_transitions = {
+            AppState.FIRST_LAUNCH: [AppState.UNLOCKED, AppState.ERROR],
+            AppState.LOCKED: [AppState.FIRST_LAUNCH, AppState.UNLOCKED, AppState.ERROR],
+            AppState.UNLOCKED: [AppState.LOCKED, AppState.ERROR],
+            AppState.ERROR: [AppState.LOCKED, AppState.FIRST_LAUNCH],
+        }
+
+    async def get_state(self) -> AppState:
+        async with self._lock:
+            return self._state
+
+    async def transition_to(self, new_state: AppState) -> None:
+        if new_state not in self._valid_transitions.get(self._state, []):
+            raise ValueError(
+                f"Invalid state transition from {self._state.name} to {new_state.name}"
+            )
+        async with self._lock:
+            if self._state != new_state:
+                old_state = self._state
+                self._state = new_state
+                logging.info(f"State transition: {old_state.name} -> {new_state.name}")
 
 
 class AtaraxAIOrchestrator:
@@ -45,460 +76,466 @@ class AtaraxAIOrchestrator:
         settings: AtaraxAISettings,
         setup_manager: SetupManager,
         services: Services,
+        logger: logging.Logger,
     ):
-
         self.settings = settings
         self.setup_manager = setup_manager
         self.services = services
+        self.logger = logger
 
-        self._state_lock = threading.RLock()
-        self._state: AppState = AppState.LOCKED
-        self.initialize()
+        self.state_machine = OrchestratorStateMachine()
+        self._initialized = False
+        self._shutdown = False
 
-    @property
-    def directories(self) -> AppDirectories:
-        return self.services.directories
+    async def __aenter__(self) -> "AtaraxAIOrchestrator":
+        await self.initialize()
+        return self
 
-    @property
-    def logger(self) -> logging.Logger:
-        return self.services.logger
-    
-    @property
-    def vault_manager(self) -> VaultManager:
-        return self.services.vault_manager
-    
-    @property
-    def config_manager(self) -> ConfigurationManager:
-        return self.services.config_manager
+    async def __aexit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[TracebackType],
+    ) -> None:
+        await self.shutdown()
 
-    @property
-    def core_ai_service_manager(self) -> CoreAIServiceManager:
-        return self.services.core_ai_service_manager
+    async def initialize(self) -> None:
+        if self._initialized:
+            self.logger.warning("Orchestrator already initialized")
+            return
 
-    @property
-    def app_config(self) -> AppConfig:
-        return self.services.app_config
-
-    @property
-    def chat_context(self) -> ChatContextManager:
-        return self.services.chat_context
-
-    @property
-    def chat_manager(self) -> ChatManager:
-        return self.services.chat_manager
-
-    @property
-    def rag_manager(self) -> AtaraxAIRAGManager:
-        return self.services.rag_manager
-
-
-    def initialize(self):
-        """
-        Initializes the orchestrator by setting up base components if this is the first launch.
-        Logs the current state after initialization.
-
-        Acquires a lock to ensure thread-safe state checking and initialization.
-
-        Raises:
-            Any exceptions raised by the underlying initialization methods.
-        """
-        self._set_state(self._determine_initial_state())
-        with self._state_lock:
-            if self._state == AppState.FIRST_LAUNCH:
-                self._initialize_base_components()
-
-        self.logger.info(f"Orchestrator initialized. Current state: {self._state.name}")
-
-    @property
-    def state(self) -> AppState:
-        with self._state_lock:
-            return self._state
-
-    def _set_state(self, new_state: AppState) -> None:
-        """
-        Safely updates the application's state to the specified new_state.
-
-        Acquires a lock to ensure thread-safe modification of the internal state.
-        Only updates the state if the new state differs from the current state.
-
-        Args:
-            new_state (AppState): The new state to set for the application.
-
-        Returns:
-            None
-        """
-        with self._state_lock:
-            if self._state != new_state:
-                self._state = new_state
-
-    def _init_logger(self) -> "AtaraxAILogger":
-        return AtaraxAILogger()
-
-    def _init_security_manager(self) -> VaultManager:
-        """
-        Initializes and returns a VaultManager instance using the specified salt and check files.
-
-        Returns:
-            VaultManager: An instance of VaultManager configured with the paths to the salt and check files
-                          located in the data directory.
-        """
-        salt_file = self.directories.data / "vault.salt"
-        check_file = self.directories.data / "vault.check"
-        return VaultManager(salt_path=str(salt_file), check_path=str(check_file))
-
-    def _determine_initial_state(self) -> AppState:
-        """
-        Determines the initial application state based on the existence of the vault check path.
-
-        Returns:
-            AppState: Returns AppState.LOCKED if the vault check path exists,
-                      otherwise returns AppState.FIRST_LAUNCH.
-        """
-        if Path(self.services.vault_manager.check_path).exists():
-            return AppState.LOCKED
-        else:
-            return AppState.FIRST_LAUNCH
-
-    def _initialize_base_components(self):
-        """
-        Initializes the base components required for the application.
-
-        Logs the start of the application with its version. If this is the first launch,
-        it triggers the first launch setup process via the setup manager. Handles and logs
-        any exceptions that occur during initialization, sets the application state to ERROR,
-        and re-raises the exception.
-        """
         try:
-            self.logger.info(f"Starting AtaraxAI v{__version__}")
-            if self.setup_manager.is_first_launch():
-                self.setup_manager.perform_first_launch_setup()
+
+            self._state = await self._determine_initial_state()
+
+            self.logger.info(f"directories created {self.services.directories}")
+
+            if await self.state_machine.get_state() == AppState.FIRST_LAUNCH:
+                await self._initialize_base_components()
+
+            self._initialized = True
+            self.logger.info(
+                f"Orchestrator initialized. Current state: {(await self.state_machine.get_state()).name}"
+            )
+
         except Exception as e:
-            self.logger.error(f"Failed during base initialization: {e}")
-            self._set_state(AppState.ERROR)
+            self.logger.error(f"Failed to initialize orchestrator: {e}", exc_info=True)
+            await self._set_state(AppState.ERROR)
             raise
 
-    def _reset_state(self):
-        """
-        Resets the internal state of the orchestrator to its initial state.
+    async def get_state(self) -> AppState:
+        return await self.state_machine.get_state()
 
-        This method is called when the orchestrator is shutting down to ensure that the state
-        is reset, allowing for a clean restart of the application.
-        """
-        with self._state_lock:
-            self._state = AppState.LOCKED
-            self.logger.info("Orchestrator state reset to LOCKED.")
+    async def _set_state(self, new_state: AppState) -> None:
+        await self.state_machine.transition_to(new_state)
 
-    def initialize_new_vault(
+    async def _determine_initial_state(self):
+        try:
+            if self.services and self.services.vault_manager:
+                check_path = Path(self.services.vault_manager.check_path)
+                path_exists = await asyncio.to_thread(check_path.exists)
+                if path_exists:
+                    await self.state_machine.transition_to(AppState.LOCKED)
+                else:
+                    await self.state_machine.transition_to(AppState.FIRST_LAUNCH)
+            else:
+                self.logger.error(
+                    "Vault manager not initialized, defaulting to FIRST_LAUNCH state"
+                )
+                await self.state_machine.transition_to(AppState.FIRST_LAUNCH)
+        except Exception as e:
+            self.logger.error(f"Error determining initial state: {e}", exc_info=True)
+            await self.state_machine.transition_to(AppState.ERROR)
+
+    async def _initialize_base_components(self) -> None:
+        try:
+            self.logger.info(f"Starting AtaraxAI v{__version__}")
+            if self.setup_manager:
+                if await asyncio.to_thread(self.setup_manager.is_first_launch):
+                    await asyncio.to_thread(
+                        self.setup_manager.perform_first_launch_setup
+                    )
+            else:
+                self.logger.error(
+                    "Setup manager is not initialized, cannot perform first launch setup"
+                )
+                raise RuntimeError("Setup manager is not initialized")
+        except Exception as e:
+            self.logger.error(f"Failed during base initialization: {e}", exc_info=True)
+            self._state = AppState.ERROR
+            raise
+
+    async def initialize_new_vault(
         self, master_password: SecureString
     ) -> VaultInitializationStatus:
-        """
-        Initializes a new vault with the provided master password.
-
-        This method should only be called during the application's first launch.
-        If the application is not in the FIRST_LAUNCH state, initialization will not proceed.
-
-        Args:
-            master_password (SecureString): The master password to secure the new vault.
-
-        Returns:
-            bool: True if the vault was successfully initialized and unlocked, False otherwise.
-
-        Side Effects:
-            - Changes the application state to UNLOCKED on success, or ERROR on failure.
-            - Logs relevant information and errors.
-            - Initializes services required for the unlocked state.
-        """
-
-        if self._state != AppState.FIRST_LAUNCH:
-            self.logger.error("Attempted to initialize an existing vault.")
+        current_state = await self.get_state()
+        if current_state != AppState.FIRST_LAUNCH:
+            self.logger.error(
+                f"Attempted to initialize vault in state: {current_state.name}"
+            )
             return VaultInitializationStatus.ALREADY_INITIALIZED
 
         try:
-            self.vault_manager.create_and_initialize_vault(master_password)
-            self._set_state(AppState.UNLOCKED)
+            if self.services is None or self.services.vault_manager is None:
+                self.logger.error("Vault manager is not initialized.")
+                return VaultInitializationStatus.FAILED
+
+            await asyncio.to_thread(
+                self.services.vault_manager.create_and_initialize_vault, master_password  # type: ignore
+            )
+            await self._set_state(AppState.UNLOCKED)
+            await self._initialize_unlocked_services()
             self.logger.info("Vault successfully initialized and unlocked.")
-            self._initialize_unlocked_services()
             return VaultInitializationStatus.SUCCESS
+
         except Exception as e:
-            self.logger.error(f"Failed to initialize new vault: {e}")
-            self._set_state(AppState.ERROR)
+            self.logger.error(f"Failed to initialize new vault: {e}", exc_info=True)
+            await self._set_state(AppState.ERROR)
             return VaultInitializationStatus.FAILED
 
-    def reinitialize_vault(self, confirmation_phrase: str) -> bool:
-        """
-        Re-initializes the vault by performing a factory reset, deleting all user data and resetting the application state.
-
-        Args:
-            confirmation_phrase (str): The confirmation phrase required to authorize the factory reset.
-
-        Returns:
-            bool: True if the vault was successfully re-initialized, False otherwise.
-
-        Behavior:
-            - Checks if the provided confirmation phrase matches the expected phrase.
-            - Ensures the vault is in the UNLOCKED state before proceeding.
-            - Deletes the data directory and all user data.
-            - Recreates necessary directories and re-initializes the security manager.
-            - Sets the application state to FIRST_LAUNCH upon successful completion.
-            - Logs all major actions and errors during the process.
-        """
-
+    async def reinitialize_vault(self, confirmation_phrase: str) -> bool:
         if confirmation_phrase != self.EXPECTED_RESET_CONFIRMATION_PHRASE:
             self.logger.error(
                 "Vault re-initialization failed: incorrect confirmation phrase."
             )
             return False
-            # raise ValidationError(
-            #     "Incorrect confirmation phrase. Factory reset has been aborted."
-            # )
 
-        with self._state_lock:
-            if self._state != AppState.UNLOCKED:
-                self.logger.error(
-                    "Vault must be unlocked to perform re-initialization."
-                )
-                return False
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED:
+            self.logger.error(
+                f"Vault must be unlocked to perform re-initialization. Current state: {current_state.name}"
+            )
+            return False
 
         self.logger.warning("PERFORMING FACTORY RESET: All user data will be deleted.")
 
-        self.lock()
-
         try:
-            self.logger.info(f"Deleting data directory: {self.directories.data}")
-            shutil.rmtree(self.directories.data)
+            await self.lock()
+
+            directories = await self.get_directories()
+            data_dir = directories.data
+            self.logger.info(f"Deleting data directory: {data_dir}")
+            await asyncio.to_thread(shutil.rmtree, data_dir)
             self.logger.info("Data directory successfully deleted.")
+
+            await asyncio.to_thread(directories.create_directories)
+
+            await self._reinitialize_vault_manager()
+
+            await self._set_state(AppState.FIRST_LAUNCH)
+            self.logger.info(
+                "Vault re-initialization complete. Application is now in FIRST_LAUNCH state."
+            )
+            return True
+
         except Exception as e:
             self.logger.critical(
-                f"Failed to delete data directory during re-initialization: {e}"
+                f"Failed during vault re-initialization: {e}", exc_info=True
             )
-            self._set_state(AppState.ERROR)
+            await self._set_state(AppState.ERROR)
             return False
 
-        self.directories.create_directories()
-
-        self.services.vault_manager = self._init_security_manager()
-
-        self._set_state(AppState.FIRST_LAUNCH)
-        self.logger.info(
-            "Vault re-initialization complete. Application is now in FIRST_LAUNCH state."
+    async def _reinitialize_vault_manager(self) -> None:
+        directories = await self.get_directories()
+        salt_file = directories.data / "vault.salt"
+        check_file = directories.data / "vault.check"
+        new_vault_manager = VaultManager(
+            salt_path=str(salt_file), check_path=str(check_file)
         )
-        return True
+        if self.services is None:
+            self.logger.error(
+                "Services are not initialized, cannot set new vault manager."
+            )
+            return
+        self.services.vault_manager = new_vault_manager
 
-    def _initialize_unlocked_services(self):
-        """
-        Initializes all unlocked services managed by the orchestrator.
-
-        Attempts to initialize the services and logs the outcome. If initialization fails,
-        logs the error, sets the application state to ERROR, locks the orchestrator, and re-raises the exception.
-
-        Raises:
-            Exception: Propagates any exception encountered during service initialization.
-        """
+    async def _initialize_unlocked_services(self) -> None:
         try:
-            self.services.initialize()
+            if self.services is None:
+                self.logger.error(
+                    "Services are not initialized, cannot initialize unlocked services."
+                )
+                return
+            await self.services.initialize()
             self.logger.info("All unlocked services initialized successfully.")
         except Exception as e:
-            self.logger.error(f"Failed to initialize unlocked services: {e}")
-            self._set_state(AppState.ERROR)
-            self.lock()
+            self.logger.error(
+                f"Failed to initialize unlocked services: {e}", exc_info=True
+            )
+            await self._set_state(AppState.ERROR)
+            await self.lock()
             raise
 
-    def unlock(self, password: SecureString) -> UnlockResult:
-        """
-        Attempts to unlock the application using the provided password.
-
-        Args:
-            password (SecureString): The password to unlock the application.
-
-        Returns:
-            bool: True if the application was successfully unlocked, False otherwise.
-
-        Behavior:
-            - If the application is not in the LOCKED state, logs a warning and returns whether it is already UNLOCKED.
-            - If in the LOCKED state, attempts to unlock the vault with the given password.
-            - On successful unlock, updates the application state, logs the event, initializes unlocked services, and returns True.
-            - On failure, logs a warning and returns False.
-        """
-        if self._state != AppState.LOCKED:
+    async def unlock(self, password: SecureString) -> UnlockResult:
+        current_state = await self.get_state()
+        if current_state != AppState.LOCKED:
             self.logger.warning(
-                f"Unlock attempt in non-locked state: {self._state.name}"
+                f"Unlock attempt in non-locked state: {current_state.name}"
             )
             return UnlockResult(
                 status=VaultUnlockStatus.ALREADY_UNLOCKED,
                 error="Application is already unlocked.",
             )
 
-        unlock_result = self.vault_manager.unlock_vault(password)  # type: ignore
-        if unlock_result.status == VaultUnlockStatus.SUCCESS:
-            self._state = AppState.UNLOCKED
-            self.logger.info("Application unlocked successfully.")
-            self._initialize_unlocked_services()
-
-        return unlock_result
-
-    def lock(self):
-        """
-        Locks the vault, initiates application shutdown, updates the application state to LOCKED, and logs the action.
-
-        This method ensures that sensitive resources are secured by locking the vault, gracefully shuts down the application,
-        sets the internal state to indicate the locked status, and records the event in the application logs.
-        """
         try:
-            self.vault_manager.lock()
-            self.shutdown()
-            self._set_state(AppState.LOCKED)
-            self.logger.info("Vault locked.")
+            if self.services is None or self.services.vault_manager is None:
+                self.logger.error("Vault manager is not initialized, cannot unlock.")
+                return UnlockResult(
+                    status=VaultUnlockStatus.ERROR,
+                    error="Vault manager is not initialized.",
+                )
+            unlock_result = await asyncio.to_thread(
+                self.services.vault_manager.unlock_vault, password  # type: ignore
+            )
+
+            if unlock_result.status == VaultUnlockStatus.SUCCESS:
+                await self._set_state(AppState.UNLOCKED)
+                await self._initialize_unlocked_services()
+                self.logger.info("Application unlocked successfully.")
+            else:
+                self.logger.warning(f"Unlock failed: {unlock_result.error}")
+
+            return unlock_result
+
+        except Exception as e:
+            self.logger.error(f"Exception during unlock: {e}", exc_info=True)
+            await self._set_state(AppState.ERROR)
+            return UnlockResult(
+                status=VaultUnlockStatus.ERROR,
+                error=f"Internal error during unlock: {str(e)}",
+            )
+
+    async def lock(self) -> bool:
+        try:
+            if self.services is None or self.services.vault_manager is None:
+                self.logger.error("Vault manager is not initialized, cannot lock.")
+                return False
+            await asyncio.to_thread(self.services.vault_manager.lock)
+            await self._shutdown_services()
+            await self._set_state(AppState.LOCKED)
+            self.logger.info("Vault locked successfully.")
             return True
         except Exception as e:
-            # TODO I will handle any exceptions that occur during the lock operation
-            self.logger.error(f"Failed to lock vault: {e}")
+            self.logger.error(f"Failed to lock vault: {e}", exc_info=True)
+            await self._set_state(AppState.ERROR)
             return False
 
-    def run_task_chain(
+    async def run_task_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
-        """
-        Executes a sequence of tasks defined in a chain, starting with an initial user query.
-
-        Args:
-            chain_definition (List[Dict[str, Any]]): A list of dictionaries, each representing a task in the chain with its configuration and parameters.
-            initial_user_query (str): The initial input or query provided by the user to start the task chain.
-
-        Returns:
-            Any: The result produced after executing the entire task chain.
-
-        """
-        return self.services.run_task_chain(
+        # assert 1 == 2 , "Orchestrator run_task_chain should be called"
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED:
+            raise AtaraxAILockError(
+                f"Cannot run task chain in state: {current_state.name}"
+            )
+        if self.services is None:
+            raise RuntimeError("Services are not initialized, cannot run task chain.")
+        return await self.services.run_task_chain(
             chain_definition=chain_definition, initial_user_query=initial_user_query
         )
 
-    @property
-    def chat(self) -> ChatManager:
-        with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None:
-                raise AtaraxAILockError(
-                    "Application is locked. CRUD operations are not available."
+    async def _shutdown_services(self) -> None:
+        if self.services is not None:
+            self.logger.info("Shutting down services...")
+            await self.services.shutdown()
+        else:
+            self.logger.warning("Services are not initialized, skipping shutdown.")
+
+    async def shutdown(self) -> None:
+        if self._shutdown:
+            return
+
+        self._shutdown = True
+
+        try:
+
+            if self.services and self.services.background_task_manager:
+                await asyncio.to_thread(
+                    self.services.background_task_manager.wait_for_all_tasks
                 )
-            return self.services.chat_manager
-        
-    @property
-    def core_ai_manager(self) -> CoreAIServiceManager:
-        with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None:
-                raise AtaraxAILockError(
-                    "Application is locked. Core AI service operations are not available."
-                )
+
+            await self._shutdown_services()
+            self.logger.info("Orchestrator shutdown complete.")
+        except Exception as e:
+            self.logger.error(f"Error during shutdown: {e}", exc_info=True)
+        finally:
+            self.services = None # type: ignore
+            self.setup_manager = None # type: ignore
+
+    def _ensure_initialized(self) -> None:
+        if not self._initialized:
+            raise RuntimeError("Orchestrator not initialized. Call initialize() first.")
+        if self.services is None:
+            raise RuntimeError("Services container is not available.")
+
+    async def get_rag_manager(self) -> AtaraxAIRAGManager:
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED or self.services is None:
+            raise AtaraxAILockError(
+                "Application is locked. RAG operations are not available."
+            )
+        return self.services.rag_manager
+
+    async def get_models_manager(self) -> ModelsManager:
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED or self.services is None:
+            raise AtaraxAILockError(
+                "Application is locked. Models manager operations are not available."
+            )
+        if self.services.models_manager is None:
+            raise RuntimeError("Models manager is not initialized.")
+        return self.services.models_manager
+
+    async def get_chat_context(self) -> ChatContextManager:
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED or self.services is None:
+            raise AtaraxAILockError(
+                "Application is locked. Chat context operations are not available."
+            )
+        if self.services.chat_context is None:
+            raise RuntimeError("Chat context manager is not initialized.")
+        return self.services.chat_context
+
+    async def get_chat_manager(self) -> ChatManager:
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED or self.services is None:
+            raise AtaraxAILockError(
+                "Application is locked. Chat manager operations are not available."
+            )
+        if self.services.chat_manager is None:
+            raise RuntimeError("Chat manager is not initialized.")
+        return self.services.chat_manager
+
+    async def get_chain_task_manager(self) -> ChainTaskManager:
+        current_state = await self.get_state()
+        if current_state != AppState.UNLOCKED or self.services is None:
+            raise AtaraxAILockError(
+                "Application is locked. Task manager operations are not available."
+            )
+        if self.services.task_manager is None:
+            raise RuntimeError("Task manager is not initialized.")
+        return self.services.task_manager
+
+    async def get_vault_manager(self) -> VaultManager:
+        async with self.state_machine._lock:
+            if self.services is None or self.services.vault_manager is None:
+                raise RuntimeError("Vault manager is not initialized.")
+            return self.services.vault_manager
+
+    async def get_config_manager(self) -> ConfigurationManager:
+        async with self.state_machine._lock:
+            if self.services is None or self.services.config_manager is None:
+                raise RuntimeError("Config manager is not initialized.")
+            return self.services.config_manager
+
+    async def get_core_ai_service_manager(self) -> CoreAIServiceManager:
+        async with self.state_machine._lock:
+            if self.services is None or self.services.core_ai_service_manager is None:
+                raise RuntimeError("Core AI service manager is not initialized.")
             return self.services.core_ai_service_manager
 
-    @property
-    def rag(self) -> AtaraxAIRAGManager:
-        with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None:
-                raise AtaraxAILockError(
-                    "Application is locked. RAG operations are not available."
-                )
-            return self.services.rag_manager
+    async def get_app_config(self) -> AppConfig:
+        async with self.state_machine._lock:
+            if self.services is None or self.services.app_config is None:
+                raise RuntimeError("App config is not initialized.")
+            return self.services.app_config
 
-    @property
-    def models_manager(self) -> ModelsManager:
-        with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None:
-                raise AtaraxAILockError(
-                    "Application is locked. Models management operations are not available."
-                )
-            return self.services.models_manager
+    async def get_directories(self) -> AppDirectories:
+        async with self.state_machine._lock:
+            if self.services is None or self.services.directories is None:
+                raise RuntimeError("App directories are not initialized.")
+            return self.services.directories
 
-    @property
-    def task_manager(self) -> TaskManager:
-        with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None:
-                raise AtaraxAILockError(
-                    "Application is locked. Task management operations are not available."
-                )
-            return self.services.task_manager
+    async def get_user_preferences_manager(self) -> UserPreferencesManager:
+        async with self.state_machine._lock:
+            if self.services is None or self.services.config_manager is None:
+                raise RuntimeError("User preferences manager is not initialized.")
+            return self.services.config_manager.preferences_manager
 
-    @property
-    def user_preferences(self) -> UserPreferencesManager:
-        with self._state_lock:
-            if self.state != AppState.UNLOCKED or self.services is None:
-                raise AtaraxAILockError(
-                    "Application is locked. User preferences operations are not available."
-                )
-            return self.config_manager.preferences_manager
-
-    def shutdown(self) -> None:
-        if self.services is not None:
-            self.services.shutdown()
-
-    def __enter__(self) -> "AtaraxAIOrchestrator":
-        return self
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> None:
-        self.shutdown()
+    async def get_user_preferences(self) -> UserPreferences:
+        async with self.state_machine._lock:
+            if self.services is None or self.services.config_manager is None:
+                raise RuntimeError("User preferences are not initialized.")
+            return self.services.config_manager.get_user_preferences()
 
 
 class AtaraxAIOrchestratorFactory:
 
     @staticmethod
-    def create_orchestrator() -> AtaraxAIOrchestrator:
-        app_config = AppConfig()
+    async def create_orchestrator() -> AtaraxAIOrchestrator:
+        try:
 
-        settings = AtaraxAISettings()
-        directories = AppDirectories.create_default(settings)
-        logger: logging.Logger = AtaraxAILogger(log_dir=directories.logs).get_logger()
-        vault_manager = VaultManager(
-            salt_path=str(directories.data / "vault.salt"),
-            check_path=str(directories.data / "vault.check"),
-        )
-        setup_manager = SetupManager(directories, app_config, logger)
-        config_manager = ConfigurationManager(directories.config, logger)
-        core_ai_manager = CoreAIServiceManager(config_manager, logger)
+            print("Creating AtaraxAI Orchestrator...")
+            app_config = AppConfig()
+            settings = AtaraxAISettings()
+            directories = AppDirectories.create_default(settings)
 
-        db_manager = ChatDatabaseManager(
-            db_path=directories.data / app_config.database_filename
-        )
+            await asyncio.to_thread(directories.create_directories)
 
-        chat_context = ChatContextManager(
-            db_manager=db_manager, vault_manager=vault_manager
-        )
-        chat_manager = ChatManager(
-            db_manager=db_manager, logger=logger, vault_manager=vault_manager
-        )
+            logger = AtaraxAILogger(log_dir=directories.logs).get_logger()
+            vault_manager = VaultManager(
+                salt_path=str(directories.data / "vault.salt"),
+                check_path=str(directories.data / "vault.check"),
+            )
 
-        models_manager = ModelsManager(directories=directories, logger=logger)
+            setup_manager = SetupManager(directories, app_config, logger)
+            config_manager = ConfigurationManager(directories.config, logger)
+            core_ai_manager = CoreAIServiceManager(config_manager, logger)
 
-        services = Services(
-            directories=directories,
-            logger=logger,
-            db_manager=db_manager,
-            chat_context=chat_context,
-            chat_manager=chat_manager,
-            config_manager=config_manager,
-            app_config=app_config,
-            vault_manager=vault_manager,
-            models_manager=models_manager,
-            core_ai_service_manager=core_ai_manager,
-        )
+            db_manager = ChatDatabaseManager(
+                db_path=directories.data / app_config.database_filename
+            )
 
-        orchestrator = AtaraxAIOrchestrator(
-            settings=settings,
-            setup_manager=setup_manager,
-            services=services,
-        )
+            chat_context = ChatContextManager(
+                db_manager=db_manager, vault_manager=vault_manager
+            )
 
-        return orchestrator
+            chat_manager = ChatManager(
+                db_manager=db_manager, logger=logger, vault_manager=vault_manager
+            )
+
+            background_task_manager = BackgroundTaskManager()
+
+            models_manager = ModelsManager(
+                directories=directories,
+                logger=logger,
+                background_task_manager=background_task_manager,
+            )
+
+            services = Services(
+                directories=directories,
+                logger=logger,
+                db_manager=db_manager,
+                chat_context=chat_context,
+                chat_manager=chat_manager,
+                config_manager=config_manager,
+                app_config=app_config,
+                vault_manager=vault_manager,
+                models_manager=models_manager,
+                core_ai_service_manager=core_ai_manager,
+                background_task_manager=background_task_manager,
+            )
+
+            orchestrator = AtaraxAIOrchestrator(
+                settings=settings,
+                setup_manager=setup_manager,
+                services=services,
+                logger=logger,
+            )
+
+            await orchestrator.initialize()
+
+            return orchestrator
+
+        except Exception:
+            raise
 
 
-# if __name__ == "__main__":
-#     orchestrator = AtaraxAIOrchestratorFactory.create_orchestrator()
-#     orchestrator.initialize_new_vault(SecureString("Saturate-Heave8-Unfasten-Squealing".encode("utf-8")))
-#     print(f"Orchestrator state after initialization: {orchestrator.state.name}")
-#     orchestrator.lock()
-#     print(f"Orchestrator state after locking: {orchestrator.state.name}")
-#     orchestrator.unlock(SecureString("Wrong-Password-123".encode("utf-8")))
-#     print(f"Orchestrator state after unlock attempt with wrong password: {orchestrator.state.name}")
+@asynccontextmanager
+async def create_orchestrator():
+    orchestrator = await AtaraxAIOrchestratorFactory.create_orchestrator()
+    try:
+        yield orchestrator
+    finally:
+        await orchestrator.shutdown()

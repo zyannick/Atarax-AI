@@ -145,7 +145,7 @@ class RAGConfigManager:
         self.config = new_config
         self._save(new_config)
 
-    def reload(self):
+    def reload(self) -> RAGConfig:
         """
         Reloads the configuration by reloading or initializing it.
 
@@ -153,3 +153,4 @@ class RAGConfigManager:
         `_load_or_initialize` method, ensuring the latest configuration is loaded.
         """
         self.config = self._load_or_initialize()
+        return self.config

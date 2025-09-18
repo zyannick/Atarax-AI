@@ -1,17 +1,13 @@
+import asyncio
 import uuid
-from fastapi import APIRouter
-from fastapi.params import Depends
-from fastapi.testclient import TestClient
-from pydantic import ValidationError
+
 import pytest
 from fastapi import status
-
+from fastapi.testclient import TestClient
+from pydantic import ValidationError
+import pytest_asyncio
 
 from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo
-from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
-    LlamaModelParams,
-    GenerationParams,
-)
 from ataraxai.routes.chat_route.chat_api_models import (
     CreateProjectRequestAPI,
     CreateSessionRequestAPI,
@@ -24,17 +20,14 @@ from ataraxai.routes.models_manager_route.models_manager_api_models import (
     SearchModelsManifestRequest,
 )
 from ataraxai.routes.status import Status
-from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator
 
 
-@pytest.fixture(scope="function")
-def unlock_client_core_ai_service(
+@pytest_asyncio.fixture(scope="function")
+async def unlock_client_core_ai_service(
     unlocked_client_with_filled_manifest: TestClient,
 ):
     search_model_request = SearchModelsManifestRequest()
+    # client = await unlocked_client_with_filled_manifest
     response = unlocked_client_with_filled_manifest.post(
         "/api/v1/models_manager/get_model_info_manifest",
         json=search_model_request.model_dump(mode="json"),
@@ -45,7 +38,9 @@ def unlock_client_core_ai_service(
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
 
-    assert data["status"] == Status.SUCCESS, f"Expected success status, got {data}"
+    assert (
+        data["status"] == Status.SUCCESS.value
+    ), f"Expected success status, got {data}"
     assert data["message"] == "Model information retrieved successfully."
     assert isinstance(data["models"], list)
     assert len(data["models"]) > 0, "Expected at least one model in the response."
@@ -54,7 +49,7 @@ def unlock_client_core_ai_service(
     selected_model = LlamaCPPModelInfo(**selected_model_dict)
     llama_cpp_config = LlamaCPPConfigAPI(
         model_info=selected_model,
-        n_ctx=1024,  # Reduced context size for testing
+        n_ctx=1024,
         n_gpu_layers=40,
         main_gpu=0,
         tensor_split=False,
@@ -93,7 +88,7 @@ def unlock_client_core_ai_service(
         response.status_code == status.HTTP_200_OK
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["message"] == "Llama CPP generation parameters updated successfully."
 
     response = unlocked_client_with_filled_manifest.post(
@@ -103,15 +98,18 @@ def unlock_client_core_ai_service(
         response.status_code == status.HTTP_200_OK
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
-    assert data["status"] == Status.SUCCESS
+    assert data["status"] == Status.SUCCESS.value
     assert data["message"] == "Core AI Service initialized successfully."
 
     return unlocked_client_with_filled_manifest
 
 
-def test_create_project_with_invalid_data(unlock_client_core_ai_service: TestClient):
+@pytest.mark.asyncio
+async def test_create_project_with_invalid_data(
+    unlock_client_core_ai_service: TestClient,
+):
     with pytest.raises(ValidationError, match="Project name cannot be empty."):
-        project_data = CreateProjectRequestAPI(
+        CreateProjectRequestAPI(
             name="",  # Invalid name
             description="This is a test project with invalid data.",
         )
@@ -126,6 +124,7 @@ def _test_project_creation(
         name=project_name,
         description=project_description,
     )
+
     response = unlock_client_core_ai_service.post(
         "/api/v1/chat/projects",
         json=project_data.model_dump(mode="json"),
@@ -147,6 +146,8 @@ def _test_project_creation(
 
 
 def test_create_project(unlock_client_core_ai_service: TestClient):
+    if asyncio.iscoroutine(unlock_client_core_ai_service):
+        unlock_client_core_ai_service = asyncio.run(unlock_client_core_ai_service)
     _test_project_creation(
         unlock_client_core_ai_service,
         project_name="Test Project",
@@ -154,7 +155,10 @@ def test_create_project(unlock_client_core_ai_service: TestClient):
     )
 
 
-def test_many_projects_creation(unlock_client_core_ai_service: TestClient):
+@pytest.mark.asyncio
+async def test_many_projects_creation(unlock_client_core_ai_service: TestClient):
+    if asyncio.iscoroutine(unlock_client_core_ai_service):
+        unlock_client_core_ai_service = asyncio.run(unlock_client_core_ai_service)
     nb_of_projects = 10
     for i in range(nb_of_projects):
         _test_project_creation(
@@ -184,7 +188,7 @@ def test_create_project_with_empty_description(
     unlock_client_core_ai_service: TestClient,
 ):
     with pytest.raises(ValidationError, match="Project description cannot be empty."):
-        project_data = CreateProjectRequestAPI(
+        CreateProjectRequestAPI(
             name="Test Project with Empty Description",
             description="",  # Empty description
         )
@@ -193,7 +197,7 @@ def test_create_project_with_empty_description(
 def test_create_project_with_long_name(unlock_client_core_ai_service: TestClient):
     long_name = "A" * 33
     with pytest.raises(ValueError, match="Project name exceeds maximum length."):
-        project_data = CreateProjectRequestAPI(
+        CreateProjectRequestAPI(
             name=long_name,  # Long name
             description="This project has a very long name.",
         )
@@ -204,16 +208,19 @@ def test_create_project_with_long_description(
 ):
     long_description = "B" * 300
     with pytest.raises(ValueError, match="Project description exceeds maximum length."):
-        project_data = CreateProjectRequestAPI(
+        CreateProjectRequestAPI(
             name="Test Project with Long Description",
             description=long_description,
         )
+
 
 def _test_create_session(
     unlock_client_core_ai_service: TestClient,
     project_id: uuid.UUID,
     session_title: str,
 ):
+    if asyncio.iscoroutine(unlock_client_core_ai_service):
+        unlock_client_core_ai_service = asyncio.run(unlock_client_core_ai_service)
     session_data = CreateSessionRequestAPI(
         project_id=project_id,
         title=session_title,
@@ -229,10 +236,13 @@ def _test_create_session(
     assert "session_id" in data, "Expected session_id in the response."
     assert isinstance(data["session_id"], str), "Expected session_id to be a string."
     assert data["title"] == session_title, "Session title does not match."
-    
+
     return data["session_id"], project_id
 
+
 def test_create_session(unlock_client_core_ai_service: TestClient):
+    if asyncio.iscoroutine(unlock_client_core_ai_service):
+        unlock_client_core_ai_service = asyncio.run(unlock_client_core_ai_service)
     project_id = _test_project_creation(
         unlock_client_core_ai_service,
         project_name="Test Project for Session",
@@ -248,6 +258,8 @@ def test_create_session(unlock_client_core_ai_service: TestClient):
 def test_create_session_with_non_existent_project(
     unlock_client_core_ai_service: TestClient,
 ):
+    if asyncio.iscoroutine(unlock_client_core_ai_service):
+        unlock_client_core_ai_service = asyncio.run(unlock_client_core_ai_service)
     session_data = CreateSessionRequestAPI(
         project_id=uuid.uuid4(),
         title="Test Session with Non-Existent Project",
@@ -261,17 +273,18 @@ def test_create_session_with_non_existent_project(
     ), f"Expected 404 Not Found, got {response.text}"
 
 
-
 def test_create_session_with_invalid_data(
     unlock_client_core_ai_service: TestClient,
 ):
+    if asyncio.iscoroutine(unlock_client_core_ai_service):
+        unlock_client_core_ai_service = asyncio.run(unlock_client_core_ai_service)
     project_id = _test_project_creation(
         unlock_client_core_ai_service,
         project_name="Test Project for Invalid Session",
         project_description="This project is for testing invalid session creation.",
     )
     with pytest.raises(ValidationError, match="Session title cannot be empty."):
-        session_data = CreateSessionRequestAPI(
+        CreateSessionRequestAPI(
             project_id=project_id,
             title="",
         )
@@ -280,6 +293,8 @@ def test_create_session_with_invalid_data(
 def test_create_session_with_long_title(
     unlock_client_core_ai_service: TestClient,
 ):
+    if asyncio.iscoroutine(unlock_client_core_ai_service):
+        unlock_client_core_ai_service = asyncio.run(unlock_client_core_ai_service)
     project_id = _test_project_creation(
         unlock_client_core_ai_service,
         project_name="Test Project for Long Title",
@@ -287,14 +302,17 @@ def test_create_session_with_long_title(
     )
     long_title = "C" * 65
     with pytest.raises(ValueError, match="Session title exceeds maximum length."):
-        session_data = CreateSessionRequestAPI(
+        CreateSessionRequestAPI(
             project_id=project_id,
             title=long_title,
         )
 
+
 def test_create_many_sessions(
     unlock_client_core_ai_service: TestClient,
 ):
+    if asyncio.iscoroutine(unlock_client_core_ai_service):
+        unlock_client_core_ai_service = asyncio.run(unlock_client_core_ai_service)
     project_id = _test_project_creation(
         unlock_client_core_ai_service,
         project_name="Test Project for Many Sessions",
@@ -308,18 +326,22 @@ def test_create_many_sessions(
             session_title=f"Test Session {i}",
         )
 
-    response = unlock_client_core_ai_service.get(f"/api/v1/chat/projects/{project_id}/sessions")
+    response = unlock_client_core_ai_service.get(
+        f"/api/v1/chat/projects/{project_id}/sessions"
+    )
     assert (
         response.status_code == status.HTTP_200_OK
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
     assert isinstance(data, list), "Expected a list of sessions."
-    assert len(data) == nb_of_sessions, f"Expected {nb_of_sessions} sessions, got {len(data)}."
+    assert (
+        len(data) == nb_of_sessions
+    ), f"Expected {nb_of_sessions} sessions, got {len(data)}."
     for i, session in enumerate(data):
         session_num = nb_of_sessions - i - 1
         assert (
             session["title"] == f"Test Session {session_num}"
         ), f"Session title mismatch for index {i}. --> {session['title']}"
-        assert (
-            session["project_id"] == str(project_id)
+        assert session["project_id"] == str(
+            project_id
         ), f"Session project_id mismatch for index {i}. --> {session['project_id']}"

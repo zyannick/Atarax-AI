@@ -1,3 +1,4 @@
+from typing import Annotated
 from fastapi import APIRouter
 from fastapi.params import Depends
 
@@ -25,7 +26,7 @@ router_user_preferences = APIRouter(
 
 @router_user_preferences.get("/get_preferences", response_model=UserPreferencesResponse)
 @handle_api_errors("Get User Preferences", logger=logger)
-async def get_user_preferences(orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)) -> UserPreferencesResponse:  # type: ignore
+async def get_user_preferences(orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)]) -> UserPreferencesResponse:
     """
     Endpoint to retrieve user preferences.
 
@@ -41,11 +42,11 @@ async def get_user_preferences(orch: AtaraxAIOrchestrator = Depends(get_unlocked
     Raises:
         HTTPException: If an error occurs while retrieving user preferences.
     """
-    preferences = orch.user_preferences.preferences
+    user_preferences = await orch.get_user_preferences()
     return UserPreferencesResponse(
         status=Status.SUCCESS,
         message="User preferences retrieved successfully.",
-        preferences=UserPreferencesAPI(**preferences.model_dump()),
+        preferences=UserPreferencesAPI(**user_preferences.model_dump()),
     )
 
 
@@ -54,7 +55,7 @@ async def get_user_preferences(orch: AtaraxAIOrchestrator = Depends(get_unlocked
 )
 @handle_api_errors("Update User Preferences", logger=logger)
 async def update_user_preferences(
-    preferences: UserPreferencesAPI, orch: AtaraxAIOrchestrator = Depends(get_unlocked_orchestrator)  # type: ignore
+    preferences: UserPreferencesAPI, orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)]
 ) -> UserPreferencesResponse:
     """
     Endpoint to update user preferences.
@@ -72,14 +73,14 @@ async def update_user_preferences(
     Raises:
         HTTPException: If an error occurs while updating user preferences.
     """
-
-    orch.user_preferences.update_user_preferences(
+    user_preferences = await orch.get_user_preferences_manager()
+    user_preferences.update_user_preferences(
         UserPreferences(**preferences.model_dump())
     )
     return UserPreferencesResponse(
         status=Status.SUCCESS,
         message="User preferences updated successfully.",
         preferences=UserPreferencesAPI(
-            **orch.user_preferences.preferences.model_dump()
+            **user_preferences.preferences.model_dump()
         ),
     )
