@@ -174,7 +174,7 @@ class AtaraxAIRAGManager:
             n_results=self.rag_config_manager.config.rag_n_result,
             filter_metadata=filter_metadata,
         )
-        documents = results.get("documents", [[]])
+        documents = results.get("documents", [[]]) # type: ignore
         return documents[0] if documents else []
 
     async def _advanced_query(
@@ -197,7 +197,7 @@ class AtaraxAIRAGManager:
             filter_metadata=filter_metadata,
         )
 
-        documents = results.get("documents", [[]])
+        documents = results.get("documents", [[]]) # type: ignore
         initial_docs = documents[0] if documents else []
 
         if not initial_docs:
