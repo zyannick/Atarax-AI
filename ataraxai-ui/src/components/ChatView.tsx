@@ -1,92 +1,310 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useAppStore } from '../store';
-import { BrainCircuit, Folder, MessageSquare, Plus, Send, X, Settings, Sun, Moon } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useAppStore } from '../store/AppContext';
+import { AtaraxLogo } from './AtaraxLogo';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { ScrollArea } from './ui/scroll-area';
+import { Avatar, AvatarFallback } from './ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { 
+  Send, 
+  Mic, 
+  Image, 
+  Camera, 
+  Paperclip, 
+  Copy, 
+  Settings,
+  User
+} from 'lucide-react';
 
-const ChatView = ({ toggleTheme, currentTheme }: { toggleTheme: () => void; currentTheme: string }) => {
-    const { messages, sendMessage, selectedSessionId, isLoading } = useAppStore();
-    const [input, setInput] = useState('');
+export function ChatView() {
+  const {
+    selectedSessionId,
+    sessions,
+    messages,
+    isTyping,
+    getMessagesBySession,
+    addMessage,
+  } = useAppStore();
 
-    const handleSend = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!input.trim() || !selectedSessionId) return;
-        
-        await sendMessage(selectedSessionId, input);
-        setInput('');
-    };
+  const [inputValue, setInputValue] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
-    if (!selectedSessionId) {
-        return (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-                <MessageSquare size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
-                <h3 className="font-semibold text-lg">No Session Selected</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Choose a session to start chatting.</p>
-            </div>
-        );
+  const currentSession = sessions.find(s => s.id === selectedSessionId);
+  const currentMessages = selectedSessionId ? getMessagesBySession(selectedSessionId) : [];
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
     }
+  }, [currentMessages, isTyping]);
 
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() || !selectedSessionId) return;
+
+    const userMessage = inputValue.trim();
+    setInputValue('');
+    
+    // Add user message
+    addMessage(selectedSessionId, userMessage, 'user');
+
+    // Simulate AI response (in real app, this would call the backend)
+    setTimeout(() => {
+      const responses = [
+        "I understand you're asking about that. Let me help you with a detailed response.",
+        "That's an interesting question. Based on my knowledge, here's what I can tell you...",
+        "I can assist you with that. Here are some key points to consider:",
+        "Let me break this down for you in a clear and organized way.",
+      ];
+      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      addMessage(selectedSessionId, randomResponse, 'assistant');
+    }, 1000);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  const handleFileUpload = (type: 'file' | 'image') => {
+    if (type === 'file') {
+      fileInputRef.current?.click();
+    } else {
+      imageInputRef.current?.click();
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
+
+  if (!currentSession) {
     return (
-        <div className="flex-1 flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700/50">
-                <h2 className="text-xl font-semibold">Chat</h2>
-                <div className="flex items-center gap-2">
-                    <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                        {currentTheme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-                    </button>
-                    <button className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
-                        <Settings size={20} />
-                    </button>
-                </div>
-            </div>
-
-            {/* Message List */}
-            <div className="flex-1 p-6 overflow-y-auto">
-                <div className="space-y-6">
-                    {messages.map((msg) => (
-                        <div key={msg.id} className={`flex items-end gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            {msg.role !== 'user' && (
-                                <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white flex-shrink-0">
-                                    <BrainCircuit size={20} />
-                                </div>
-                            )}
-                            <div className={`max-w-lg px-4 py-3 rounded-2xl ${
-                                msg.role === 'user' 
-                                    ? 'bg-blue-500 text-white rounded-br-none' 
-                                    : msg.role === 'error'
-                                    ? 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 rounded-bl-none'
-                                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-bl-none'
-                            }`}>
-                                <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                            </div>
-                        </div>
-                    ))}
-                    {isLoading && <div className="flex justify-start"><p className="text-sm text-gray-400">Assistant is typing...</p></div>}
-                </div>
-            </div>
-
-            {/* Message Input */}
-            <div className="p-4 border-t border-gray-200 dark:border-gray-700/50">
-                <form onSubmit={handleSend} className="relative">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSend(e);
-                            }
-                        }}
-                        placeholder="Type your message..."
-                        rows={1}
-                        className="w-full p-3 pr-12 rounded-xl border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 resize-none focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
-                    />
-                    <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 disabled:opacity-50 transition-colors">
-                        <Send size={18} />
-                    </button>
-                </form>
-            </div>
+      <div className="flex-1 flex items-center justify-center bg-background">
+        <div className="text-center">
+          <AtaraxLogo size={48} className="mx-auto mb-4 text-muted-foreground" />
+          <h2>Welcome to Atarax-AI</h2>
+          <p className="text-muted-foreground">Select a chat session to get started</p>
         </div>
+      </div>
     );
-};
+  }
 
-export default ChatView;
+  return (
+    <div className="flex-1 flex flex-col bg-background">
+      {/* Header */}
+      <div className="border-b border-border p-4">
+        <div className="flex items-center justify-between">
+          <h1 className="truncate">{currentSession.title}</h1>
+          <Button variant="ghost" size="sm">
+            <Settings size={16} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
+        <div className="space-y-6 max-w-4xl mx-auto">
+          {currentMessages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex gap-3 ${
+                message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
+              }`}
+            >
+              {/* Avatar */}
+              <Avatar className="w-8 h-8 flex-shrink-0">
+                {message.role === 'user' ? (
+                  <AvatarFallback className="bg-secondary">
+                    <User size={16} />
+                  </AvatarFallback>
+                ) : (
+                  <AvatarFallback className="bg-primary/10">
+                    <AtaraxLogo size={16} className="text-primary" />
+                  </AvatarFallback>
+                )}
+              </Avatar>
+
+              {/* Message Content */}
+              <div className={`flex-1 max-w-[70%] ${message.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
+                <div
+                  className={`rounded-lg px-4 py-3 group relative ${
+                    message.role === 'user'
+                      ? 'bg-secondary text-secondary-foreground'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  
+                  {message.role === 'assistant' && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0"
+                            onClick={() => copyToClipboard(message.content)}
+                          >
+                            <Copy size={12} />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Copy message
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+                
+                <span className="text-xs text-muted-foreground mt-1">
+                  {formatTime(message.timestamp)}
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {isTyping && (
+            <div className="flex gap-3">
+              <Avatar className="w-8 h-8">
+                <AvatarFallback className="bg-primary/10">
+                  <AtaraxLogo size={16} className="text-primary" />
+                </AvatarFallback>
+              </Avatar>
+              <div className="bg-muted rounded-lg px-4 py-3">
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* Input Area */}
+      <div className="border-t border-border p-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-end gap-2">
+            {/* Input Controls */}
+            <div className="flex gap-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={isRecording ? 'text-destructive' : ''}
+                      onClick={() => setIsRecording(!isRecording)}
+                    >
+                      <Mic size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isRecording ? 'Stop recording' : 'Voice input'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleFileUpload('image')}
+                    >
+                      <Image size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Upload image
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <Camera size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Camera
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+
+            {/* Text Input */}
+            <div className="flex-1 relative">
+              <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Message Atarax-AI..."
+                className="pr-20 min-h-[40px] bg-input-background border-border"
+              />
+              
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleFileUpload('file')}
+                      >
+                        <Paperclip size={16} />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Attach file
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={!inputValue.trim()}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Send size={16} />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Hidden file inputs */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="*/*"
+      />
+      <input
+        ref={imageInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*"
+      />
+    </div>
+  );
+}
