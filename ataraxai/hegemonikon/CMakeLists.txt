@@ -131,6 +131,10 @@ target_link_libraries(hegemonikon PRIVATE
     m
 )
 
+if(ATARAXAI_USE_CUDA)
+    target_link_libraries(hegemonikon_tests PRIVATE ${GGML_GPU_LIBRARY_FILE})
+endif()
+
 target_include_directories(hegemonikon PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}/include"      
     ${LLAMA_INCLUDE_DIR}            
@@ -201,6 +205,10 @@ if (BUILD_TESTING)
         dl
         m
     )
+
+    if(ATARAXAI_USE_CUDA)
+        target_link_libraries(hegemonikon_tests PRIVATE ${GGML_GPU_LIBRARY_FILE})
+    endif()
 
     add_test(NAME HegemonikonTests COMMAND hegemonikon_tests)
 

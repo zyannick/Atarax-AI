@@ -1,14 +1,14 @@
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
 WORKDIR /app
 
-# Install base dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
     git \
     ccache \
+    wget \
     software-properties-common \
     ca-certificates \
     gnupg \
@@ -16,23 +16,33 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install system Python 3.10 and development packages (simpler alternative)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    python3-dev \
-    python3-pip \
-    python3-venv \
+# RUN apt-get update && apt-get install -y --no-install-recommends \
+#     python3 \
+#     python3-dev \
+#     python3-pip \
+#     python3-venv \
+#     && rm -rf /var/lib/apt/lists/*
+
+RUN add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3.12-dev \
+    python3.12-venv \
     && rm -rf /var/lib/apt/lists/*
 
-RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN python3.12 -m venv /opt/venv
+
+ENV PATH="/opt/venv/bin:$PATH"
+
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 COPY . .
 RUN chmod +x ./install.sh ./setup_third_party.sh ./clean.sh
 
-ENV Python_EXECUTABLE=/usr/bin/python3.12
-ENV Python_INCLUDE_DIR=/usr/include/python3.12
-ENV Python_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython3.12.so
+ENV Python_EXECUTABLE=/opt/venv/bin/python
+ENV Python_INCLUDE_DIR=/opt/venv/include
+ENV Python_LIBRARY=/opt/venv/lib/libpython3.12.so
 
 RUN ./install.sh 
 
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "9000"]
