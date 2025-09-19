@@ -6,7 +6,7 @@ CUDA_ARCH="native"
 LLAMA_TAG="tags/b5581"
 WHISPER_TAG="tags/v1.7.5"
 USE_CONDA=0
-LLAMA_CUDA="OFF"
+GGML_CUDA="OFF"
 WHISPER_CUDA="OFF"
 CMAKE_CUDA_FLAGS=""
 
@@ -18,7 +18,7 @@ for arg in "$@"; do
                 echo "Error: CUDA is not installed or nvcc is not in PATH."
                 exit 1
             fi
-            LLAMA_CUDA="ON"
+            GGML_CUDA="ON"
             WHISPER_CUDA="ON"
             CMAKE_CUDA_FLAGS="-DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH}"
             ;;
@@ -86,7 +86,7 @@ cmake -S "$LLAMA_CPP_SRC_DIR" -B "$LLAMA_CPP_BUILD_DIR" \
     -DLLAMA_BUILD_EXAMPLES=OFF \
     -DCMAKE_INSTALL_PREFIX="$LLAMA_CPP_INSTALL_DIR" \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-    -DLLAMA_CUDA=${LLAMA_CUDA} \
+    -DGGML_CUDA=${GGML_CUDA} \
     ${CMAKE_CUDA_FLAGS}
 
 cmake --build "$LLAMA_CPP_BUILD_DIR" --config Release -j4
@@ -97,7 +97,7 @@ cmake -S "$WHISPER_CPP_SRC_DIR" -B "$WHISPER_CPP_BUILD_DIR" \
     -DBUILD_SHARED_LIBS=OFF \
     -DWHISPER_BUILD_TESTS=ON -DWHISPER_BUILD_EXAMPLES=ON \
     -DCMAKE_INSTALL_PREFIX="$WHISPER_CPP_INSTALL_DIR" \
-    -DWHISPER_CUDA=${WHISPER_CUDA} \
+    -DGGML_CUDA=${WHISPER_CUDA} \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON 
     # -DWHISPER_CUDA_ARCH="$CUDA_ARCH" 
 cmake --build "$WHISPER_CPP_BUILD_DIR" --config Release -j4
