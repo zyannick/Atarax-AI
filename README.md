@@ -31,7 +31,6 @@ Atarax-AI is a full-featured AI assistant that runs entirely offline using llama
 ![alt text](<docs/front_end.png>)
 
 
-
 ## Architecture Overview
 
 > **Note**: We are currently refactoring the backend before integrating the front-end.

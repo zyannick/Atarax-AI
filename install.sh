@@ -78,7 +78,6 @@ if [[ $USE_CONDA -eq 1 ]]; then
     export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 fi
 
-
 echo "[+] Uninstalling any previous version..."
 if [[ $USE_UV -eq 1 ]]; then
     uv pip uninstall ataraxai || true
