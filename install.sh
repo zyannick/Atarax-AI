@@ -78,7 +78,6 @@ if [[ $USE_CONDA -eq 1 ]]; then
     export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 fi
 
-# --- Uninstall previous versions ---
 echo "[+] Uninstalling any previous version..."
 if [[ $USE_UV -eq 1 ]]; then
     uv pip uninstall ataraxai || true
@@ -86,7 +85,6 @@ else
     pip uninstall ataraxai -y || true
 fi
 
-# --- Setup third-party libraries ---
 if [ -f "setup_third_party.sh" ]; then
     echo "[+] Setting up third-party libraries..."
     ./setup_third_party.sh ${SETUP_ARGS}
@@ -139,7 +137,6 @@ if [[ $ONLY_CPP -eq 1 ]]; then
     exit 0
 fi
 
-# --- Install Python Package ---
 echo "[+] Running pip install to build Python extension..."
 if [[ $USE_UV -eq 1 ]]; then
     uv pip install -e .
@@ -147,7 +144,6 @@ else
     python3 -m pip install -e .
 fi
 
-# --- Final Verification ---
 echo "[+] Verifying installation..."
 python3 -c "from ataraxai import hegemonikon_py; print('[SUCCESS] Atarax-AI installed and core module is importable!')"
 if [[ $USE_UV -eq 1 ]]; then
