@@ -5,7 +5,7 @@ CLEAN=0
 CLEAN_CCACHE=0
 USE_CONDA=0
 USE_CUDA=0
-CUDA_ARCH="native"
+CUDA_ARCH=""
 SETUP_ARGS=""
 CMAKE_ARGS_STR=""
 ONLY_CPP=0
@@ -38,9 +38,8 @@ for arg in "$@"; do
         USE_CONDA=1
         SETUP_ARGS+=" --use-conda"
         ;;
-    --use-uv) 
+    --use-uv)
         USE_UV=1
-        # SETUP_ARGS+=" --use-uv"
         ;;
     *)
         echo "Unknown option: $arg"
@@ -49,6 +48,7 @@ for arg in "$@"; do
     esac
 done
 
+# --- Environment Setup ---
 if [[ $CLEAN -eq 1 ]]; then
     echo "[+] Cleaning previous build artifacts..."
     rm -rf build ataraxai.egg-info dist _skbuild
@@ -58,7 +58,7 @@ fi
 
 if [[ $USE_UV -eq 1 ]]; then
     echo "[+] Using uv to manage the environment."
-    if ! command -v uv &> /dev/null; then
+    if ! command -v uv &>/dev/null; then
         echo "Error: uv is not installed or not in PATH. Please install it first."
         exit 1
     fi
@@ -78,8 +78,7 @@ if [[ $USE_CONDA -eq 1 ]]; then
     export LD_LIBRARY_PATH=$CONDA_PREFIX/lib:$LD_LIBRARY_PATH
 fi
 
-
-
+# --- Uninstall previous versions ---
 echo "[+] Uninstalling any previous version..."
 if [[ $USE_UV -eq 1 ]]; then
     uv pip uninstall ataraxai || true
@@ -87,6 +86,7 @@ else
     pip uninstall ataraxai -y || true
 fi
 
+# --- Setup third-party libraries ---
 if [ -f "setup_third_party.sh" ]; then
     echo "[+] Setting up third-party libraries..."
     ./setup_third_party.sh ${SETUP_ARGS}
@@ -95,6 +95,16 @@ fi
 if [[ $USE_CUDA -eq 1 ]]; then
     echo "[+] Configuring build for CUDA=ON"
     CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=ON"
+
+    if [ -n "$CUDA_ARCH" ]; then
+        echo "[+] Using CUDA architectures from --cuda-arch argument: $CUDA_ARCH"
+        CMAKE_ARGS_STR+=" -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH}"
+    elif [ -n "$CMAKE_CUDA_ARCHITECTURES" ]; then
+        echo "[+] Using CUDA architectures from CMAKE_CUDA_ARCHITECTURES environment variable: $CMAKE_CUDA_ARCHITECTURES"
+        CMAKE_ARGS_STR+=" -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES}"
+    else
+        echo "[!] No CUDA architecture specified, letting CMake auto-detect (may default to native)."
+    fi
 else
     echo "[+] Configuring build for CUDA=OFF"
     CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=OFF"
@@ -110,7 +120,6 @@ if [ -z "$PYTHON_EXECUTABLE" ]; then
     echo "Error: python3 not found in PATH. Please ensure Python 3 is installed and available."
     exit 1
 fi
-
 PYTHON_INCLUDE_DIR=$(python3 -c "import sysconfig; print(sysconfig.get_path('include'))")
 
 echo " Running CMake Configuration..."
@@ -121,7 +130,6 @@ cmake -S . -B build \
 echo " Building Main Dependencies..."
 cmake --build build --config Release
 
-
 echo " Building C++ Tests..."
 cmake --build build --target hegemonikon_tests
 
@@ -131,6 +139,7 @@ if [[ $ONLY_CPP -eq 1 ]]; then
     exit 0
 fi
 
+# --- Install Python Package ---
 echo "[+] Running pip install to build Python extension..."
 if [[ $USE_UV -eq 1 ]]; then
     uv pip install -e .
@@ -138,6 +147,7 @@ else
     python3 -m pip install -e .
 fi
 
+# --- Final Verification ---
 echo "[+] Verifying installation..."
 python3 -c "from ataraxai import hegemonikon_py; print('[SUCCESS] Atarax-AI installed and core module is importable!')"
 if [[ $USE_UV -eq 1 ]]; then
