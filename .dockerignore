@@ -22,3 +22,5 @@ data/
 .history/
 
 docker/
+
+ataraxai-ui/node_modules/

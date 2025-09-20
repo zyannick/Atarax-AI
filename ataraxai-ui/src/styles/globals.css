@@ -1,0 +1,203 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  
+  /* Atarax-AI "Natural Sage" Theme */
+  /* Earthy, sophisticated palette inspired by natural materials */
+  --background: #F7F4EA; /* Warm Off-White - soft, natural base */
+  --foreground: #B87C4C; /* Cognac/Medium Brown - rich, readable text */
+  --card: #FFFFFF; /* Pure White - clean contrast for panels */
+  --card-foreground: #B87C4C;
+  --popover: #FFFFFF;
+  --popover-foreground: #B87C4C;
+  --primary: #A8BBA3; /* Sage/Muted Olive Green - calming primary accent */
+  --primary-foreground: #FFFFFF;
+  --secondary: #EBD9D1; /* Dusty Rose/Light Clay - subtle secondary elements */
+  --secondary-foreground: #B87C4C;
+  --muted: #EBD9D1; /* Dusty Rose/Light Clay - muted backgrounds */
+  --muted-foreground: #8B6F47; /* Darker cognac for secondary text */
+  --accent: #A8BBA3; /* Sage/Muted Olive Green - interactive elements */
+  --accent-foreground: #FFFFFF;
+  --destructive: #C53030; /* Warm red that complements the palette */
+  --destructive-foreground: #FFFFFF;
+  --border: #D4C4B0; /* Warm neutral border derived from palette */
+  --input: transparent;
+  --input-background: #FFFFFF; /* Clean white inputs */
+  --switch-background: #D4C4B0;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #A8BBA3; /* Sage green focus rings */
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  
+  /* Sidebar colors using the natural palette */
+  --sidebar: #FFFFFF; /* Clean white sidebars */
+  --sidebar-foreground: #B87C4C;
+  --sidebar-primary: #A8BBA3; /* Sage green for active states */
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EBD9D1; /* Dusty rose for hover states */
+  --sidebar-accent-foreground: #B87C4C;
+  --sidebar-border: #D4C4B0;
+  --sidebar-ring: #A8BBA3;
+}
+
+.dark {
+  /* Atarax-AI "Stoa Night" Theme */
+  --background: #0B1120; /* Deep navy blue primary background */
+  --foreground: #E0E0E0; /* Soft off-white text */
+  --card: #172134; /* Slightly lighter navy for panels/cards */
+  --card-foreground: #E0E0E0;
+  --popover: #172134;
+  --popover-foreground: #E0E0E0;
+  --primary: #4F46E5; /* Deep indigo accent */
+  --primary-foreground: #FFFFFF;
+  --secondary: #1F2937; /* Darker background for user messages */
+  --secondary-foreground: #E0E0E0;
+  --muted: #374151; /* Lighter background for AI messages */
+  --muted-foreground: #9CA3AF;
+  --accent: #4F46E5; /* Deep indigo accent */
+  --accent-foreground: #FFFFFF;
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --border: #374151;
+  --input: #1F2937;
+  --input-background: #1F2937;
+  --switch-background: #374151;
+  --ring: #4F46E5;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: #0B1120; /* Same as primary background */
+  --sidebar-foreground: #E0E0E0;
+  --sidebar-primary: #4F46E5; /* Deep indigo for active states */
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #172134; /* Panel color for hover states */
+  --sidebar-accent-foreground: #E0E0E0;
+  --sidebar-border: #374151;
+  --sidebar-ring: #4F46E5;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/**
+ * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ */
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+    h1 {
+      font-size: var(--text-2xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h2 {
+      font-size: var(--text-xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h3 {
+      font-size: var(--text-lg);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h4 {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    p {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+
+    label {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    button {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    input {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+  }
+}
+
+html {
+  font-size: var(--font-size);
+}

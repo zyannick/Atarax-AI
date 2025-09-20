@@ -29,7 +29,7 @@ ataraxai.praxis.user_preferences
 .coverage
 *.bkp
 /node_modules
-
+ataraxai-ui/node_modules/
 /src-tauri/target
 /src-tauri/Cargo.lock
 
