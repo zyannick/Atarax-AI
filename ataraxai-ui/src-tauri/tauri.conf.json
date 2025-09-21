@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ataraxai-ui",
+  "productName": "AtaraxAI",
   "version": "0.1.0",
   "identifier": "com.xenon.ataraxai-ui",
   "build": {
@@ -12,13 +12,27 @@
   "app": {
     "windows": [
       {
-        "title": "ataraxai-ui",
-        "width": 800,
-        "height": 600
+        "title": "AtaraxAI",
+        "width": 1200,
+        "height": 800
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": [
+        {
+          "identifier": "run-python-sidecar-capability",
+          "windows": ["main"],
+          "permissions": [
+            {
+              "identifier": "shell:allow-execute",
+              "level": "ask",
+              "cmd": "python3",
+              "args": ["-u", { "value": "$RESOURCE/py_src/api" }]
+            }
+          ]
+        }
+      ]
     }
   },
   "bundle": {
@@ -30,6 +44,15 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "resources": [
+      "py_src/api"
     ]
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    },
+    "opener": {}
   }
 }

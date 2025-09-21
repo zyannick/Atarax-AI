@@ -4,7 +4,7 @@ from typing import Dict
 
 
 class UserPreferences(BaseModel):
-    config_version: float = 1.0
+    config_version: str = "1.0"
 
     index_on_startup: bool = True
     realtime_monitoring: bool = False

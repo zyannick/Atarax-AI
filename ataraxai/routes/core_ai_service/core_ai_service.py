@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Annotated, Any, Dict
 
 from fastapi import APIRouter
-from fastapi.params import Depends
+from fastapi import Depends
 
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger

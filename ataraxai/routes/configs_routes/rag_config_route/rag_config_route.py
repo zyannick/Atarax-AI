@@ -1,6 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter
-from fastapi.params import Depends
+from fastapi import Depends
 from ataraxai.praxis.utils.configs.config_schemas.rag_config_schema import RAGConfig
 from ataraxai.praxis.utils.configs.rag_config_manager import RAGConfigManager
 from ataraxai.routes.configs_routes.rag_config_route.rag_config_api_models import RagConfigAPI, RagConfigResponse

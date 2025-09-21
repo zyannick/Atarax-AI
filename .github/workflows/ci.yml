@@ -1,4 +1,4 @@
-name: CI
+name: AtaraxAI CI/CD
 
 on:
   push:
@@ -7,11 +7,11 @@ on:
     branches: [ main, dev ]
 
 jobs:
-
-  build_and_test_cpp:
+  test_and_lint_backend:
+    name: Test & Lint Backend
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python 3.12
@@ -23,138 +23,125 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            cmake \
-            libgomp1 \
-            libcurl4-openssl-dev \
-            ccache
+            build-essential cmake libgomp1 libcurl4-openssl-dev ccache portaudio19-dev python3-pyaudio
 
-      - name: Create Python venv
+      - name: Create and activate Python venv
         run: |
           python -m venv .venv
-          echo "VIRTUAL_ENV=$PWD/.venv" >> $GITHUB_ENV
-          echo "PATH=$PWD/.venv/bin:$PATH" >> $GITHUB_ENV
+          source .venv/bin/activate
+          python -m pip install --upgrade pip setuptools wheel
 
-      - name: Upgrade pip in venv
-        run: pip install --upgrade pip setuptools wheel
-
-      - name: Build C++ extension and dependencies
-        run: ./install.sh --clean
-
-      - name: Download Test Models for Integration Tests
+      - name: Build C++ extension and install Python dependencies
         run: |
-          echo "--- Creating directory for test models ---"
+          source .venv/bin/activate
+          ./install.sh --clean
+          python -m pip install -e .[dev]
+
+      - name: Download test models
+        run: |
           mkdir -p test_assets
-          
-          echo "--- Downloading Llama test model ---"
           wget -q -O test_assets/tinyllama.gguf "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q2_K.gguf"
-          
-          echo "--- Downloading Whisper test model ---"
           wget -q -O test_assets/ggml-tiny.en.bin "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin"
-          
-          echo "--- Test models downloaded successfully ---"
 
-
-      - name: Run C++ Unit Tests and Diagnostics
+      - name: Run C++ Unit Tests
         run: |
-          # echo "--- Content of build directory ---"
-          # ls -laR build
-      
-          echo "--- Content of CMake Cache ---"
-          grep "BUILD_TESTING" build/CMakeCache.txt
-      
-          echo "--- Content of CTest Configuration ---"
-          cat build/ataraxai/hegemonikon/CTestTestfile.cmake
-
-          echo "--- Running CTest ---"
+          source .venv/bin/activate
           cd build/ataraxai/hegemonikon/
           ctest --output-on-failure --verbose
 
-      - name: Upload build and test artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-and-test-artifacts
-          path: |
-            build/
-            test_assets/
-
-
-
-  test_and_lint_python:
-    needs: build_and_test_cpp
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.12']
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install PortAudio System Dependency
-        run: sudo apt-get update && sudo apt-get install -y portaudio19-dev python3-pyaudio
-
-
-      - name: Download C++ build and test artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: build-and-test-artifacts
-
-      - name: Install and upgrade pip for Python 3.12
+      - name: Run Python Unit Tests
         run: |
-          # python -m ensurepip --upgrade
-          python -m pip install --upgrade pip setuptools wheel
+          source .venv/bin/activate
+          pytest -m unit --cov=ataraxai --cov-report=term-missing
 
-
-      - name: Install project dependencies
-        run: python -m pip install -e .[dev]
-
-      - name: Run Python Unit Tests with Pytest
-        run: pytest -m unit --cov=ataraxai --cov-report=term-missing --cov-report=html:htmlcov_unit
-
-      - name: Run Python Integration Tests with Pytest
+      - name: Run Python Integration Tests
         if: github.event_name == 'pull_request' && github.base_ref == 'refs/heads/main' || github.ref == 'refs/heads/main'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: pytest -m integration --cov=ataraxai --cov-report=term-missing --cov-report=html:htmlcov_integration
+        run: |
+          source .venv/bin/activate
+          pytest -m integration --cov=ataraxai --cov-report=term-missing
 
       - name: Lint with Ruff
-        run: ruff check ataraxai
+        run: |
+          source .venv/bin/activate
+          ruff check ataraxai
 
       - name: Type Check with MyPy
-        run: mypy ataraxai
+        run: |
+          source .venv/bin/activate
+          mypy ataraxai
 
-  deploy_to_dockerhub:
+
+  build_desktop_release:
+    name: Build Desktop App on ${{ matrix.os }}
+    needs: test_and_lint_backend
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: test_and_lint_python
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+
+      - name: Install Rust
+        run: rustup update stable && rustup default stable
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Make build script executable
+        if: matrix.os != 'windows-latest'
+        run: chmod +x build_backend.sh
+
+      - name: Install frontend dependencies
+        working-directory: ./ataraxai-ui
+        run: npm install
+
+      - name: Build backend artifact
+        run: ./build_backend.sh
+
+      - name: Build Tauri application
+        working-directory: ./ataraxai-ui
+        run: npm run tauri build
+
+      - name: Upload Desktop App Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AtaraxAI-${{ matrix.os }}
+          path: |
+            ataraxai-ui/src-tauri/target/release/bundle/**/*.dmg
+            ataraxai-ui/src-tauri/target/release/bundle/**/*.msi
+            ataraxai-ui/src-tauri/target/release/bundle/**/*.AppImage
+            ataraxai-ui/src-tauri/target/release/bundle/**/*.deb
+
+
+  deploy_docker:
+    name: Deploy to Docker Hub
+    needs: test_and_lint_backend
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up QEMU for multi-platform builds
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+      - uses: docker/build-push-action@v5
         with:
           context: .
           file: ./docker/Dockerfile.cpu
           push: true
-          tags: |
-            ataraxai/ataraxai:latest
-            ataraxai/ataraxai:${{ github.sha }}
+          tags: ataraxai/ataraxai:latest,ataraxai/ataraxai:${{ github.sha }}
