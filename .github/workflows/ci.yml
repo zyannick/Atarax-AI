@@ -67,6 +67,7 @@ jobs:
         run: |
           mypy ataraxai
 
+        
 
   build_desktop_release:
     name: Build Desktop App on ${{ matrix.os }}
@@ -82,6 +83,9 @@ jobs:
         with: { node-version: '20' }
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
+
+      - name: Install uv build tool
+        run: pip install uv
 
       - name: Install Rust
         run: rustup update stable && rustup default stable
