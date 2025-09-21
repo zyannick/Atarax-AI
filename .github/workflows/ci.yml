@@ -83,6 +83,9 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: '3.12' }
 
+      - name: Install uv build tool
+        run: pip install uv
+
       - name: Install Rust
         run: rustup update stable && rustup default stable
 
