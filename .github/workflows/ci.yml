@@ -28,12 +28,12 @@ jobs:
       - name: Create and activate Python venv
         run: |
           python -m venv .venv
-          source .venv/bin/activate
+          echo "VIRTUAL_ENV=$PWD/.venv" >> $GITHUB_ENV
+          echo "PATH=$PWD/.venv/bin:$PATH" >> $GITHUB_ENV
           python -m pip install --upgrade pip setuptools wheel
 
       - name: Build C++ extension and install Python dependencies
         run: |
-          source .venv/bin/activate
           ./install.sh --clean
           python -m pip install -e .[dev]
 
@@ -45,13 +45,11 @@ jobs:
 
       - name: Run C++ Unit Tests
         run: |
-          source .venv/bin/activate
           cd build/ataraxai/hegemonikon/
           ctest --output-on-failure --verbose
 
       - name: Run Python Unit Tests
         run: |
-          source .venv/bin/activate
           pytest -m unit --cov=ataraxai --cov-report=term-missing
 
       - name: Run Python Integration Tests
@@ -59,17 +57,14 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          source .venv/bin/activate
           pytest -m integration --cov=ataraxai --cov-report=term-missing
 
       - name: Lint with Ruff
         run: |
-          source .venv/bin/activate
           ruff check ataraxai
 
       - name: Type Check with MyPy
         run: |
-          source .venv/bin/activate
           mypy ataraxai
 
 
