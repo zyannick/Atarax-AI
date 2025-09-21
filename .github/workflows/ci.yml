@@ -67,6 +67,7 @@ jobs:
         run: |
           mypy ataraxai
 
+        
 
   build_desktop_release:
     name: Build Desktop App on ${{ matrix.os }}
