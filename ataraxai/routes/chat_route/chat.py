@@ -2,7 +2,7 @@ import uuid
 from typing import Annotated, List
 
 from fastapi import APIRouter, HTTPException, status
-from fastapi.params import Depends
+from fastapi import Depends
 
 from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
 from ataraxai.gateway.request_manager import RequestManager, RequestPriority

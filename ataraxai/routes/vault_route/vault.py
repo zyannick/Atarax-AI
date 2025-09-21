@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, status
-from fastapi.params import Depends
+from fastapi import Depends
 
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator

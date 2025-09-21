@@ -1,7 +1,13 @@
 from typing import Annotated
 
-from fastapi import HTTPException, Request, WebSocket, WebSocketDisconnect, status
-from fastapi.params import Depends
+from fastapi import (
+    Depends,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 
 from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
 from ataraxai.gateway.request_manager import RequestManager
@@ -9,6 +15,16 @@ from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.katalepsis import Katalepsis
 from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.routes.constant_messages import Messages
+
+
+async def verify_token(request: Request):
+    token = request.headers.get("Authorization")
+    correct_token = f"Bearer {request.app.state.secret_token}"
+    if not token or token != correct_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing authentication token",
+        )
 
 
 def get_orchestrator(request: Request) -> AtaraxAIOrchestrator:

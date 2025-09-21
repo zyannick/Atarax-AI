@@ -1,6 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter
-from fastapi.params import Depends
+from fastapi import Depends
 
 
 from ataraxai.routes.status import Status

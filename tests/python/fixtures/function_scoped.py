@@ -1,43 +1,32 @@
 import asyncio
-import datetime
 import logging
 import time
 from pathlib import Path
 from typing import Generator
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
-import requests
-from fastapi import status
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
-from pydantic import SecretStr
 
 from api import app
 from ataraxai.praxis.ataraxai_orchestrator import (
-    AtaraxAIOrchestrator,
     AtaraxAIOrchestratorFactory,
 )
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
-from ataraxai.praxis.modules.rag.ataraxai_rag_manager import AtaraxAIRAGManager
 from ataraxai.praxis.utils.app_config import AppConfig
 from ataraxai.praxis.utils.app_directories import AppDirectories
-from ataraxai.praxis.utils.app_state import AppState
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.ataraxai_settings import AtaraxAISettings
 from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
 from ataraxai.praxis.utils.chat_manager import ChatManager
-from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
-    LlamaModelParams,
-)
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
 from ataraxai.praxis.utils.core_ai_service_manager import CoreAIServiceManager
 from ataraxai.praxis.utils.services import Services
 from ataraxai.praxis.utils.setup_manager import SetupManager
 from ataraxai.praxis.utils.vault_manager import VaultManager
-from ataraxai.routes.dependency_api import get_orchestrator
+from ataraxai.routes.dependency_api import verify_token
 from tests.python.fixtures.async_orch import setup_async_orchestrator
 
 # @pytest.fixture(scope="function")
@@ -76,11 +65,19 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Generator[TestClient, None, None]
     async def mock_create_orchestrator():
         return mock_orchestrator
 
+    TEST_TOKEN = "Satchel-Darwinism-Croak7-Conjure-Counting"
+
     monkeypatch.setattr(
         AtaraxAIOrchestratorFactory, "create_orchestrator", mock_create_orchestrator
     )
 
+    app.dependency_overrides[verify_token] = lambda: None
+
     with TestClient(app, base_url="http://test") as test_client:
+
+        app.state.secret_token = TEST_TOKEN
+
+        test_client.headers.update({"Authorization": f"Bearer {TEST_TOKEN}"})
         yield test_client
 
     app.dependency_overrides.clear()
@@ -410,13 +407,21 @@ def integration_client(
             setup_async_orchestrator(temp_dir_path)
         )
 
+        TEST_TOKEN = "Satchel-Darwinism-Croak7-Conjure-Counting"
+
         monkeypatch.setattr(
             AtaraxAIOrchestratorFactory,
             "create_orchestrator",
             lambda: asyncio.sleep(0, result=orchestrator),
         )
 
+        app.dependency_overrides[verify_token] = lambda: None
+
         with TestClient(app, base_url="http://test") as client:
+
+            app.state.secret_token = TEST_TOKEN
+
+            client.headers.update({"Authorization": f"Bearer {TEST_TOKEN}"})
             yield client
 
         event_loop.run_until_complete(orchestrator.shutdown())
