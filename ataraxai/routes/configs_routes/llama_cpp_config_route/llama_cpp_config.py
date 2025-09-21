@@ -1,6 +1,6 @@
 from typing import Annotated
 from fastapi import APIRouter
-from fastapi.params import Depends
+from fastapi import Depends
 
 
 from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo

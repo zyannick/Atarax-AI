@@ -56,7 +56,7 @@ dependencies = [
     "python-ulid",
     "isort",
     "tornado",
-    "pybreaker[asyncio]",
+    "pybreaker",
     "pytest-asyncio",
     "watchfiles",
     "async_lru",

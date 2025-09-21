@@ -56,3 +56,6 @@ Thumbs.db
 
 .env
 .env*.local
+
+
+ataraxai-ui/src-tauri/py_src/api

@@ -9,7 +9,7 @@ from fastapi import (
     WebSocketDisconnect,
     status,
 )
-from fastapi.params import Depends
+from fastapi import Depends
 from prometheus_client import Enum
 
 from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
