@@ -311,21 +311,21 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def("detokenization", &CoreAIService::detokenization, "Detokenize a list of tokens into text",
               py::arg("tokens"));
 
-     py::class_<QuantizedModelInfo>(m, "QuantizedModelInfo", "Information about a quantized model.")
+     py::class_<HegemonikonQuantizedModelInfo>(m, "HegemonikonQuantizedModelInfo", "Information about a quantized model.")
          .def(py::init<>())
-         .def_readwrite("model_id", &QuantizedModelInfo::model_id, "Unique identifier for the model.")
-         .def_readwrite("file_name", &QuantizedModelInfo::file_name, "File name of the quantized model.")
-         .def_readwrite("last_modified", &QuantizedModelInfo::last_modified, "Last modified timestamp of the model file.")
-         .def_readwrite("quantization", &QuantizedModelInfo::quantization, "Quantization type (e.g., 'Q4_0', 'Q8_0').")
-         .def_readwrite("fileSize", &QuantizedModelInfo::fileSize, "Size of the model file in bytes.")
+         .def_readwrite("model_id", &HegemonikonQuantizedModelInfo::model_id, "Unique identifier for the model.")
+         .def_readwrite("local_path", &HegemonikonQuantizedModelInfo::local_path, "File name of the quantized model.")
+         .def_readwrite("last_modified", &HegemonikonQuantizedModelInfo::last_modified, "Last modified timestamp of the model file.")
+         .def_readwrite("quantization", &HegemonikonQuantizedModelInfo::quantization, "Quantization type (e.g., 'Q4_0', 'Q8_0').")
+         .def_readwrite("fileSize", &HegemonikonQuantizedModelInfo::fileSize, "Size of the model file in bytes.")
          .def_static("from_dict", [](const py::dict &d)
                      {
-             QuantizedModelInfo info;
+             HegemonikonQuantizedModelInfo info;
              if (d.contains("model_id")) {
                  info.model_id = d["model_id"].cast<std::string>();
              }
-             if (d.contains("file_name")) {
-                 info.file_name = d["file_name"].cast<std::string>();
+             if (d.contains("local_path")) {
+                 info.local_path = d["local_path"].cast<std::string>();
              }
              if (d.contains("last_modified")) {
                  info.last_modified = d["last_modified"].cast<std::string>();
@@ -337,39 +337,41 @@ PYBIND11_MODULE(hegemonikon_py, m)
                  info.fileSize = d["fileSize"].cast<size_t>();
              }
              return info; })
-         .def("is_valid", &QuantizedModelInfo::isValid, "Check if the model info is valid (non-empty model_id and file_name).")
-         .def("__str__", [](const QuantizedModelInfo &info)
+         .def("is_valid", &HegemonikonQuantizedModelInfo::isValid, "Check if the model info is valid (non-empty model_id and local_path).")
+         .def("__str__", [](const HegemonikonQuantizedModelInfo &info)
               { return info.to_string(); })
-         .def("__hash__", [](const QuantizedModelInfo &info)
+         .def("__hash__", [](const HegemonikonQuantizedModelInfo &info)
               { return info.hash(); })
-         .def("__repr__", [](const QuantizedModelInfo &info)
+         .def("__repr__", [](const HegemonikonQuantizedModelInfo &info)
               { return info.to_string(); })
-         .def("__eq__", [](const QuantizedModelInfo &a, const QuantizedModelInfo &b)
+         .def("__eq__", [](const HegemonikonQuantizedModelInfo &a, const HegemonikonQuantizedModelInfo &b)
               { return a == b; })
-         .def("__ne__", [](const QuantizedModelInfo &a, const QuantizedModelInfo &b)
+         .def("__ne__", [](const HegemonikonQuantizedModelInfo &a, const HegemonikonQuantizedModelInfo &b)
               { return a != b; });
 
-     py::class_<BenchmarkMetrics>(m, "BenchmarkMetrics", "Metrics collected during model benchmarking.")
+     py::class_<HegemonikonBenchmarkMetrics>(m, "HegemonikonBenchmarkMetrics", "Metrics collected during model benchmarking.")
          .def(py::init<>())
-         .def_readwrite("load_time_ms", &BenchmarkMetrics::load_time_ms, "Time taken to load the model in milliseconds.")
-         .def_readwrite("generation_time", &BenchmarkMetrics::generation_time, "Time taken for text generation in seconds.")
-         .def_readwrite("total_time", &BenchmarkMetrics::total_time, "Total time for the benchmark in seconds.")
-         .def_readwrite("tokens_generated", &BenchmarkMetrics::tokens_generated, "Number of tokens generated during the benchmark.")
-         .def_readwrite("tokens_per_second", &BenchmarkMetrics::tokens_per_second, "Average tokens generated per second.")
-         .def_readwrite("memory_usage", &BenchmarkMetrics::memory_usage, "Memory usage during the benchmark in MB.")
-         .def_readwrite("success", &BenchmarkMetrics::success, "Whether the benchmark was successful.")
-         .def_readwrite("errorMessage", &BenchmarkMetrics::errorMessage, "Error message if the benchmark failed.")
-         .def_readwrite("generation_times", &BenchmarkMetrics::generation_times, "List of generation times for each run in seconds.")
-         .def_readwrite("tokens_per_second_history", &BenchmarkMetrics::tokens_per_second_history, "List of tokens per second for each run.")
-         .def_readwrite("avg_ttft_ms", &BenchmarkMetrics::avg_ttft_ms, "Average time to first token in milliseconds.")
-         .def_readwrite("avg_prefill_ms", &BenchmarkMetrics::avg_prefill_ms, "Average prefill time in milliseconds.")
-         .def_readwrite("avg_decode_tps", &BenchmarkMetrics::avg_decode_tps, "Average decode tokens per second.")
-         .def_readwrite("avg_end_to_end_latency_ms", &BenchmarkMetrics::avg_end_to_end_latency_ms, "Average end-to-end latency in milliseconds.")
-         .def_readwrite("ttft_history", &BenchmarkMetrics::ttft_history, "List of time to first token for each run in milliseconds.")
-         .def_readwrite("end_to_end_latency_history", &BenchmarkMetrics::end_to_end_latency_history, "List of end-to-end latencies for each run in milliseconds.");
+         .def_readwrite("load_time_ms", &HegemonikonBenchmarkMetrics::load_time_ms, "Time taken to load the model in milliseconds.")
+         .def_readwrite("generation_time", &HegemonikonBenchmarkMetrics::generation_time, "Time taken for text generation in seconds.")
+         .def_readwrite("total_time", &HegemonikonBenchmarkMetrics::total_time, "Total time for the benchmark in seconds.")
+         .def_readwrite("tokens_generated", &HegemonikonBenchmarkMetrics::tokens_generated, "Number of tokens generated during the benchmark.")
+         .def_readwrite("tokens_per_second", &HegemonikonBenchmarkMetrics::tokens_per_second, "Average tokens generated per second.")
+         .def_readwrite("memory_usage", &HegemonikonBenchmarkMetrics::memory_usage, "Memory usage during the benchmark in MB.")
+         .def_readwrite("success", &HegemonikonBenchmarkMetrics::success, "Whether the benchmark was successful.")
+         .def_readwrite("errorMessage", &HegemonikonBenchmarkMetrics::errorMessage, "Error message if the benchmark failed.")
+         .def_readwrite("generation_times", &HegemonikonBenchmarkMetrics::generation_times, "List of generation times for each run in seconds.")
+         .def_readwrite("tokens_per_second_history", &HegemonikonBenchmarkMetrics::tokens_per_second_history, "List of tokens per second for each run.")
+         .def_readwrite("avg_ttft_ms", &HegemonikonBenchmarkMetrics::avg_ttft_ms, "Average time to first token in milliseconds.")
+         .def_readwrite("avg_decode_tps", &HegemonikonBenchmarkMetrics::avg_decode_tps, "Average decode tokens per second.")
+         .def_readwrite("avg_end_to_end_latency_ms", &HegemonikonBenchmarkMetrics::avg_end_to_end_latency_ms, "Average end-to-end latency in milliseconds.")
+         .def_readwrite("ttft_history", &HegemonikonBenchmarkMetrics::ttft_history, "List of time to first token for each run in milliseconds.")
+         .def_readwrite("end_to_end_latency_history", &HegemonikonBenchmarkMetrics::end_to_end_latency_history, "List of end-to-end latencies for each run in milliseconds.");
 
      py::class_<HegemonikonBenchmarkResult>(m, "HegemonikonBenchmarkResult", "Result of a model benchmark.")
          .def(py::init<const std::string &>(), "Constructor with model ID")
+         .def_readwrite("metrics", &HegemonikonBenchmarkResult::metrics, "Parameters used for the benchmark.")
+         .def_readwrite("benchmark_params", &HegemonikonBenchmarkResult::benchmark_params, "Benchmark parameters used during the benchmark.")
+         .def_readwrite("llama_model_params", &HegemonikonBenchmarkResult::llama_model_params, "Quantized model information used during the benchmark.")
          .def_readwrite("model_id", &HegemonikonBenchmarkResult::model_id, "ID of the model being benchmarked.")
          .def_readwrite("metrics", &HegemonikonBenchmarkResult::metrics, "Metrics collected during the benchmark.")
          .def_readwrite("generated_text", &HegemonikonBenchmarkResult::generated_text, "Text generated during the benchmark.")
@@ -390,7 +392,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
 
      py::class_<HegemonikonLlamaBenchmarker>(m, "HegemonikonLlamaBenchmarker", "Benchmarks LLM models for performance and metrics.")
          .def(py::init<>(), "Default constructor")
-         .def(py::init<std::vector<QuantizedModelInfo>, std::vector<std::string>>(), "Constructor with model and prompt lists",
+         .def(py::init<std::vector<HegemonikonQuantizedModelInfo>, std::vector<std::string>>(), "Constructor with model and prompt lists",
               py::arg("models"), py::arg("prompts"))
          .def("benchmark_single_model", &HegemonikonLlamaBenchmarker::benchmarkSingleModel, "Benchmark a single LLM model",
               py::arg("quantized_model_info"), py::arg("benchmark_params"), py::arg("llama_model_params"));

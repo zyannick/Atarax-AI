@@ -68,44 +68,44 @@ T stdev(const std::vector<T> &v)
     return std::sqrt(sq_sum / (v.size() - 1) - mean * mean * v.size() / (v.size() - 1));
 }
 
-struct QuantizedModelInfo
+struct HegemonikonQuantizedModelInfo
 {
     std::string model_id;
-    std::string file_name;
+    std::string local_path;
     std::string last_modified;
     std::string quantization;
     size_t fileSize = 0;
 
-    bool isValid() const { return !model_id.empty() && !file_name.empty(); }
+    bool isValid() const { return !model_id.empty() && !local_path.empty(); }
 
-    bool operator==(const QuantizedModelInfo &other) const
+    bool operator==(const HegemonikonQuantizedModelInfo &other) const
     {
-        return model_id == other.model_id && file_name == other.file_name &&
+        return model_id == other.model_id && local_path == other.local_path &&
                last_modified == other.last_modified && quantization == other.quantization &&
                fileSize == other.fileSize;
     }
 
-    bool operator!=(const QuantizedModelInfo &other) const
+    bool operator!=(const HegemonikonQuantizedModelInfo &other) const
     {
         return !(*this == other);
     }
 
     size_t hash() const
     {
-        return std::hash<std::string>()(model_id) ^ std::hash<std::string>()(file_name) ^
+        return std::hash<std::string>()(model_id) ^ std::hash<std::string>()(local_path) ^
                std::hash<std::string>()(last_modified) ^ std::hash<std::string>()(quantization) ^
                std::hash<size_t>()(fileSize);
     }
 
     std::string to_string() const
     {
-        return "QuantizedModelInfo(model_id=" + model_id + ", file_name=" + file_name +
+        return "HegemonikonQuantizedModelInfo(model_id=" + model_id + ", file_name=" + local_path +
                ", last_modified=" + last_modified + ", quantization=" + quantization +
                ", fileSize=" + std::to_string(fileSize) + ")";
     }
 };
 
-struct BenchmarkMetrics
+struct HegemonikonBenchmarkMetrics
 {
     double load_time_ms = 0.0;
     double generation_time = 0.0;
@@ -120,7 +120,6 @@ struct BenchmarkMetrics
     std::vector<double> tokens_per_second_history;
 
     double avg_ttft_ms = 0.0;
-    double avg_prefill_ms = 0.0;
     double avg_decode_tps = 0.0;
     double avg_end_to_end_latency_ms = 0.0;
 
@@ -133,10 +132,24 @@ struct BenchmarkMetrics
     double p99_latency_ms = 0.0;
 };
 
+struct HegemonikonBenchmarkParams
+{
+    int n_gpu_layers = 0;
+    int repetitions = 10;
+    bool warmup = true;
+    HegemonikonGenerationParams generation_params;
+
+    HegemonikonBenchmarkParams() = default;
+    HegemonikonBenchmarkParams(int gpu_layers, int reps, bool do_warmup, const HegemonikonGenerationParams &gen_params)
+        : n_gpu_layers(gpu_layers), repetitions(reps), warmup(do_warmup), generation_params(gen_params) {}
+};
+
 struct HegemonikonBenchmarkResult
 {
     std::string model_id;
-    BenchmarkMetrics metrics;
+    HegemonikonBenchmarkMetrics metrics;
+    HegemonikonBenchmarkParams benchmark_params;
+    HegemonikonLlamaModelParams llama_model_params;
     std::string generated_text;
     std::string promptUsed;
     std::string errorMessage;
@@ -166,22 +179,12 @@ struct HegemonikonBenchmarkResult
     }
 };
 
-struct HegemonikonBenchmarkParams
-{
-    int n_gpu_layers = 0;
-    int repetitions = 10;
-    bool warmup = true;
-    HegemonikonGenerationParams generation_params;
 
-    HegemonikonBenchmarkParams() = default;
-    HegemonikonBenchmarkParams(int gpu_layers, int reps, bool do_warmup, const HegemonikonGenerationParams &gen_params)
-        : n_gpu_layers(gpu_layers), repetitions(reps), warmup(do_warmup), generation_params(gen_params) {}
-};
 
 class HegemonikonLlamaBenchmarker
 {
 private:
-    std::vector<QuantizedModelInfo> quantized_models;
+    std::vector<HegemonikonQuantizedModelInfo> quantized_models;
     std::vector<std::string> benchmark_prompts;
 
 public:
@@ -190,7 +193,7 @@ public:
         initializeDefaultPrompts();
     }
 
-    HegemonikonLlamaBenchmarker(std::vector<QuantizedModelInfo> models, std::vector<std::string> prompts)
+    HegemonikonLlamaBenchmarker(std::vector<HegemonikonQuantizedModelInfo> models, std::vector<std::string> prompts)
         : quantized_models(std::move(models)), benchmark_prompts(std::move(prompts))
     {
         initializeDefaultPrompts();
@@ -208,9 +211,11 @@ public:
         };
     }
 
-    HegemonikonBenchmarkResult benchmarkSingleModel(const QuantizedModelInfo &quantized_model_info, const HegemonikonBenchmarkParams &benchmark_params, HegemonikonLlamaModelParams llama_model_params)
+    HegemonikonBenchmarkResult benchmarkSingleModel(const HegemonikonQuantizedModelInfo &quantized_model_info, const HegemonikonBenchmarkParams &benchmark_params, HegemonikonLlamaModelParams llama_model_params)
     {
         HegemonikonBenchmarkResult result(quantized_model_info.model_id);
+        result.benchmark_params = benchmark_params;
+        result.llama_model_params = llama_model_params;
 
         try
         {
@@ -290,7 +295,6 @@ public:
         std::cout << std::fixed << std::setprecision(2);
         std::cout << "  Load Time:          " << result.metrics.load_time_ms << " ms" << std::endl;
         std::cout << "  Avg TTFT:           " << result.metrics.avg_ttft_ms << " ms" << std::endl;
-        std::cout << "  Avg Prefill Time:   " << result.metrics.avg_prefill_ms << " ms" << std::endl;
         std::cout << "  Avg Decode Speed:   " << result.metrics.avg_decode_tps << " tokens/sec" << std::endl;
         std::cout << "  Avg E2E Latency:    " << result.metrics.avg_end_to_end_latency_ms << " ms" << std::endl;
         std::cout << "  Latency (P50/P95/P99): "
@@ -335,12 +339,12 @@ public:
         return benchmark_prompts;
     }
 
-    std::vector<QuantizedModelInfo> getQuantizedModels() const
+    std::vector<HegemonikonQuantizedModelInfo> getQuantizedModels() const
     {
         return quantized_models;
     }
 
-    void setQuantizedModels(const std::vector<QuantizedModelInfo> &models)
+    void setQuantizedModels(const std::vector<HegemonikonQuantizedModelInfo> &models)
     {
         quantized_models = models;
     }
