@@ -262,7 +262,7 @@ class CoreAIServiceManager:
                 - Converted Whisper model parameters (hegemonikon_py.WhisperModelParams)
                 - Converted Whisper transcription parameters (hegemonikon_py.WhisperGenerationParams)
         """
-        llama_model_params_cc: Any = hegemonikon_py.LlamaModelParams.from_dict(  # type: ignore
+        llama_model_params_cc: Any = hegemonikon_py.HegemonikonLlamaModelParams.from_dict(  # type: ignore
             {
                 "model_path": str(llama_params.model_info.local_path),  # type: ignore
                 "n_ctx": llama_params.n_ctx,
@@ -275,15 +275,15 @@ class CoreAIServiceManager:
             }
         )
 
-        llama_generation_params_cc: Any = hegemonikon_py.GenerationParams.from_dict(  # type: ignore
+        llama_generation_params_cc: Any = hegemonikon_py.HegemonikonGenerationParams.from_dict(  # type: ignore
             self.config_manager.llama_config_manager.get_generation_params().model_dump()
         )
 
-        # whisper_model_params_cc: Any = hegemonikon_py.WhisperModelParams.from_dict(  # type: ignore
+        # whisper_model_params_cc: Any = hegemonikon_py.HegemonikonWhisperModelParams.from_dict(  # type: ignore
         #     whisper_params.model_dump()
         # )
 
-        # whisper_transcription_params_cc: Any = hegemonikon_py.WhisperGenerationParams.from_dict(  # type: ignore
+        # whisper_transcription_params_cc: Any = hegemonikon_py.HegemonikonWhisperGenerationParams.from_dict(  # type: ignore
         #     self.config_manager.whisper_config_manager.get_transcription_params().model_dump()
         # )
 

@@ -133,7 +133,7 @@ LlamaInterface &LlamaInterface::operator=(LlamaInterface &&other) noexcept
  *               and GPU layer configuration.
  * @return true if the model was loaded successfully; false otherwise.
  */
-bool LlamaInterface::load_model(const LlamaModelParams &params)
+bool LlamaInterface::load_model(const HegemonikonLlamaModelParams &params)
 {
     if (model_)
     {
@@ -394,13 +394,13 @@ std::string LlamaInterface::detokenize_sequence(const std::vector<int32_t> &toke
  * This function initializes a new llama_sampler chain and sequentially adds various sampling strategies
  * to it, such as penalties for repetition, minimum probability threshold, top-k and top-p sampling,
  * temperature scaling, and distribution initialization. The configuration is determined by the values
- * in the provided GenerationParams structure.
+ * in the provided HegemonikonGenerationParams structure.
  *
  * @param params The generation parameters specifying sampler configuration, including penalties,
  *               top-k, top-p, temperature, and other relevant settings.
  * @return A pointer to the configured llama_sampler instance.
  */
-llama_sampler *LlamaInterface::create_sampler(const GenerationParams &params)
+llama_sampler *LlamaInterface::create_sampler(const HegemonikonGenerationParams &params)
 {
     llama_sampler *smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
 
@@ -434,7 +434,7 @@ llama_sampler *LlamaInterface::create_sampler(const GenerationParams &params)
  * @return The generated completion as a string. Returns an error message string if the model is not loaded,
  *         the prompt is empty, the context size is exceeded, or an exception occurs during generation.
  */
-std::string LlamaInterface::generate_completion(const std::string &prompt_text, const GenerationParams &gen_params, double &ttft_ms, double &decode_duration_ms, int32_t &tokens_generated)
+std::string LlamaInterface::generate_completion(const std::string &prompt_text, const HegemonikonGenerationParams &gen_params, double &ttft_ms, double &decode_duration_ms, int32_t &tokens_generated)
 {
 
     auto start = std::chrono::high_resolution_clock::now();
@@ -572,7 +572,7 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
  */
 bool LlamaInterface::generate_completion_streaming(
     const std::string &prompt_text,
-    const GenerationParams &gen_params,
+    const HegemonikonGenerationParams &gen_params,
     llama_token_callback callback)
 {
     if (!is_model_loaded())

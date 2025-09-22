@@ -14,7 +14,7 @@ struct llama_context_params;
 using llama_token_callback = std::function<bool(const std::string &token_text)>;
 
 
-struct LlamaModelParams
+struct HegemonikonLlamaModelParams
 {
     std::string model_path;
     int32_t n_ctx = 2048;
@@ -26,10 +26,10 @@ struct LlamaModelParams
     bool use_map = false;
     bool use_mlock = false;
 
-    LlamaModelParams() = default;
+    HegemonikonLlamaModelParams() = default;
 
     /**
-     * @brief Constructs LlamaModelParams with specified model loading options.
+     * @brief Constructs HegemonikonLlamaModelParams with specified model loading options.
      *
      * @param path         Path to the model file.
      * @param ctx          Context size (number of tokens to keep in context), default is 2048.
@@ -40,7 +40,7 @@ struct LlamaModelParams
      * @param map          Use memory-mapped file for model loading, default is false.
      * @param mlock        Lock model memory to prevent swapping, default is false.
      */
-    LlamaModelParams(const std::string &path, int32_t ctx = 2048, int32_t gpu_layers = 0,
+    HegemonikonLlamaModelParams(const std::string &path, int32_t ctx = 2048, int32_t gpu_layers = 0,
                      int32_t main_gpu = 0, int32_t n_batch = 1, bool split = false, bool only = false,
                      bool map = false, bool mlock = false)
         : model_path(path), n_ctx(ctx), n_gpu_layers(gpu_layers), main_gpu(main_gpu),
@@ -52,9 +52,9 @@ struct LlamaModelParams
      * This method assigns the specified file path to the model_path member variable.
      *
      * @param path The file system path to the model file.
-     * @return Reference to the current LlamaModelParams object to allow method chaining.
+     * @return Reference to the current HegemonikonLlamaModelParams object to allow method chaining.
      */
-    LlamaModelParams &set_model_path(const std::string &path)
+    HegemonikonLlamaModelParams &set_model_path(const std::string &path)
     {
         model_path = path;
         return *this;
@@ -66,9 +66,9 @@ struct LlamaModelParams
      * This function sets the number of context tokens (n_ctx) to be used by the model.
      *
      * @param ctx The desired context window size (number of tokens).
-     * @return Reference to the current LlamaModelParams object for method chaining.
+     * @return Reference to the current HegemonikonLlamaModelParams object for method chaining.
      */
-    LlamaModelParams &set_n_ctx(int32_t ctx)
+    HegemonikonLlamaModelParams &set_n_ctx(int32_t ctx)
     {
         n_ctx = ctx;
         return *this;
@@ -81,9 +81,9 @@ struct LlamaModelParams
      * which can help optimize performance depending on the available hardware.
      *
      * @param gpu_layers The number of layers to offload to the GPU.
-     * @return Reference to the current LlamaModelParams object for method chaining.
+     * @return Reference to the current HegemonikonLlamaModelParams object for method chaining.
      */
-    LlamaModelParams &set_n_gpu_layers(int32_t gpu_layers)
+    HegemonikonLlamaModelParams &set_n_gpu_layers(int32_t gpu_layers)
     {
         n_gpu_layers = gpu_layers;
         return *this;
@@ -96,9 +96,9 @@ struct LlamaModelParams
      * It allows for method chaining by returning a reference to the current object.
      *
      * @param gpu The index of the GPU to set as the main GPU.
-     * @return Reference to the current LlamaModelParams object for method chaining.
+     * @return Reference to the current HegemonikonLlamaModelParams object for method chaining.
      */
-    LlamaModelParams &set_main_gpu(int32_t gpu)
+    HegemonikonLlamaModelParams &set_main_gpu(int32_t gpu)
     {
         main_gpu = gpu;
         return *this;
@@ -112,9 +112,9 @@ struct LlamaModelParams
      * across multiple devices or processes, depending on the implementation.
      *
      * @param split Boolean value indicating whether to enable (true) or disable (false) tensor splitting.
-     * @return Reference to the current LlamaModelParams object for method chaining.
+     * @return Reference to the current HegemonikonLlamaModelParams object for method chaining.
      */
-    LlamaModelParams &set_tensor_split(bool split)
+    HegemonikonLlamaModelParams &set_tensor_split(bool split)
     {
         tensor_split = split;
         return *this;
@@ -128,9 +128,9 @@ struct LlamaModelParams
      * tokenization or vocabulary information is needed.
      *
      * @param only If true, loads only the vocabulary; if false, loads the full model.
-     * @return Reference to the current LlamaModelParams object for method chaining.
+     * @return Reference to the current HegemonikonLlamaModelParams object for method chaining.
      */
-    LlamaModelParams &set_vocab_only(bool only)
+    HegemonikonLlamaModelParams &set_vocab_only(bool only)
     {
         vocab_only = only;
         return *this;
@@ -140,9 +140,9 @@ struct LlamaModelParams
      * @brief Sets whether to use memory-mapped file access for the model.
      *
      * @param map If true, enables memory-mapped file access; otherwise, disables it.
-     * @return Reference to the current LlamaModelParams object for method chaining.
+     * @return Reference to the current HegemonikonLlamaModelParams object for method chaining.
      */
-    LlamaModelParams &set_use_map(bool map)
+    HegemonikonLlamaModelParams &set_use_map(bool map)
     {
         use_map = map;
         return *this;
@@ -155,25 +155,25 @@ struct LlamaModelParams
      * from being swapped out to disk. This may improve performance or security in certain scenarios.
      *
      * @param mlock Boolean flag indicating whether to use mlock (true to enable, false to disable).
-     * @return Reference to the current LlamaModelParams object for method chaining.
+     * @return Reference to the current HegemonikonLlamaModelParams object for method chaining.
      */
-    LlamaModelParams &set_use_mlock(bool mlock)
+    HegemonikonLlamaModelParams &set_use_mlock(bool mlock)
     {
         use_mlock = mlock;
         return *this;
     }
 
     /**
-     * @brief Equality operator for LlamaModelParams.
+     * @brief Equality operator for HegemonikonLlamaModelParams.
      *
-     * Compares this instance with another LlamaModelParams object for equality.
+     * Compares this instance with another HegemonikonLlamaModelParams object for equality.
      * Returns true if all member variables (model_path, n_ctx, n_gpu_layers, main_gpu,
      * tensor_split, vocab_only, use_map, use_mlock) are equal; otherwise, returns false.
      *
-     * @param other The LlamaModelParams object to compare with.
+     * @param other The HegemonikonLlamaModelParams object to compare with.
      * @return true if all parameters are equal, false otherwise.
      */
-    bool operator==(const LlamaModelParams &other) const
+    bool operator==(const HegemonikonLlamaModelParams &other) const
     {
         return model_path == other.model_path &&
                n_ctx == other.n_ctx &&
@@ -187,15 +187,15 @@ struct LlamaModelParams
     }
 
     /**
-     * @brief Inequality operator for LlamaModelParams.
+     * @brief Inequality operator for HegemonikonLlamaModelParams.
      *
-     * Compares this instance with another LlamaModelParams object for inequality.
+     * Compares this instance with another HegemonikonLlamaModelParams object for inequality.
      * Returns true if the two objects are not equal, false otherwise.
      *
-     * @param other The LlamaModelParams object to compare with.
+     * @param other The HegemonikonLlamaModelParams object to compare with.
      * @return true if the objects are not equal, false otherwise.
      */
-    bool operator!=(const LlamaModelParams &other) const
+    bool operator!=(const HegemonikonLlamaModelParams &other) const
     {
         return !(*this == other);
     }
@@ -223,16 +223,16 @@ struct LlamaModelParams
     }
 
     /**
-     * @brief Returns a string representation of the LlamaModelParams object.
+     * @brief Returns a string representation of the HegemonikonLlamaModelParams object.
      *
      * The returned string includes the values of all member variables in a readable format,
      * such as model_path, n_ctx, n_gpu_layers, main_gpu, tensor_split, vocab_only, use_map, and use_mlock.
      *
-     * @return std::string A string describing the current state of the LlamaModelParams object.
+     * @return std::string A string describing the current state of the HegemonikonLlamaModelParams object.
      */
     std::string to_string() const
     {
-        return "LlamaModelParams(model_path='" + model_path +
+        return "HegemonikonLlamaModelParams(model_path='" + model_path +
                "', n_ctx=" + std::to_string(n_ctx) +
                ", n_gpu_layers=" + std::to_string(n_gpu_layers) +
                ", main_gpu=" + std::to_string(main_gpu) +
@@ -244,7 +244,7 @@ struct LlamaModelParams
     }
 };
 
-struct GenerationParams
+struct HegemonikonGenerationParams
 {
     int32_t n_predict = 128;
     float temperature = 0.8f;
@@ -260,10 +260,10 @@ struct GenerationParams
     bool add_bos = true;
     bool parse_special = false;
 
-    GenerationParams() = default;
+    HegemonikonGenerationParams() = default;
 
     /**
-     * @brief Constructs GenerationParams with specified generation settings.
+     * @brief Constructs HegemonikonGenerationParams with specified generation settings.
      *
      * @param predict         Number of tokens to predict/generate.
      * @param temperature     Sampling temperature; higher values increase randomness (default: 0.8f).
@@ -274,7 +274,7 @@ struct GenerationParams
      * @param batch_size      Number of tokens to process in a batch (default: 512).
      * @param threads         Number of threads to use for generation (default: 0, meaning auto-detect).
      */
-    GenerationParams(int32_t predict, float temperature = 0.8f, int32_t top_k = 40,
+    HegemonikonGenerationParams(int32_t predict, float temperature = 0.8f, int32_t top_k = 40,
                      float top_p = 0.95f, float repeat_penalty = 1.1f, int32_t penalty_last_n = 64,
                      float penalty_freq = 0.0f, float penalty_present = 0.0f,
                      std::vector<std::string> stop_seqs = {}, int32_t batch_size = 1024,
@@ -285,16 +285,16 @@ struct GenerationParams
           stop_sequences(std::move(stop_seqs)), n_batch(batch_size), n_threads(threads) {}
 
     /**
-     * @brief Equality operator for GenerationParams.
+     * @brief Equality operator for HegemonikonGenerationParams.
      *
-     * Compares this GenerationParams object with another for equality.
+     * Compares this HegemonikonGenerationParams object with another for equality.
      * Returns true if all generation parameters (n_predict, temperature, top_k, top_p,
      * repeat_penalty, stop_sequences, n_batch, n_threads) are equal between the two objects.
      *
-     * @param other The GenerationParams object to compare with.
+     * @param other The HegemonikonGenerationParams object to compare with.
      * @return true if all parameters are equal, false otherwise.
      */
-    bool operator==(const GenerationParams &other) const
+    bool operator==(const HegemonikonGenerationParams &other) const
     {
         return n_predict == other.n_predict &&
                temperature == other.temperature &&
@@ -310,27 +310,27 @@ struct GenerationParams
     }
 
     /**
-     * @brief Inequality operator for GenerationParams.
+     * @brief Inequality operator for HegemonikonGenerationParams.
      *
-     * Compares this GenerationParams object with another for inequality.
+     * Compares this HegemonikonGenerationParams object with another for inequality.
      * Returns true if the two objects are not equal, as determined by the equality operator.
      *
-     * @param other The GenerationParams object to compare against.
+     * @param other The HegemonikonGenerationParams object to compare against.
      * @return true if the objects are not equal, false otherwise.
      */
-    bool operator!=(const GenerationParams &other) const
+    bool operator!=(const HegemonikonGenerationParams &other) const
     {
         return !(*this == other);
     }
 
     /**
-     * @brief Hash function for GenerationParams.
+     * @brief Hash function for HegemonikonGenerationParams.
      *
-     * Computes a hash value for the GenerationParams object by combining the hash values
+     * Computes a hash value for the HegemonikonGenerationParams object by combining the hash values
      * of its individual parameters (n_predict, temperature, top_k, top_p, repeat_penalty,
      * stop_sequences, n_batch, n_threads).
      *
-     * @return A std::size_t hash value representing the GenerationParams object.
+     * @return A std::size_t hash value representing the HegemonikonGenerationParams object.
      */
     std::size_t hash() const
     {
@@ -350,17 +350,17 @@ struct GenerationParams
     }
 
     /**
-     * @brief Returns a string representation of the GenerationParams object.
+     * @brief Returns a string representation of the HegemonikonGenerationParams object.
      *
      * This method constructs a human-readable string that describes the current state
-     * of the GenerationParams object, including all its parameters such as n_predict,
+     * of the HegemonikonGenerationParams object, including all its parameters such as n_predict,
      * temperature, top_k, top_p, repeat_penalty, stop_sequences, n_batch, and n_threads.
      *
      * @return A string summarizing the generation parameters.
      */
     std::string to_string() const
     {
-        return "GenerationParams(n_predict=" + std::to_string(n_predict) +
+        return "HegemonikonGenerationParams(n_predict=" + std::to_string(n_predict) +
                ", temperature=" + std::to_string(temperature) +
                ", top_k=" + std::to_string(top_k) +
                ", top_p=" + std::to_string(top_p) +
@@ -381,16 +381,16 @@ struct GenerationParams
     }
 
     // #ifndef NO_PYBIND
-    //     static GenerationParams from_dict(const pybind11::dict &d);
+    //     static HegemonikonGenerationParams from_dict(const pybind11::dict &d);
     // #endif
 
     /**
      * @brief Sets the number of tokens to predict during generation.
      *
      * @param predict The desired number of tokens to generate.
-     * @return Reference to the current GenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonGenerationParams object for method chaining.
      */
-    GenerationParams &set_n_predict(int32_t predict)
+    HegemonikonGenerationParams &set_n_predict(int32_t predict)
     {
         n_predict = predict;
         return *this;
@@ -403,9 +403,9 @@ struct GenerationParams
      * Higher values (e.g., 1.0) produce more random results, while lower values (e.g., 0.2) make the output more deterministic.
      *
      * @param temperature The temperature value to set.
-     * @return Reference to the current GenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonGenerationParams object for method chaining.
      */
-    GenerationParams &set_temp(float temperature)
+    HegemonikonGenerationParams &set_temp(float temperature)
     {
         temperature = temperature;
         return *this;
@@ -419,9 +419,9 @@ struct GenerationParams
      * allows for more diverse outputs, while a lower value restricts the model to more likely tokens.
      *
      * @param k The number of top tokens to consider during sampling.
-     * @return Reference to the current GenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonGenerationParams object for method chaining.
      */
-    GenerationParams &set_top_k(int32_t k)
+    HegemonikonGenerationParams &set_top_k(int32_t k)
     {
         top_k = k;
         return *this;
@@ -436,9 +436,9 @@ struct GenerationParams
      * and creative responses.
      *
      * @param p The new top-p value (typically between 0.0 and 1.0).
-     * @return Reference to the current GenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonGenerationParams object for method chaining.
      */
-    GenerationParams &set_top_p(float p)
+    HegemonikonGenerationParams &set_top_p(float p)
     {
         top_p = p;
         return *this;
@@ -452,9 +452,9 @@ struct GenerationParams
      * repeating tokens.
      *
      * @param penalty The repeat penalty value to set.
-     * @return Reference to the current GenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonGenerationParams object for method chaining.
      */
-    GenerationParams &set_repeat_penalty(float penalty)
+    HegemonikonGenerationParams &set_repeat_penalty(float penalty)
     {
         repeat_penalty = penalty;
         return *this;
@@ -467,9 +467,9 @@ struct GenerationParams
      * When any of these sequences are encountered during generation, the process will stop.
      *
      * @param sequences A vector of strings representing the stop sequences.
-     * @return Reference to the current GenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonGenerationParams object for method chaining.
      */
-    GenerationParams &set_stop_sequences(const std::vector<std::string> &sequences)
+    HegemonikonGenerationParams &set_stop_sequences(const std::vector<std::string> &sequences)
     {
         stop_sequences = sequences;
         return *this;
@@ -479,12 +479,12 @@ struct GenerationParams
      * @brief Sets the batch size for generation.
      *
      * This method updates the n_batch parameter with the specified batch size.
-     * It enables method chaining by returning a reference to the current GenerationParams object.
+     * It enables method chaining by returning a reference to the current HegemonikonGenerationParams object.
      *
      * @param batch_size The desired batch size for generation.
-     * @return Reference to the updated GenerationParams object.
+     * @return Reference to the updated HegemonikonGenerationParams object.
      */
-    GenerationParams &set_n_batch(int32_t batch_size)
+    HegemonikonGenerationParams &set_n_batch(int32_t batch_size)
     {
         n_batch = batch_size;
         return *this;
@@ -497,9 +497,9 @@ struct GenerationParams
      * how many threads will be utilized during the generation process.
      *
      * @param threads The desired number of threads.
-     * @return Reference to the current GenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonGenerationParams object for method chaining.
      */
-    GenerationParams &set_n_threads(int32_t threads)
+    HegemonikonGenerationParams &set_n_threads(int32_t threads)
     {
         n_threads = threads;
         return *this;
@@ -550,21 +550,21 @@ public:
     LlamaInterface &operator=(LlamaInterface &&other) noexcept;
     ~LlamaInterface();
 
-    virtual bool load_model(const LlamaModelParams &params);
+    virtual bool load_model(const HegemonikonLlamaModelParams &params);
     virtual void unload_model();
     bool is_model_loaded() const;
-    llama_sampler *create_sampler(const GenerationParams &params);
+    llama_sampler *create_sampler(const HegemonikonGenerationParams &params);
     bool check_stop_sequences(const std::string &text, const std::vector<std::string> &stop_sequences);
     int get_context_size() const;
     int get_vocab_size() const;
     std::string get_model_info() const;
     std::vector<int32_t> tokenization(const std::string &text) const;
     std::string detokenization(const std::vector<int32_t> &tokens) const;
-    virtual std::string generate_completion(const std::string &prompt_text, const GenerationParams &params, double &ttft_ms,
+    virtual std::string generate_completion(const std::string &prompt_text, const HegemonikonGenerationParams &params, double &ttft_ms,
         double &decode_duration_ms,
         int32_t &tokens_generated);
     virtual bool generate_completion_streaming(const std::string &prompt_text,
-                                               const GenerationParams &params,
+                                               const HegemonikonGenerationParams &params,
                                                llama_token_callback callback);
     std::vector<float> get_embeddings(const std::string &text);
 
@@ -577,7 +577,7 @@ private:
     llama_context *ctx_ = nullptr;
     const llama_vocab *vocab_ = nullptr;
 
-    LlamaModelParams current_model_params_;
+    HegemonikonLlamaModelParams current_model_params_;
 
     static constexpr double FAST_TTFT_MS = 200.0;
     static constexpr double ACCEPTABLE_TTFT_MS = 500.0;
@@ -588,5 +588,5 @@ private:
     std::string detokenize_token(int32_t token) const;
     std::string detokenize_sequence(const std::vector<int32_t> &tokens) const;
 
-    llama_sampler *create_default_sampler(const GenerationParams &params);
+    llama_sampler *create_default_sampler(const HegemonikonGenerationParams &params);
 };

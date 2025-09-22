@@ -15,7 +15,7 @@ TEST_CASE("LlamaInterface can load and use a real GGUF model", "[integration][ll
     }
 
     LlamaInterface llama_service;
-    LlamaModelParams params;
+    HegemonikonLlamaModelParams params;
     params.model_path = REAL_LLAMA_MODEL_PATH;
 
     REQUIRE(llama_service.load_model(params) == true);

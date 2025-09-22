@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cstdint>
 
-struct WhisperModelParams
+struct HegemonikonWhisperModelParams
 {
     int32_t n_threads = std::min(4, (int32_t)std::thread::hardware_concurrency());
     bool use_gpu = true;
@@ -15,9 +15,9 @@ struct WhisperModelParams
     std::string model = "models/ggml-base.en.bin";
     std::string language = "en";
 
-    WhisperModelParams() = default;
+    HegemonikonWhisperModelParams() = default;
     /**
-     * @brief Constructs a WhisperModelParams object with the specified parameters.
+     * @brief Constructs a HegemonikonWhisperModelParams object with the specified parameters.
      *
      * @param model       Path or identifier of the Whisper model to use.
      * @param language    Language code (e.g., "en", "fr") for transcription or translation.
@@ -26,21 +26,21 @@ struct WhisperModelParams
      * @param audio_ctx   Audio context size or window (default: 0 for automatic).
      * @param n_threads   Number of threads to use for processing (default: minimum of 4 or hardware concurrency).
      */
-    WhisperModelParams(const std::string &model, const std::string &language, bool use_gpu = true, bool flash_attn = false,
+    HegemonikonWhisperModelParams(const std::string &model, const std::string &language, bool use_gpu = true, bool flash_attn = false,
                        int32_t audio_ctx = 0, int32_t n_threads = std::min(4, (int32_t)std::thread::hardware_concurrency()))
         : model(model), language(language), use_gpu(use_gpu), flash_attn(flash_attn), audio_ctx(audio_ctx), n_threads(n_threads) {}
 
     /**
-     * @brief Equality operator for WhisperModelParams.
+     * @brief Equality operator for HegemonikonWhisperModelParams.
      *
-     * Compares this instance with another WhisperModelParams object to determine if all
+     * Compares this instance with another HegemonikonWhisperModelParams object to determine if all
      * configuration parameters are equal. The comparison includes the number of threads,
      * GPU usage flag, flash attention flag, audio context size, model identifier, and language.
      *
-     * @param other The WhisperModelParams instance to compare against.
+     * @param other The HegemonikonWhisperModelParams instance to compare against.
      * @return true if all parameters are equal; false otherwise.
      */
-    bool operator==(const WhisperModelParams &other) const
+    bool operator==(const HegemonikonWhisperModelParams &other) const
     {
         return n_threads == other.n_threads &&
                use_gpu == other.use_gpu &&
@@ -51,15 +51,15 @@ struct WhisperModelParams
     }
 
     /**
-     * @brief Inequality operator for WhisperModelParams.
+     * @brief Inequality operator for HegemonikonWhisperModelParams.
      *
-     * Compares this instance with another WhisperModelParams object for inequality.
+     * Compares this instance with another HegemonikonWhisperModelParams object for inequality.
      * Returns true if the two objects are not equal, as determined by the equality operator.
      *
-     * @param other The WhisperModelParams object to compare with.
+     * @param other The HegemonikonWhisperModelParams object to compare with.
      * @return true if the objects are not equal, false otherwise.
      */
-    bool operator!=(const WhisperModelParams &other) const
+    bool operator!=(const HegemonikonWhisperModelParams &other) const
     {
         return !(*this == other);
     }
@@ -90,14 +90,14 @@ struct WhisperModelParams
     }
 
     /**
-     * @brief Converts the WhisperModelParams object to a human-readable string representation.
+     * @brief Converts the HegemonikonWhisperModelParams object to a human-readable string representation.
      *
      * @return A string describing the current model parameters, including model name, language,
      *         GPU usage, flash attention status, audio context size, and number of threads.
      */
     std::string to_string() const
     {
-        return "WhisperModelParams(model='" + model +
+        return "HegemonikonWhisperModelParams(model='" + model +
                "', language='" + language +
                "', use_gpu=" + (use_gpu ? "true" : "false") +
                ", flash_attn=" + (flash_attn ? "true" : "false") +
@@ -111,9 +111,9 @@ struct WhisperModelParams
      * This method sets the model file path to the specified value.
      *
      * @param path The file system path to the model file.
-     * @return Reference to the current WhisperModelParams object to allow method chaining.
+     * @return Reference to the current HegemonikonWhisperModelParams object to allow method chaining.
      */
-    WhisperModelParams &set_model_path(const std::string &path)
+    HegemonikonWhisperModelParams &set_model_path(const std::string &path)
     {
         model = path;
         return *this;
@@ -125,9 +125,9 @@ struct WhisperModelParams
      * This method sets the language code to be used by the model.
      *
      * @param lang The language code (e.g., "en" for English).
-     * @return Reference to the current WhisperModelParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperModelParams object for method chaining.
      */
-    WhisperModelParams &set_language(const std::string &lang)
+    HegemonikonWhisperModelParams &set_language(const std::string &lang)
     {
         language = lang;
         return *this;
@@ -139,9 +139,9 @@ struct WhisperModelParams
      * This method enables or disables GPU usage based on the provided boolean value.
      *
      * @param gpu If true, enables GPU usage; if false, disables it.
-     * @return Reference to the current WhisperModelParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperModelParams object for method chaining.
      */
-    WhisperModelParams &set_use_gpu(bool gpu)
+    HegemonikonWhisperModelParams &set_use_gpu(bool gpu)
     {
         use_gpu = gpu;
         return *this;
@@ -153,9 +153,9 @@ struct WhisperModelParams
      * This method enables or disables flash attention based on the provided boolean value.
      *
      * @param flash If true, enables flash attention; if false, disables it.
-     * @return Reference to the current WhisperModelParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperModelParams object for method chaining.
      */
-    WhisperModelParams &set_flash_attn(bool flash)
+    HegemonikonWhisperModelParams &set_flash_attn(bool flash)
     {
         flash_attn = flash;
         return *this;
@@ -167,9 +167,9 @@ struct WhisperModelParams
      * This method sets the audio context size to be used by the model.
      *
      * @param ctx The desired audio context size.
-     * @return Reference to the current WhisperModelParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperModelParams object for method chaining.
      */
-    WhisperModelParams &set_audio_ctx(int32_t ctx)
+    HegemonikonWhisperModelParams &set_audio_ctx(int32_t ctx)
     {
         audio_ctx = ctx;
         return *this;
@@ -181,9 +181,9 @@ struct WhisperModelParams
      * This method sets the number of threads for processing, which can help optimize performance.
      *
      * @param threads The desired number of threads.
-     * @return Reference to the current WhisperModelParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperModelParams object for method chaining.
      */
-    WhisperModelParams &set_n_threads(int32_t threads)
+    HegemonikonWhisperModelParams &set_n_threads(int32_t threads)
     {
         n_threads = threads;
         return *this;

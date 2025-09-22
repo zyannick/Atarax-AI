@@ -133,7 +133,7 @@ struct BenchmarkMetrics
     double p99_latency_ms = 0.0;
 };
 
-struct BenchmarkResult
+struct HegemonikonBenchmarkResult
 {
     std::string model_id;
     BenchmarkMetrics metrics;
@@ -141,7 +141,7 @@ struct BenchmarkResult
     std::string promptUsed;
     std::string errorMessage;
 
-    BenchmarkResult(const std::string &id) : model_id(id) {}
+    HegemonikonBenchmarkResult(const std::string &id) : model_id(id) {}
 
     void calculateStatistics()
     {
@@ -166,32 +166,32 @@ struct BenchmarkResult
     }
 };
 
-struct BenchmarkParams
+struct HegemonikonBenchmarkParams
 {
     int n_gpu_layers = 0;
     int repetitions = 10;
     bool warmup = true;
-    GenerationParams generation_params;
+    HegemonikonGenerationParams generation_params;
 
-    BenchmarkParams() = default;
-    BenchmarkParams(int gpu_layers, int reps, bool do_warmup, const GenerationParams &gen_params)
+    HegemonikonBenchmarkParams() = default;
+    HegemonikonBenchmarkParams(int gpu_layers, int reps, bool do_warmup, const HegemonikonGenerationParams &gen_params)
         : n_gpu_layers(gpu_layers), repetitions(reps), warmup(do_warmup), generation_params(gen_params) {}
 };
 
-class LlamaBenchmarker
+class HegemonikonLlamaBenchmarker
 {
 private:
     std::vector<QuantizedModelInfo> quantized_models;
     std::vector<std::string> benchmark_prompts;
 
 public:
-    LlamaBenchmarker()
+    HegemonikonLlamaBenchmarker()
     {
         initializeDefaultPrompts();
     }
 
-    LlamaBenchmarker(std::vector<QuantizedModelInfo> models, std::vector<std::string> prompts)
-        : quantized_models(std::move(models)), benchmark_prompts(std::move(prompts)))
+    HegemonikonLlamaBenchmarker(std::vector<QuantizedModelInfo> models, std::vector<std::string> prompts)
+        : quantized_models(std::move(models)), benchmark_prompts(std::move(prompts))
     {
         initializeDefaultPrompts();
     }
@@ -208,20 +208,18 @@ public:
         };
     }
 
-    BenchmarkResult benchmarkSingleModel(const QuantizedModelInfo &model_info, const BenchmarkParams &params)
+    HegemonikonBenchmarkResult benchmarkSingleModel(const QuantizedModelInfo &quantized_model_info, const HegemonikonBenchmarkParams &benchmark_params, HegemonikonLlamaModelParams llama_model_params)
     {
-        BenchmarkResult result(model_info.model_id);
+        HegemonikonBenchmarkResult result(quantized_model_info.model_id);
 
         try
         {
             LlamaInterface interface;
 
-            LlamaModelParams model_params;
-            model_params.model_path = ataraxia_path.empty() ? model_info.file_name : ataraxia_path + "/" + model_info.file_name;
-            model_params.n_gpu_layers = params.n_gpu_layers;
+            llama_model_params.n_gpu_layers = benchmark_params.n_gpu_layers;
 
             auto load_start = high_resolution_clock::now();
-            if (!interface.load_model(model_params))
+            if (!interface.load_model(llama_model_params))
             {
                 throw std::runtime_error("Failed to load model via LlamaInterface");
             }
@@ -229,9 +227,9 @@ public:
                                               high_resolution_clock::now() - load_start)
                                               .count();
 
-            GenerationParams gen_params = params.generation_params;
+            HegemonikonGenerationParams gen_params = benchmark_params.generation_params;
 
-            if (params.warmup)
+            if (benchmark_params.warmup)
             {
                 double ttft_ms = 0.0;
                 double decode_duration_ms = 0.0;
@@ -240,7 +238,7 @@ public:
                 interface.generate_completion("Hello", gen_params, ttft_ms, decode_duration_ms, tokens_generated);
             }
 
-            for (int i = 0; i < params.repetitions; ++i)
+            for (int i = 0; i < benchmark_params.repetitions; ++i)
             {
                 auto e2e_start = high_resolution_clock::now();
                 const std::string &prompt = benchmark_prompts[i % benchmark_prompts.size()];
@@ -281,7 +279,7 @@ public:
         return result;
     }
 
-    void printBenchmarkResult(const BenchmarkResult &result)
+    void printBenchmarkResult(const HegemonikonBenchmarkResult &result)
     {
         if (!result.metrics.success)
         {
@@ -301,7 +299,7 @@ public:
                   << result.metrics.p99_latency_ms << " ms" << std::endl;
     }
 
-    void printSummary(const std::vector<BenchmarkResult> &results)
+    void printSummary(const std::vector<HegemonikonBenchmarkResult> &results)
     {
         std::cout << "\n"
                   << std::string(80, '=') << std::endl;
@@ -309,7 +307,7 @@ public:
         std::cout << std::string(80, '=') << std::endl;
 
         auto fastest = std::max_element(results.begin(), results.end(),
-                                        [](const BenchmarkResult &a, const BenchmarkResult &b)
+                                        [](const HegemonikonBenchmarkResult &a, const HegemonikonBenchmarkResult &b)
                                         {
                                             return a.metrics.success && b.metrics.success ? a.metrics.avg_decode_tps < b.metrics.avg_decode_tps : !a.metrics.success;
                                         });
@@ -321,7 +319,7 @@ public:
         }
 
         int successful = std::count_if(results.begin(), results.end(),
-                                       [](const BenchmarkResult &r)
+                                       [](const HegemonikonBenchmarkResult &r)
                                        { return r.metrics.success; });
         std::cout << "Success rate: " << successful << "/" << results.size()
                   << " (" << (100.0 * successful / results.size()) << "%)" << std::endl;

@@ -11,7 +11,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
 {
      m.doc() = "Python bindings for the AtaraxAI Core AI C++ engine. Provides access to LLM, STT, and other AI functionalities.";
 
-     py::class_<LlamaModelParams>(m, "LlamaModelParams", "Parameters for loading a Llama model.")
+     py::class_<HegemonikonLlamaModelParams>(m, "HegemonikonLlamaModelParams", "Parameters for loading a Llama model.")
          .def(py::init<>())
          .def(py::init<const std::string &, int32_t, int32_t, int32_t, int32_t, bool, bool, bool, bool>(),
               py::arg("model_path") = "",
@@ -25,7 +25,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
               py::arg("use_mlock") = false)
          .def_static("from_dict", [](const py::dict &d)
                      {
-     LlamaModelParams params;
+     HegemonikonLlamaModelParams params;
      if (d.contains("model_path")) {
            params.model_path = d["model_path"].cast<std::string>();
      }
@@ -54,26 +54,26 @@ PYBIND11_MODULE(hegemonikon_py, m)
                params.use_mlock = d["use_mlock"].cast<bool>();
      }
      return params; })
-         .def("set_model_path", &LlamaModelParams::set_model_path, "Set the model file path.")
-         .def_readwrite("model_path", &LlamaModelParams::model_path, "Path to the GGUF model file.")
-         .def_readwrite("n_gpu_layers", &LlamaModelParams::n_gpu_layers, "Number of layers to offload to GPU.")
-         .def_readwrite("n_ctx", &LlamaModelParams::n_ctx, "Context size for the model.")
-         .def_readwrite("main_gpu", &LlamaModelParams::main_gpu, "Main GPU index for model loading.")
-         .def_readwrite("n_batch", &LlamaModelParams::n_batch, "Batch size for model inference.")
-         .def_readwrite("tensor_split", &LlamaModelParams::tensor_split, "Whether to use tensor splitting for large models.")
-         .def_readwrite("vocab_only", &LlamaModelParams::vocab_only, "Load only the vocabulary without the model.")
-         .def_readwrite("use_map", &LlamaModelParams::use_map, "Use memory mapping for the model file.")
-         .def_readwrite("use_mlock", &LlamaModelParams::use_mlock, "Lock model memory to prevent swapping.")
-         .def("__eq__", [](const LlamaModelParams &a, const LlamaModelParams &b)
+         .def("set_model_path", &HegemonikonLlamaModelParams::set_model_path, "Set the model file path.")
+         .def_readwrite("model_path", &HegemonikonLlamaModelParams::model_path, "Path to the GGUF model file.")
+         .def_readwrite("n_gpu_layers", &HegemonikonLlamaModelParams::n_gpu_layers, "Number of layers to offload to GPU.")
+         .def_readwrite("n_ctx", &HegemonikonLlamaModelParams::n_ctx, "Context size for the model.")
+         .def_readwrite("main_gpu", &HegemonikonLlamaModelParams::main_gpu, "Main GPU index for model loading.")
+         .def_readwrite("n_batch", &HegemonikonLlamaModelParams::n_batch, "Batch size for model inference.")
+         .def_readwrite("tensor_split", &HegemonikonLlamaModelParams::tensor_split, "Whether to use tensor splitting for large models.")
+         .def_readwrite("vocab_only", &HegemonikonLlamaModelParams::vocab_only, "Load only the vocabulary without the model.")
+         .def_readwrite("use_map", &HegemonikonLlamaModelParams::use_map, "Use memory mapping for the model file.")
+         .def_readwrite("use_mlock", &HegemonikonLlamaModelParams::use_mlock, "Lock model memory to prevent swapping.")
+         .def("__eq__", [](const HegemonikonLlamaModelParams &a, const HegemonikonLlamaModelParams &b)
               { return a == b; })
-         .def("__ne__", [](const LlamaModelParams &a, const LlamaModelParams &b)
+         .def("__ne__", [](const HegemonikonLlamaModelParams &a, const HegemonikonLlamaModelParams &b)
               { return a != b; })
-         .def("__hash__", [](const LlamaModelParams &p)
+         .def("__hash__", [](const HegemonikonLlamaModelParams &p)
               { return p.hash(); })
-         .def("__str__", [](const LlamaModelParams &p)
+         .def("__str__", [](const HegemonikonLlamaModelParams &p)
               { return p.to_string(); });
 
-     py::class_<GenerationParams>(m, "GenerationParams", "Parameters for Llama text generation.")
+     py::class_<HegemonikonGenerationParams>(m, "HegemonikonGenerationParams", "Parameters for Llama text generation.")
          .def(py::init<>())
          .def(py::init<int32_t, float, int32_t, float, float, int32_t, float, float,
                        std::vector<std::string>, int32_t, int32_t>(),
@@ -90,7 +90,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
               py::arg("n_threads") = 0)
          .def_static("from_dict", [](const py::dict &d)
                      {   
-                         GenerationParams params;
+                         HegemonikonGenerationParams params;
                          if (d.contains("n_predict")) {
                          params.n_predict = d["n_predict"].cast<int32_t>();
                          }
@@ -125,27 +125,27 @@ PYBIND11_MODULE(hegemonikon_py, m)
                                    params.n_threads = d["n_threads"].cast<int32_t>();
                          }
                          return params; })
-         .def_readwrite("n_predict", &GenerationParams::n_predict)
-         .def_readwrite("temperature", &GenerationParams::temperature)
-         .def_readwrite("top_k", &GenerationParams::top_k)
-         .def_readwrite("top_p", &GenerationParams::top_p)
-         .def_readwrite("repeat_penalty", &GenerationParams::repeat_penalty)
-         .def_readwrite("penalty_last_n", &GenerationParams::penalty_last_n)
-         .def_readwrite("penalty_freq", &GenerationParams::penalty_freq)
-         .def_readwrite("penalty_present", &GenerationParams::penalty_present)
-         .def_readwrite("stop_sequences", &GenerationParams::stop_sequences)
-         .def_readwrite("n_batch", &GenerationParams::n_batch)
-         .def_readwrite("n_threads", &GenerationParams::n_threads)
-         .def("__eq__", [](const GenerationParams &a, const GenerationParams &b)
+         .def_readwrite("n_predict", &HegemonikonGenerationParams::n_predict)
+         .def_readwrite("temperature", &HegemonikonGenerationParams::temperature)
+         .def_readwrite("top_k", &HegemonikonGenerationParams::top_k)
+         .def_readwrite("top_p", &HegemonikonGenerationParams::top_p)
+         .def_readwrite("repeat_penalty", &HegemonikonGenerationParams::repeat_penalty)
+         .def_readwrite("penalty_last_n", &HegemonikonGenerationParams::penalty_last_n)
+         .def_readwrite("penalty_freq", &HegemonikonGenerationParams::penalty_freq)
+         .def_readwrite("penalty_present", &HegemonikonGenerationParams::penalty_present)
+         .def_readwrite("stop_sequences", &HegemonikonGenerationParams::stop_sequences)
+         .def_readwrite("n_batch", &HegemonikonGenerationParams::n_batch)
+         .def_readwrite("n_threads", &HegemonikonGenerationParams::n_threads)
+         .def("__eq__", [](const HegemonikonGenerationParams &a, const HegemonikonGenerationParams &b)
               { return a == b; })
-         .def("__ne__", [](const GenerationParams &a, const GenerationParams &b)
+         .def("__ne__", [](const HegemonikonGenerationParams &a, const HegemonikonGenerationParams &b)
               { return a != b; })
-         .def("__hash__", [](const GenerationParams &p)
+         .def("__hash__", [](const HegemonikonGenerationParams &p)
               { return p.hash(); })
-         .def("__str__", [](const GenerationParams &p)
+         .def("__str__", [](const HegemonikonGenerationParams &p)
               { return p.to_string(); });
 
-     py::class_<WhisperModelParams>(m, "WhisperModelParams", "Parameters for loading a Whisper model.")
+     py::class_<HegemonikonWhisperModelParams>(m, "HegemonikonWhisperModelParams", "Parameters for loading a Whisper model.")
          .def(py::init<>())
          .def(py::init<const std::string &, const std::string &, bool, bool, int32_t, int32_t>(),
               py::arg("model"),
@@ -156,7 +156,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
               py::arg("n_threads") = std::min(4, (int32_t)std::thread::hardware_concurrency()))
          .def_static("from_dict", [](const py::dict &d)
                      {
-                              WhisperModelParams params;
+                              HegemonikonWhisperModelParams params;
                               if (d.contains("model")) {
                                    params.model = d["model"].cast<std::string>();
                               }
@@ -176,22 +176,22 @@ PYBIND11_MODULE(hegemonikon_py, m)
                                         params.n_threads = d["n_threads"].cast<int32_t>();
                                    }
                                    return params; })
-         .def_readwrite("model", &WhisperModelParams::model, "Path to the Whisper GGUF model file.")
-         .def_readwrite("language", &WhisperModelParams::language, "Language for the Whisper model (e.g., 'en', 'auto').")
-         .def_readwrite("use_gpu", &WhisperModelParams::use_gpu, "Whether to use GPU for transcription.")
-         .def_readwrite("flash_attn", &WhisperModelParams::flash_attn, "Whether to use flash attention for faster processing.")
-         .def_readwrite("audio_ctx", &WhisperModelParams::audio_ctx, "Audio context size for the model.")
-         .def_readwrite("n_threads", &WhisperModelParams::n_threads, "Number of threads to use for processing.")
-         .def("__eq__", [](const WhisperModelParams &a, const WhisperModelParams &b)
+         .def_readwrite("model", &HegemonikonWhisperModelParams::model, "Path to the Whisper GGUF model file.")
+         .def_readwrite("language", &HegemonikonWhisperModelParams::language, "Language for the Whisper model (e.g., 'en', 'auto').")
+         .def_readwrite("use_gpu", &HegemonikonWhisperModelParams::use_gpu, "Whether to use GPU for transcription.")
+         .def_readwrite("flash_attn", &HegemonikonWhisperModelParams::flash_attn, "Whether to use flash attention for faster processing.")
+         .def_readwrite("audio_ctx", &HegemonikonWhisperModelParams::audio_ctx, "Audio context size for the model.")
+         .def_readwrite("n_threads", &HegemonikonWhisperModelParams::n_threads, "Number of threads to use for processing.")
+         .def("__eq__", [](const HegemonikonWhisperModelParams &a, const HegemonikonWhisperModelParams &b)
               { return a == b; })
-         .def("__ne__", [](const WhisperModelParams &a, const WhisperModelParams &b)
+         .def("__ne__", [](const HegemonikonWhisperModelParams &a, const HegemonikonWhisperModelParams &b)
               { return a != b; })
-         .def("__hash__", [](const WhisperModelParams &p)
+         .def("__hash__", [](const HegemonikonWhisperModelParams &p)
               { return p.hash(); })
-         .def("__str__", [](const WhisperModelParams &p)
+         .def("__str__", [](const HegemonikonWhisperModelParams &p)
               { return p.to_string(); });
 
-     py::class_<WhisperGenerationParams>(m, "WhisperGenerationParams", "Parameters for Whisper audio transcription.")
+     py::class_<HegemonikonWhisperGenerationParams>(m, "HegemonikonWhisperGenerationParams", "Parameters for Whisper audio transcription.")
          .def(py::init<>())
          .def(py::init<int32_t, int32_t, int32_t, int32_t, int32_t, int32_t, bool, bool, bool, bool, int32_t, int32_t, bool, bool, bool, const std::string &>(),
               py::arg("step_ms_"),
@@ -212,7 +212,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
               py::arg("fname_out_") = "")
          .def_static("from_dict", [](const py::dict &d)
                      {
-     WhisperGenerationParams params;    
+     HegemonikonWhisperGenerationParams params;    
      if (d.contains("step_ms")) {
            params.step_ms = d["step_ms"].cast<int32_t>();
      }
@@ -262,29 +262,29 @@ PYBIND11_MODULE(hegemonikon_py, m)
                params.fname_out = d["fname_out"].cast<std::string>();
      }
      return params; })
-         .def_readwrite("step_ms", &WhisperGenerationParams::step_ms, "Step size in milliseconds for audio processing.")
-         .def_readwrite("length_ms", &WhisperGenerationParams::length_ms, "Length of audio segments in milliseconds.")
-         .def_readwrite("keep_ms", &WhisperGenerationParams::keep_ms, "Duration to keep audio in milliseconds.")
-         .def_readwrite("capture_id", &WhisperGenerationParams::capture_id, "Capture device ID for audio input.")
-         .def_readwrite("vad_thold", &WhisperGenerationParams::vad_thold, "Voice Activity Detection threshold.")
-         .def_readwrite("freq_thold", &WhisperGenerationParams::freq_thold, "Frequency threshold for audio processing.")
-         .def_readwrite("translate", &WhisperGenerationParams::translate, "Whether to translate the audio to English.")
-         .def_readwrite("tinydiarize", &WhisperGenerationParams::tinydiarize, "Whether to use tiny diarization for speaker separation.")
-         .def_readwrite("no_fallback", &WhisperGenerationParams::no_fallback, "Whether to disable fallback to non-diarized transcription.")
-         .def_readwrite("no_context", &WhisperGenerationParams::no_context, "Whether to disable context for transcription.")
-         .def_readwrite("max_tokens", &WhisperGenerationParams::max_tokens, "Maximum number of tokens to generate.")
-         .def_readwrite("beam_size", &WhisperGenerationParams::beam_size, "Beam size for beam search decoding.")
-         .def_readwrite("print_special", &WhisperGenerationParams::print_special, "Whether to print special tokens in the output.")
-         .def_readwrite("no_timestamps", &WhisperGenerationParams::no_timestamps, "Whether to disable timestamps in the output.")
-         .def_readwrite("save_audio", &WhisperGenerationParams::save_audio, "Whether to save the processed audio.")
-         .def_readwrite("fname_out", &WhisperGenerationParams::fname_out, "Output filename for the processed audio.")
-         .def("__eq__", [](const WhisperGenerationParams &a, const WhisperGenerationParams &b)
+         .def_readwrite("step_ms", &HegemonikonWhisperGenerationParams::step_ms, "Step size in milliseconds for audio processing.")
+         .def_readwrite("length_ms", &HegemonikonWhisperGenerationParams::length_ms, "Length of audio segments in milliseconds.")
+         .def_readwrite("keep_ms", &HegemonikonWhisperGenerationParams::keep_ms, "Duration to keep audio in milliseconds.")
+         .def_readwrite("capture_id", &HegemonikonWhisperGenerationParams::capture_id, "Capture device ID for audio input.")
+         .def_readwrite("vad_thold", &HegemonikonWhisperGenerationParams::vad_thold, "Voice Activity Detection threshold.")
+         .def_readwrite("freq_thold", &HegemonikonWhisperGenerationParams::freq_thold, "Frequency threshold for audio processing.")
+         .def_readwrite("translate", &HegemonikonWhisperGenerationParams::translate, "Whether to translate the audio to English.")
+         .def_readwrite("tinydiarize", &HegemonikonWhisperGenerationParams::tinydiarize, "Whether to use tiny diarization for speaker separation.")
+         .def_readwrite("no_fallback", &HegemonikonWhisperGenerationParams::no_fallback, "Whether to disable fallback to non-diarized transcription.")
+         .def_readwrite("no_context", &HegemonikonWhisperGenerationParams::no_context, "Whether to disable context for transcription.")
+         .def_readwrite("max_tokens", &HegemonikonWhisperGenerationParams::max_tokens, "Maximum number of tokens to generate.")
+         .def_readwrite("beam_size", &HegemonikonWhisperGenerationParams::beam_size, "Beam size for beam search decoding.")
+         .def_readwrite("print_special", &HegemonikonWhisperGenerationParams::print_special, "Whether to print special tokens in the output.")
+         .def_readwrite("no_timestamps", &HegemonikonWhisperGenerationParams::no_timestamps, "Whether to disable timestamps in the output.")
+         .def_readwrite("save_audio", &HegemonikonWhisperGenerationParams::save_audio, "Whether to save the processed audio.")
+         .def_readwrite("fname_out", &HegemonikonWhisperGenerationParams::fname_out, "Output filename for the processed audio.")
+         .def("__eq__", [](const HegemonikonWhisperGenerationParams &a, const HegemonikonWhisperGenerationParams &b)
               { return a == b; })
-         .def("__ne__", [](const WhisperGenerationParams &a, const WhisperGenerationParams &b)
+         .def("__ne__", [](const HegemonikonWhisperGenerationParams &a, const HegemonikonWhisperGenerationParams &b)
               { return a != b; })
-         .def("__hash__", [](const WhisperGenerationParams &p)
+         .def("__hash__", [](const HegemonikonWhisperGenerationParams &p)
               { return p.hash(); })
-         .def("__str__", [](const WhisperGenerationParams &p)
+         .def("__str__", [](const HegemonikonWhisperGenerationParams &p)
               { return p.to_string(); });
 
      py::class_<CoreAIService>(m, "CoreAIService", "Manages AI model interactions, including LLM, STT, etc.")
@@ -368,49 +368,32 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def_readwrite("ttft_history", &BenchmarkMetrics::ttft_history, "List of time to first token for each run in milliseconds.")
          .def_readwrite("end_to_end_latency_history", &BenchmarkMetrics::end_to_end_latency_history, "List of end-to-end latencies for each run in milliseconds.");
 
-     py::class_<BenchmarkResult>(m, "BenchmarkResult", "Result of a model benchmark.")
+     py::class_<HegemonikonBenchmarkResult>(m, "HegemonikonBenchmarkResult", "Result of a model benchmark.")
          .def(py::init<const std::string &>(), "Constructor with model ID")
-         .def_readwrite("model_id", &BenchmarkResult::model_id, "ID of the model being benchmarked.")
-         .def_readwrite("metrics", &BenchmarkResult::metrics, "Metrics collected during the benchmark.")
-         .def_readwrite("generated_text", &BenchmarkResult::generated_text, "Text generated during the benchmark.")
-         .def_readwrite("promptUsed", &BenchmarkResult::promptUsed, "Prompt used for the benchmark.")
-         .def("calculate_statistics", &BenchmarkResult::calculateStatistics, "Calculate statistical summaries from the benchmark metrics.");
+         .def_readwrite("model_id", &HegemonikonBenchmarkResult::model_id, "ID of the model being benchmarked.")
+         .def_readwrite("metrics", &HegemonikonBenchmarkResult::metrics, "Metrics collected during the benchmark.")
+         .def_readwrite("generated_text", &HegemonikonBenchmarkResult::generated_text, "Text generated during the benchmark.")
+         .def_readwrite("promptUsed", &HegemonikonBenchmarkResult::promptUsed, "Prompt used for the benchmark.")
+         .def("calculate_statistics", &HegemonikonBenchmarkResult::calculateStatistics, "Calculate statistical summaries from the benchmark metrics.");
 
-     py::class_<BenchmarkParams>(m, "BenchmarkParams", "Parameters for benchmarking models.")
+     py::class_<HegemonikonBenchmarkParams>(m, "HegemonikonBenchmarkParams", "Parameters for benchmarking models.")
          .def(py::init<>())
-         .def(py::init<int, int, bool, const GenerationParams &>(), "Constructor with parameters",
+         .def(py::init<int, int, bool, const HegemonikonGenerationParams &>(), "Constructor with parameters",
               py::arg("n_gpu_layers") = 0,
               py::arg("repetitions") = 10,
               py::arg("warmup") = true,
-              py::arg("generation_params") = GenerationParams())
-         .def_static("from_dict", [](const py::dict &d)
-                     {
-         BenchmarkParams params;
-         if (d.contains("n_gpu_layers")) {
-           params.n_gpu_layers = d["n_gpu_layers"].cast<int>();
-           }
-           if (d.contains("repetitions")) {
-               params.repetitions = d["repetitions"].cast<int>();
-               }
-               if (d.contains("warmup")) {
-                       params.warmup = d["warmup"].cast<bool>();
-                  }
-                    if (d.contains("generation_params")) {
-                          py::dict gen_params_dict = d["generation_params"].cast<py::dict>();
-                          params.generation_params = GenerationParams::from_dict(gen_params_dict);
-                    }
-           return params; })
-         .def_readwrite("n_gpu_layers", &BenchmarkParams::n_gpu_layers, "Number of GPU layers to use during benchmarking.")
-         .def_readwrite("repetitions", &BenchmarkParams::repetitions, "Number of times to repeat the benchmark.")
-         .def_readwrite("warmup", &BenchmarkParams::warmup, "Whether to perform a warmup run before benchmarking.")
-         .def_readwrite("generation_params", &BenchmarkParams::generation_params, "Generation parameters to use during benchmarking.");
+              py::arg("generation_params") = HegemonikonGenerationParams())
+         .def_readwrite("n_gpu_layers", &HegemonikonBenchmarkParams::n_gpu_layers, "Number of GPU layers to use during benchmarking.")
+         .def_readwrite("repetitions", &HegemonikonBenchmarkParams::repetitions, "Number of times to repeat the benchmark.")
+         .def_readwrite("warmup", &HegemonikonBenchmarkParams::warmup, "Whether to perform a warmup run before benchmarking.")
+         .def_readwrite("generation_params", &HegemonikonBenchmarkParams::generation_params, "Generation parameters to use during benchmarking.");
 
-     py::class_<LlamaBenchmarker>(m, "LlamaBenchmarker", "Benchmarks LLM models for performance and metrics.")
+     py::class_<HegemonikonLlamaBenchmarker>(m, "HegemonikonLlamaBenchmarker", "Benchmarks LLM models for performance and metrics.")
          .def(py::init<>(), "Default constructor")
          .def(py::init<std::vector<QuantizedModelInfo>, std::vector<std::string>>(), "Constructor with model and prompt lists",
               py::arg("models"), py::arg("prompts"))
-         .def("benchmark_single_model", &LlamaBenchmarker::benchmarkSingleModel, "Benchmark a single LLM model",
-              py::arg("model_info"), py::arg("params"));
+         .def("benchmark_single_model", &HegemonikonLlamaBenchmarker::benchmarkSingleModel, "Benchmark a single LLM model",
+              py::arg("quantized_model_info"), py::arg("benchmark_params"), py::arg("llama_model_params"));
 
      py::class_<SecureKey>(m, "SecureKey", "A C++ class to hold sensitive data (like encryption keys) in locked memory.")
          .def("data", [](const SecureKey &self)
