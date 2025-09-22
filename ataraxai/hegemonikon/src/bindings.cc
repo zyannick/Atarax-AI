@@ -26,33 +26,15 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def_static("from_dict", [](const py::dict &d)
                      {
      HegemonikonLlamaModelParams params;
-     if (d.contains("model_path")) {
-           params.model_path = d["model_path"].cast<std::string>();
-     }
-     if (d.contains("n_ctx")) {
-               params.n_ctx = d["n_ctx"].cast<int32_t>();
-     }
-     if (d.contains("n_gpu_layers")) {
-               params.n_gpu_layers = d["n_gpu_layers"].cast<int32_t>();
-     }
-     if (d.contains("main_gpu")) {
-               params.main_gpu = d["main_gpu"].cast<int32_t>();
-     }
-     if (d.contains("n_batch")) {
-               params.n_batch = d["n_batch"].cast<int32_t>();
-     }
-     if (d.contains("tensor_split")) {
-               params.tensor_split = d["tensor_split"].cast<bool>();
-     }
-     if (d.contains("vocab_only")) {
-               params.vocab_only = d["vocab_only"].cast<bool>();
-     }
-     if (d.contains("use_map")) {
-               params.use_map = d["use_map"].cast<bool>();
-     }
-     if (d.contains("use_mlock")) {
-               params.use_mlock = d["use_mlock"].cast<bool>();
-     }
+     params.model_path = d.attr("get")("model_path", "").cast<std::string>();
+     params.n_ctx = d.attr("get")("n_ctx", 2048).cast<int32_t>();
+     params.n_gpu_layers = d.attr("get")("n_gpu_layers", 0).cast<int32_t>();
+     params.main_gpu = d.attr("get")("main_gpu", 0).cast<int32_t>();
+     params.n_batch = d.attr("get")("n_batch", 1).cast<int32_t>();
+     params.tensor_split = d.attr("get")("tensor_split", false).cast<bool>();
+     params.vocab_only = d.attr("get")("vocab_only", false).cast<bool>();
+     params.use_map = d.attr("get")("use_map", false).cast<bool>();
+     params.use_mlock = d.attr("get")("use_mlock", false).cast<bool>();
      return params; })
          .def("set_model_path", &HegemonikonLlamaModelParams::set_model_path, "Set the model file path.")
          .def_readwrite("model_path", &HegemonikonLlamaModelParams::model_path, "Path to the GGUF model file.")
@@ -91,39 +73,17 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def_static("from_dict", [](const py::dict &d)
                      {   
                          HegemonikonGenerationParams params;
-                         if (d.contains("n_predict")) {
-                         params.n_predict = d["n_predict"].cast<int32_t>();
-                         }
-                         if (d.contains("temperature")) {
-                              params.temperature = d["temperature"].cast<float>();
-                         }
-                         if (d.contains("top_k")) {
-                                   params.top_k = d["top_k"].cast<int32_t>();
-                         }
-                         if (d.contains("top_p")) {
-                                   params.top_p = d["top_p"].cast<float>();
-                         }
-                         if (d.contains("repeat_penalty")) {
-                                   params.repeat_penalty = d["repeat_penalty"].cast<float>();
-                         }
-                         if (d.contains("penalty_last_n")) {
-                                   params.penalty_last_n = d["penalty_last_n"].cast<int32_t>();
-                         }
-                         if (d.contains("penalty_freq")) {
-                                   params.penalty_freq = d["penalty_freq"].cast<float>();
-                         }
-                         if (d.contains("penalty_present")) {
-                                   params.penalty_present = d["penalty_present"].cast<float>();
-                         }
-                         if (d.contains("stop_sequences")) {
-                         params.stop_sequences = d["stop_sequences"].cast<std::vector<std::string>>();
-                         }
-                         if (d.contains("n_batch")) {
-                              params.n_batch = d["n_batch"].cast<int32_t>();   
-                         }
-                         if (d.contains("n_threads")) {
-                                   params.n_threads = d["n_threads"].cast<int32_t>();
-                         }
+                         params.n_predict = d.attr("get")("n_predict", 128).cast<int32_t>();
+                         params.temperature = d.attr("get")("temperature", 0.8f).cast<float>();
+                         params.top_k = d.attr("get")("top_k", 40).cast<int32_t>();
+                         params.top_p = d.attr("get")("top_p", 0.95f).cast<float>();
+                         params.repeat_penalty = d.attr("get")("repeat_penalty", 1.1f).cast<float>();
+                         params.penalty_last_n = d.attr("get")("penalty_last_n", 64).cast<int32_t>();
+                         params.penalty_freq = d.attr("get")("penalty_freq", 0.0f).cast<float>();
+                         params.penalty_present = d.attr("get")("penalty_present", 0.0f).cast<float>();
+                         params.stop_sequences = d.attr("get")("stop_sequences", std::vector<std::string>{}).cast<std::vector<std::string>>();
+                         params.n_batch = d.attr("get")("n_batch", 512).cast<int32_t>();
+                         params.n_threads = d.attr("get")("n_threads", 0).cast<int32_t>();
                          return params; })
          .def_readwrite("n_predict", &HegemonikonGenerationParams::n_predict)
          .def_readwrite("temperature", &HegemonikonGenerationParams::temperature)
@@ -157,25 +117,13 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def_static("from_dict", [](const py::dict &d)
                      {
                               HegemonikonWhisperModelParams params;
-                              if (d.contains("model")) {
-                                   params.model = d["model"].cast<std::string>();
-                              }
-                                   if (d.contains("language")) {
-                                        params.language = d["language"].cast<std::string>();
-                                   }
-                                   if (d.contains("use_gpu")) {
-                                        params.use_gpu = d["use_gpu"].cast<bool>();
-                                   }
-                                   if (d.contains("flash_attn")) {
-                                        params.flash_attn = d["flash_attn"].cast<bool>();
-                                   }
-                                   if (d.contains("audio_ctx")) {
-                                        params.audio_ctx = d["audio_ctx"].cast<int32_t>();
-                                   }
-                                   if (d.contains("n_threads")) {
-                                        params.n_threads = d["n_threads"].cast<int32_t>();
-                                   }
-                                   return params; })
+                              params.model = d.attr("get")("model", "").cast<std::string>();
+                              params.language = d.attr("get")("language", "en").cast<std::string>();
+                              params.use_gpu = d.attr("get")("use_gpu", true).cast<bool>();
+                              params.flash_attn = d.attr("get")("flash_attn", false).cast<bool>();
+                              params.audio_ctx = d.attr("get")("audio_ctx", 0).cast<int32_t>();
+                              params.n_threads = d.attr("get")("n_threads", std::min(4, (int32_t)std::thread::hardware_concurrency())).cast<int32_t>();
+                              return params; })
          .def_readwrite("model", &HegemonikonWhisperModelParams::model, "Path to the Whisper GGUF model file.")
          .def_readwrite("language", &HegemonikonWhisperModelParams::language, "Language for the Whisper model (e.g., 'en', 'auto').")
          .def_readwrite("use_gpu", &HegemonikonWhisperModelParams::use_gpu, "Whether to use GPU for transcription.")
@@ -213,54 +161,22 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def_static("from_dict", [](const py::dict &d)
                      {
      HegemonikonWhisperGenerationParams params;    
-     if (d.contains("step_ms")) {
-           params.step_ms = d["step_ms"].cast<int32_t>();
-     }
-     if (d.contains("length_ms")) {
-           params.length_ms = d["length_ms"].cast<int32_t>();
-          }
-     if (d.contains("keep_ms")) {
-           params.keep_ms = d["keep_ms"].cast<int32_t>();   
-     }
-     if (d.contains("capture_id")) {
-               params.capture_id = d["capture_id"].cast<int32_t>();
-     }
-     if (d.contains("vad_thold")) {
-               params.vad_thold = d["vad_thold"].cast<float>();
-     }
-     if (d.contains("freq_thold")) {
-               params.freq_thold = d["freq_thold"].cast<float>();
-     }
-     if (d.contains("translate")) {
-               params.translate = d["translate"].cast<bool>();
-     }
-     if (d.contains("tinydiarize")) {
-               params.tinydiarize = d["tinydiarize"].cast<bool>();
-     }
-     if (d.contains("no_fallback")) {
-               params.no_fallback = d["no_fallback"].cast<bool>();
-     }
-     if (d.contains("no_context")) {
-               params.no_context = d["no_context"].cast<bool>();
-     }
-     if (d.contains("max_tokens")) {
-               params.max_tokens = d["max_tokens"].cast<int32_t>();
-     }
-     if (d.contains("beam_size")) {
-               params.beam_size = d["beam_size"].cast<int32_t>();
-     }
-     if (d.contains("print_special")) {
-               params.print_special = d["print_special"].cast<bool>();
-     }
-     if (d.contains("no_timestamps")) {
-               params.no_timestamps = d["no_timestamps"].cast<bool>();
-     }
-     if (d.contains("save_audio")) {
-               params.save_audio = d["save_audio"].cast<bool>();
-     }
-     if (d.contains("fname_out")) {
-               params.fname_out = d["fname_out"].cast<std::string>();
-     }
+     params.step_ms = d.attr("get")("step_ms", 300).cast<int32_t>();
+     params.length_ms = d.attr("get")("length_ms", 1000).cast<int32_t>();
+     params.keep_ms = d.attr("get")("keep_ms", 3000).cast<int32_t>();
+     params.capture_id = d.attr("get")("capture_id", 0).cast<int32_t>();
+     params.vad_thold = d.attr("get")("vad_thold", 200).cast<int32_t>();
+     params.freq_thold = d.attr("get")("freq_thold", 0).cast<int32_t>();
+     params.translate = d.attr("get")("translate", false).cast<bool>();
+     params.tinydiarize = d.attr("get")("tinydiarize", false).cast<bool>();
+     params.no_fallback = d.attr("get")("no_fallback", false).cast<bool>();
+     params.no_context = d.attr("get")("no_context", false).cast<bool>();
+     params.max_tokens = d.attr("get")("max_tokens", 0).cast<int32_t>();
+     params.beam_size = d.attr("get")("beam_size", 1).cast<int32_t>();
+     params.print_special = d.attr("get")("print_special", false).cast<bool>();
+     params.no_timestamps = d.attr("get")("no_timestamps", false).cast<bool>();
+     params.save_audio = d.attr("get")("save_audio", false).cast<bool>();
+     params.fname_out = d.attr("get")("fname_out", "").cast<std::string>();
      return params; })
          .def_readwrite("step_ms", &HegemonikonWhisperGenerationParams::step_ms, "Step size in milliseconds for audio processing.")
          .def_readwrite("length_ms", &HegemonikonWhisperGenerationParams::length_ms, "Length of audio segments in milliseconds.")
@@ -321,21 +237,11 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def_static("from_dict", [](const py::dict &d)
                      {
              HegemonikonQuantizedModelInfo info;
-             if (d.contains("model_id")) {
-                 info.model_id = d["model_id"].cast<std::string>();
-             }
-             if (d.contains("local_path")) {
-                 info.local_path = d["local_path"].cast<std::string>();
-             }
-             if (d.contains("last_modified")) {
-                 info.last_modified = d["last_modified"].cast<std::string>();
-             }
-             if (d.contains("quantization")) {
-                 info.quantization = d["quantization"].cast<std::string>();
-             }
-             if (d.contains("fileSize")) {
-                 info.fileSize = d["fileSize"].cast<size_t>();
-             }
+             info.model_id = d.attr("get")("model_id", "").cast<std::string>();
+             info.local_path = d.attr("get")("local_path", "").cast<std::string>();
+             info.last_modified = d.attr("get")("last_modified", 0).cast<std::string>();
+             info.quantization = d.attr("get")("quantization", "").cast<std::string>();
+             info.fileSize = d.attr("get")("fileSize", 0).cast<int64_t>();
              return info; })
          .def("is_valid", &HegemonikonQuantizedModelInfo::isValid, "Check if the model info is valid (non-empty model_id and local_path).")
          .def("__str__", [](const HegemonikonQuantizedModelInfo &info)
@@ -351,6 +257,23 @@ PYBIND11_MODULE(hegemonikon_py, m)
 
      py::class_<HegemonikonBenchmarkMetrics>(m, "HegemonikonBenchmarkMetrics", "Metrics collected during model benchmarking.")
          .def(py::init<>())
+         .def_static("from_dict", [](const py::dict &d)
+                     {
+     HegemonikonBenchmarkMetrics metrics;
+     metrics.load_time_ms = d.attr("get")("load_time_ms", 0).cast<int64_t>();
+     metrics.generation_time = d.attr("get")("generation_time", 0.0).cast<float>();
+     metrics.total_time = d.attr("get")("total_time", 0.0).cast<float>();
+     metrics.tokens_generated = d.attr("get")("tokens_generated", 0).cast<int64_t>();
+     metrics.tokens_per_second = d.attr("get")("tokens_per_second", 0.0).cast<float>();
+     metrics.memory_usage = d.attr("get")("memory_usage", 0.0).cast<float>();
+     metrics.success = d.attr("get")("success", false).cast<bool>();
+     metrics.errorMessage = d.attr("get")("errorMessage", "").cast<std::string>();
+     metrics.generation_times = d.attr("get")("generation_times", std::vector<float>{}).cast<std::vector<float>>();
+     metrics.tokens_per_second_history = d.attr("get")("tokens_per_second_history", std::vector<float>{}).cast<std::vector<float>>();
+     metrics.avg_ttft_ms = d.attr("get")("avg_ttft_ms", 0.0).cast<float>();
+     metrics.avg_decode_tps = d.attr("get")("avg_decode_tps", 0.0).cast<float>();
+     metrics.avg_end_to_end_latency_ms = d.attr("get")("avg_end_to_end_latency_ms", 0.0).cast<float>();
+     return metrics; })
          .def_readwrite("load_time_ms", &HegemonikonBenchmarkMetrics::load_time_ms, "Time taken to load the model in milliseconds.")
          .def_readwrite("generation_time", &HegemonikonBenchmarkMetrics::generation_time, "Time taken for text generation in seconds.")
          .def_readwrite("total_time", &HegemonikonBenchmarkMetrics::total_time, "Total time for the benchmark in seconds.")
@@ -385,6 +308,28 @@ PYBIND11_MODULE(hegemonikon_py, m)
               py::arg("repetitions") = 10,
               py::arg("warmup") = true,
               py::arg("generation_params") = HegemonikonGenerationParams())
+         .def_static("from_dict", [](const py::dict &d)
+                     {   
+                              HegemonikonBenchmarkParams params;
+                              params.n_gpu_layers = d.attr("get")("n_gpu_layers", 0).cast<int>();
+                              params.repetitions = d.attr("get")("repetitions", 10).cast<int>();
+                              params.warmup = d.attr("get")("warmup", true).cast<bool>();
+                              if (d.contains("generation_params") && py::isinstance<py::dict>(d["generation_params"]))
+                              {
+                                  params.generation_params = HegemonikonGenerationParams();
+                                  params.generation_params.n_predict = d["generation_params"].attr("get")("n_predict", 128).cast<int32_t>();
+                                  params.generation_params.temperature = d["generation_params"].attr("get")("temperature", 0.8f).cast<float>();
+                                  params.generation_params.top_k = d["generation_params"].attr("get")("top_k", 40).cast<int32_t>();
+                                  params.generation_params.top_p = d["generation_params"].attr("get")("top_p", 0.95f).cast<float>();
+                                  params.generation_params.repeat_penalty = d["generation_params"].attr("get")("repeat_penalty", 1.1f).cast<float>();
+                                  params.generation_params.penalty_last_n = d["generation_params"].attr("get")("penalty_last_n", 64).cast<int32_t>();
+                                  params.generation_params.penalty_freq = d["generation_params"].attr("get")("penalty_freq", 0.0).cast<float>();
+                                  params.generation_params.penalty_present = d["generation_params"].attr("get")("penalty_present", 0.0).cast<float>();
+                                  params.generation_params.stop_sequences = d["generation_params"].attr("get")("stop_sequences", std::vector<std::string>{}).cast<std::vector<std::string>>();
+                                  params.generation_params.n_batch = d["generation_params"].attr("get")("n_batch", 512).cast<int32_t>();
+                                  params.generation_params.n_threads = d["generation_params"].attr("get")("n_threads", 0).cast<int32_t>();
+                              }
+                              return params; })
          .def_readwrite("n_gpu_layers", &HegemonikonBenchmarkParams::n_gpu_layers, "Number of GPU layers to use during benchmarking.")
          .def_readwrite("repetitions", &HegemonikonBenchmarkParams::repetitions, "Number of times to repeat the benchmark.")
          .def_readwrite("warmup", &HegemonikonBenchmarkParams::warmup, "Whether to perform a warmup run before benchmarking.")

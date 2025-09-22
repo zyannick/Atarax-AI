@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, computed_field, field_validator
 
 from ataraxai.praxis.modules.models_manager.models_manager import LlamaCPPModelInfo
 
+from ataraxai.hegemonikon_py import HegemonikonLlamaModelParams, HegemonikonGenerationParams # type: ignore
 
 class LlamaModelParams(BaseModel):
     config_version: str = Field(
@@ -26,6 +27,9 @@ class LlamaModelParams(BaseModel):
 
     def is_setup_complete(self) -> bool:
         return bool(self.model_path)
+    
+    def to_hegemonikon(self) -> HegemonikonLlamaModelParams:
+        return HegemonikonLlamaModelParams.from_dict(self.model_dump())
 
 
 class GenerationParams(BaseModel):
@@ -64,6 +68,9 @@ class GenerationParams(BaseModel):
         if value < 0:
             raise ValueError("Value must be non-negative.")
         return value
+    
+    def to_hegemonikon(self) -> HegemonikonGenerationParams:
+        return HegemonikonGenerationParams.from_dict(self.model_dump())
 
 
 class LlamaConfig(BaseModel):

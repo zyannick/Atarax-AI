@@ -104,32 +104,32 @@ struct HegemonikonQuantizedModelInfo
                ", fileSize=" + std::to_string(fileSize) + ")";
     }
 };
-
+    
 struct HegemonikonBenchmarkMetrics
 {
-    double load_time_ms = 0.0;
-    double generation_time = 0.0;
-    double total_time = 0.0;
+    float load_time_ms = 0.0f;
+    float generation_time = 0.0f;
+    float total_time = 0.0f;
     int tokens_generated = 0;
-    double tokens_per_second = 0.0;
-    double memory_usage = 0.0;
+    float tokens_per_second = 0.0f;
+    float memory_usage = 0.0f;
     bool success = false;
     std::string errorMessage;
 
-    std::vector<double> generation_times;
-    std::vector<double> tokens_per_second_history;
+    std::vector<float> generation_times;
+    std::vector<float> tokens_per_second_history;
 
-    double avg_ttft_ms = 0.0;
-    double avg_decode_tps = 0.0;
-    double avg_end_to_end_latency_ms = 0.0;
+    float avg_ttft_ms = 0.0f;
+    float avg_decode_tps = 0.0f;
+    float avg_end_to_end_latency_ms = 0.0f;
 
-    std::vector<double> ttft_history;
-    std::vector<double> end_to_end_latency_history;
-    std::vector<double> decode_tps_history;
+    std::vector<float> ttft_history;
+    std::vector<float> end_to_end_latency_history;
+    std::vector<float> decode_tps_history;
 
-    double p50_latency_ms = 0.0;
-    double p95_latency_ms = 0.0;
-    double p99_latency_ms = 0.0;
+    float p50_latency_ms = 0.0f;
+    float p95_latency_ms = 0.0f;
+    float p99_latency_ms = 0.0f;
 };
 
 struct HegemonikonBenchmarkParams

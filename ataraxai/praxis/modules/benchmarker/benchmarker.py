@@ -32,13 +32,16 @@ class QuantizedModelInfo(BaseModel):
             raise ValueError("Size in bytes must be non-negative.")
         return value
     
-    @field_validator("local_path")
-    def validate_local_path(cls, value: str) -> str:
-        if not value:
-            raise ValueError("Local path must be a non-empty string.")
-        if not Path(value).exists():
-            raise ValueError("Local path must point to an existing file.")
-        return value
+    # @field_validator("local_path")
+    # def validate_local_path(cls, value: str) -> str:
+    #     if not value:
+    #         raise ValueError("Local path must be a non-empty string.")
+    #     if not Path(value).exists():
+    #         raise ValueError("Local path must point to an existing file.")
+    #     return value
+    
+    def to_hegemonikon(self) -> HegemonikonQuantizedModelInfo:
+        return HegemonikonQuantizedModelInfo.from_dict(self.model_dump())
 
 
 class BenchmarkMetrics(BaseModel):
@@ -109,6 +112,8 @@ class BenchmarkMetrics(BaseModel):
             raise ValueError("Value must be non-negative.")
         return value
     
+    def to_hegemonikon(self) -> HegemonikonBenchmarkMetrics:
+        return HegemonikonBenchmarkMetrics.from_dict(self.model_dump())
 
 class BenchmarkParams(BaseModel):
     n_gpu_layers: int = Field(..., description="Number of GPU layers to use.")
@@ -125,6 +130,9 @@ class BenchmarkParams(BaseModel):
         if value < 0:
             raise ValueError("Value must be a non-negative integer.")
         return value
+    
+    def to_hegemonikon(self) -> HegemonikonBenchmarkParams:
+        return HegemonikonBenchmarkParams.from_dict(self.model_dump())
 
 
 class BenchmarkResult(BaseModel):
@@ -147,10 +155,61 @@ class BenchmarkResult(BaseModel):
 
 
 class BenchmarkRunner:
-    def __init__(self, model_info, benchmark_params, llama_model_params):
-        self.model_info = model_info
+    def __init__(self, quantized_model_info: QuantizedModelInfo, benchmark_params: BenchmarkParams, llama_model_params: LlamaModelParams):
+        self.quantized_model_info = quantized_model_info
         self.benchmark_params = benchmark_params
         self.llama_model_params = llama_model_params
+        self.benchmarker = HegemonikonLlamaBenchmarker(quantized_model_info.to_hegemonikon(), benchmark_params.to_hegemonikon(), llama_model_params.to_hegemonikon())
 
-    def run(self):
-        pass
+
+
+if __name__ == "__main__":
+    import time
+
+    quantized_model_info = QuantizedModelInfo(
+        model_id="test-model",
+        local_path="path/to/model.bin",
+        last_modified="2023-10-01T12:00:00Z",
+        quantisation_type="Q4_0",
+        size_bytes=123456789,
+    )
+
+    benchmark_params = BenchmarkParams(
+        n_gpu_layers=0,
+        repetitions=1,
+        warmup=True,
+        generation_params=GenerationParams(
+            n_predict=50,
+            temperature=0.7,
+            top_k=40,
+            top_p=0.9,
+            repeat_penalty=1.1,
+            penalty_last_n=64,
+            penalty_freq=0.5,
+            penalty_present=0.0,
+            stop_sequences=["</s>"],
+            n_batch=1,
+            n_threads=4,
+        ),
+    )
+
+    llama_model_params = LlamaModelParams(
+        model_info=None,  # Assuming model_info is optional
+        n_ctx=512,
+        n_parts=-1,
+        seed=-1,
+        f16_kv=False,
+        logits_all=False,
+        vocab_only=False,
+        use_mmap=True,
+        use_mlock=False,
+    )
+
+    benchmark_runner = BenchmarkRunner(quantized_model_info, benchmark_params, llama_model_params)
+    
+    start_time = time.time()
+    # result = benchmark_runner.run_benchmark()
+    end_time = time.time()
+    
+    print(f"Benchmark completed in {end_time - start_time:.2f} seconds.")
+    # print(result)

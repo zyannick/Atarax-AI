@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-
+from hegemonikon_py import HegemonikonWhisperModelParams, HegemonikonWhisperTranscriptionParams  # type: ignore
 
 class WhisperModelParams(BaseModel):
     n_threads: int = Field(default=0, description="Number of threads to use for processing.")
@@ -8,6 +8,9 @@ class WhisperModelParams(BaseModel):
     audio_ctx: int = Field(default=0, description="Audio context size.")
     model: str = Field(default="data/last_models/models/whisper/ggml-base.en.bin", description="Path to the model file.")
     language: str = Field(default="en", description="Language for the model.")
+
+    def to_hegemonikon(self) -> HegemonikonWhisperModelParams:
+        return HegemonikonWhisperModelParams.from_dict(self.model_dump())
 
 
 class WhisperTranscriptionParams(BaseModel):
@@ -21,6 +24,9 @@ class WhisperTranscriptionParams(BaseModel):
     max_len: int = Field(default=512, description="Maximum length of the input.")
     single_segment: bool = Field(default=False, description="Whether to use a single segment.")
     temperature: float = Field(default=0.8, description="Temperature for sampling.")
+
+    def to_hegemonikon(self) -> HegemonikonWhisperTranscriptionParams:
+        return HegemonikonWhisperTranscriptionParams.from_dict(self.model_dump())
 
 
 class WhisperConfig(BaseModel):

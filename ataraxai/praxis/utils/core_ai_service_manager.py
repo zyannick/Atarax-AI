@@ -237,62 +237,62 @@ class CoreAIServiceManager:
         llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
         whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
 
-        self.llama_cpp_params_cc, self.llama_cpp_generation_params_cc = (
-            self._convert_params(llama_params, whisper_params)
-        )
+        # self.llama_cpp_params_cc, self.llama_cpp_generation_params_cc = (
+        #     self._convert_params(llama_params, whisper_params)
+        # )
 
         self.core_ai_service = self._create_core_ai_service(
-            self.llama_cpp_params_cc, None
+            llama_params.to_hegemonikon(), None
         )
 
-    def _convert_params(
-        self, llama_params: LlamaModelParams, whisper_params: WhisperModelParams
-    ) -> Tuple[Any, Any]:
-        """
-        Converts Llama and Whisper model parameter objects into their corresponding hegemonikon_py representations.
+    # def _convert_params(
+    #     self, llama_params: LlamaModelParams, whisper_params: WhisperModelParams
+    # ) -> Tuple[Any, Any]:
+    #     """
+    #     Converts Llama and Whisper model parameter objects into their corresponding hegemonikon_py representations.
 
-        Args:
-            llama_params (LlamaModelParams): The Llama model parameters to convert.
-            whisper_params (WhisperModelParams): The Whisper model parameters to convert.
+    #     Args:
+    #         llama_params (LlamaModelParams): The Llama model parameters to convert.
+    #         whisper_params (WhisperModelParams): The Whisper model parameters to convert.
 
-        Returns:
-            Tuple[Any, Any, Any, Any]: A tuple containing:
-                - Converted Llama model parameters (hegemonikon_py.LlamaModelParams)
-                - Converted Llama generation parameters (hegemonikon_py.GenerationParams)
-                - Converted Whisper model parameters (hegemonikon_py.WhisperModelParams)
-                - Converted Whisper transcription parameters (hegemonikon_py.WhisperGenerationParams)
-        """
-        llama_model_params_cc: Any = hegemonikon_py.HegemonikonLlamaModelParams.from_dict(  # type: ignore
-            {
-                "model_path": str(llama_params.model_info.local_path),  # type: ignore
-                "n_ctx": llama_params.n_ctx,
-                "n_gpu_layers": llama_params.n_gpu_layers,
-                "main_gpu": llama_params.main_gpu,
-                "tensor_split": llama_params.tensor_split,
-                "vocab_only": llama_params.vocab_only,
-                "use_map": llama_params.use_map,
-                "use_mlock": llama_params.use_mlock,
-            }
-        )
+    #     Returns:
+    #         Tuple[Any, Any, Any, Any]: A tuple containing:
+    #             - Converted Llama model parameters (hegemonikon_py.LlamaModelParams)
+    #             - Converted Llama generation parameters (hegemonikon_py.GenerationParams)
+    #             - Converted Whisper model parameters (hegemonikon_py.WhisperModelParams)
+    #             - Converted Whisper transcription parameters (hegemonikon_py.WhisperGenerationParams)
+    #     """
+    #     llama_model_params_cc: Any = hegemonikon_py.HegemonikonLlamaModelParams.from_dict(  # type: ignore
+    #         {
+    #             "model_path": str(llama_params.model_info.local_path),  # type: ignore
+    #             "n_ctx": llama_params.n_ctx,
+    #             "n_gpu_layers": llama_params.n_gpu_layers,
+    #             "main_gpu": llama_params.main_gpu,
+    #             "tensor_split": llama_params.tensor_split,
+    #             "vocab_only": llama_params.vocab_only,
+    #             "use_map": llama_params.use_map,
+    #             "use_mlock": llama_params.use_mlock,
+    #         }
+    #     )
 
-        llama_generation_params_cc: Any = hegemonikon_py.HegemonikonGenerationParams.from_dict(  # type: ignore
-            self.config_manager.llama_config_manager.get_generation_params().model_dump()
-        )
+    #     llama_generation_params_cc: Any = hegemonikon_py.HegemonikonGenerationParams.from_dict(  # type: ignore
+    #         self.config_manager.llama_config_manager.get_generation_params().model_dump()
+    #     )
 
-        # whisper_model_params_cc: Any = hegemonikon_py.HegemonikonWhisperModelParams.from_dict(  # type: ignore
-        #     whisper_params.model_dump()
-        # )
+    #     # whisper_model_params_cc: Any = hegemonikon_py.HegemonikonWhisperModelParams.from_dict(  # type: ignore
+    #     #     whisper_params.model_dump()
+    #     # )
 
-        # whisper_transcription_params_cc: Any = hegemonikon_py.HegemonikonWhisperGenerationParams.from_dict(  # type: ignore
-        #     self.config_manager.whisper_config_manager.get_transcription_params().model_dump()
-        # )
+    #     # whisper_transcription_params_cc: Any = hegemonikon_py.HegemonikonWhisperGenerationParams.from_dict(  # type: ignore
+    #     #     self.config_manager.whisper_config_manager.get_transcription_params().model_dump()
+    #     # )
 
-        return (
-            llama_model_params_cc,
-            llama_generation_params_cc,
-            # whisper_model_params_cc,
-            # whisper_transcription_params_cc,
-        )  # type: ignore
+    #     return (
+    #         llama_model_params_cc,
+    #         llama_generation_params_cc,
+    #         # whisper_model_params_cc,
+    #         # whisper_transcription_params_cc,
+    #     )  # type: ignore
 
     def _create_core_ai_service(self, llama_params: Any, whisper_params: Any) -> Any:
         """

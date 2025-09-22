@@ -284,6 +284,9 @@ struct HegemonikonGenerationParams
           penalty_freq(penalty_freq), penalty_present(penalty_present),
           stop_sequences(std::move(stop_seqs)), n_batch(batch_size), n_threads(threads) {}
 
+    
+          
+
     /**
      * @brief Equality operator for HegemonikonGenerationParams.
      *
