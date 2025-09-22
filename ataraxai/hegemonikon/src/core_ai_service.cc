@@ -138,7 +138,10 @@ std::string CoreAIService::process_prompt(const std::string &prompt_text, const 
 {
     if (is_llama_model_loaded())
     {
-        return llama_interface_->generate_completion(prompt_text, llama_generation_params_);
+        double ttft_ms = 0.0;
+        double decode_duration_ms = 0.0;
+        int32_t tokens_generated = 0;
+        return llama_interface_->generate_completion(prompt_text, llama_generation_params_, ttft_ms, decode_duration_ms, tokens_generated);
     }
     else
     {

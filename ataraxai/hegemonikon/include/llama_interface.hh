@@ -5,12 +5,14 @@
 #include <functional>
 #include <llama.h>
 #include <stdexcept>
+// #include <model_benchmarker.hh>
 
 struct llama_model;
 struct llama_context;
 struct llama_context_params;
 
 using llama_token_callback = std::function<bool(const std::string &token_text)>;
+
 
 struct LlamaModelParams
 {
@@ -242,11 +244,10 @@ struct LlamaModelParams
     }
 };
 
-
 struct GenerationParams
 {
     int32_t n_predict = 128;
-    float temp = 0.8f;
+    float temperature = 0.8f;
     int32_t top_k = 40;
     float top_p = 0.95f;
     float repeat_penalty = 1.1f;
@@ -256,6 +257,8 @@ struct GenerationParams
     std::vector<std::string> stop_sequences;
     int32_t n_batch = 1024;
     int32_t n_threads = 0;
+    bool add_bos = true;
+    bool parse_special = false;
 
     GenerationParams() = default;
 
@@ -276,7 +279,7 @@ struct GenerationParams
                      float penalty_freq = 0.0f, float penalty_present = 0.0f,
                      std::vector<std::string> stop_seqs = {}, int32_t batch_size = 1024,
                      int32_t threads = 0)
-        : n_predict(predict), temp(temperature), top_k(top_k), top_p(top_p),
+        : n_predict(predict), temperature(temperature), top_k(top_k), top_p(top_p),
           repeat_penalty(repeat_penalty), penalty_last_n(penalty_last_n),
           penalty_freq(penalty_freq), penalty_present(penalty_present),
           stop_sequences(std::move(stop_seqs)), n_batch(batch_size), n_threads(threads) {}
@@ -285,7 +288,7 @@ struct GenerationParams
      * @brief Equality operator for GenerationParams.
      *
      * Compares this GenerationParams object with another for equality.
-     * Returns true if all generation parameters (n_predict, temp, top_k, top_p,
+     * Returns true if all generation parameters (n_predict, temperature, top_k, top_p,
      * repeat_penalty, stop_sequences, n_batch, n_threads) are equal between the two objects.
      *
      * @param other The GenerationParams object to compare with.
@@ -294,7 +297,7 @@ struct GenerationParams
     bool operator==(const GenerationParams &other) const
     {
         return n_predict == other.n_predict &&
-               temp == other.temp &&
+               temperature == other.temperature &&
                top_k == other.top_k &&
                top_p == other.top_p &&
                repeat_penalty == other.repeat_penalty &&
@@ -324,7 +327,7 @@ struct GenerationParams
      * @brief Hash function for GenerationParams.
      *
      * Computes a hash value for the GenerationParams object by combining the hash values
-     * of its individual parameters (n_predict, temp, top_k, top_p, repeat_penalty,
+     * of its individual parameters (n_predict, temperature, top_k, top_p, repeat_penalty,
      * stop_sequences, n_batch, n_threads).
      *
      * @return A std::size_t hash value representing the GenerationParams object.
@@ -332,7 +335,7 @@ struct GenerationParams
     std::size_t hash() const
     {
         std::size_t h = std::hash<int32_t>()(n_predict) ^
-                        std::hash<float>()(temp) ^
+                        std::hash<float>()(temperature) ^
                         std::hash<int32_t>()(top_k) ^
                         std::hash<float>()(top_p) ^
                         std::hash<float>()(repeat_penalty) ^
@@ -351,14 +354,14 @@ struct GenerationParams
      *
      * This method constructs a human-readable string that describes the current state
      * of the GenerationParams object, including all its parameters such as n_predict,
-     * temp, top_k, top_p, repeat_penalty, stop_sequences, n_batch, and n_threads.
+     * temperature, top_k, top_p, repeat_penalty, stop_sequences, n_batch, and n_threads.
      *
      * @return A string summarizing the generation parameters.
      */
     std::string to_string() const
     {
         return "GenerationParams(n_predict=" + std::to_string(n_predict) +
-               ", temp=" + std::to_string(temp) +
+               ", temperature=" + std::to_string(temperature) +
                ", top_k=" + std::to_string(top_k) +
                ", top_p=" + std::to_string(top_p) +
                ", repeat_penalty=" + std::to_string(repeat_penalty) +
@@ -404,7 +407,7 @@ struct GenerationParams
      */
     GenerationParams &set_temp(float temperature)
     {
-        temp = temperature;
+        temperature = temperature;
         return *this;
     }
 
@@ -519,18 +522,16 @@ public:
     }
 
     ~LlamaContextWrapper()
-    { // Destructor automatically called
+    {
         if (ctx_)
         {
             llama_free(ctx_);
         }
     }
 
-    // Prevent copying to avoid double-free
     LlamaContextWrapper(const LlamaContextWrapper &) = delete;
     LlamaContextWrapper &operator=(const LlamaContextWrapper &) = delete;
 
-    // Allow move semantics
     LlamaContextWrapper(LlamaContextWrapper &&other) noexcept
         : ctx_(other.ctx_)
     {
@@ -559,11 +560,14 @@ public:
     std::string get_model_info() const;
     std::vector<int32_t> tokenization(const std::string &text) const;
     std::string detokenization(const std::vector<int32_t> &tokens) const;
-    virtual std::string generate_completion(const std::string &prompt_text, const GenerationParams &params);
+    virtual std::string generate_completion(const std::string &prompt_text, const GenerationParams &params, double &ttft_ms,
+        double &decode_duration_ms,
+        int32_t &tokens_generated);
     virtual bool generate_completion_streaming(const std::string &prompt_text,
-                                       const GenerationParams &params,
-                                       llama_token_callback callback);
+                                               const GenerationParams &params,
+                                               llama_token_callback callback);
     std::vector<float> get_embeddings(const std::string &text);
+
 
     static void init_backend();
     static void free_backend();
@@ -574,6 +578,11 @@ private:
     const llama_vocab *vocab_ = nullptr;
 
     LlamaModelParams current_model_params_;
+
+    static constexpr double FAST_TTFT_MS = 200.0;
+    static constexpr double ACCEPTABLE_TTFT_MS = 500.0;
+    static constexpr double MIN_TOKENS_PER_SEC = 5.0;
+    static constexpr double GOOD_TOKENS_PER_SEC = 15.0;
 
     std::vector<int32_t> tokenize(const std::string &text, bool add_bos, bool special) const;
     std::string detokenize_token(int32_t token) const;

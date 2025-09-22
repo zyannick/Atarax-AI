@@ -78,7 +78,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def(py::init<int32_t, float, int32_t, float, float, int32_t, float, float,
                        std::vector<std::string>, int32_t, int32_t>(),
               py::arg("n_predict") = 128,
-              py::arg("temp") = 0.8f,
+              py::arg("temperature") = 0.8f,
               py::arg("top_k") = 40,
               py::arg("top_p") = 0.95f,
               py::arg("repeat_penalty") = 1.1f,
@@ -94,8 +94,8 @@ PYBIND11_MODULE(hegemonikon_py, m)
                          if (d.contains("n_predict")) {
                          params.n_predict = d["n_predict"].cast<int32_t>();
                          }
-                         if (d.contains("temp")) {
-                              params.temp = d["temp"].cast<float>();
+                         if (d.contains("temperature")) {
+                              params.temperature = d["temperature"].cast<float>();
                          }
                          if (d.contains("top_k")) {
                                    params.top_k = d["top_k"].cast<int32_t>();
@@ -126,7 +126,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
                          }
                          return params; })
          .def_readwrite("n_predict", &GenerationParams::n_predict)
-         .def_readwrite("temp", &GenerationParams::temp)
+         .def_readwrite("temperature", &GenerationParams::temperature)
          .def_readwrite("top_k", &GenerationParams::top_k)
          .def_readwrite("top_p", &GenerationParams::top_p)
          .def_readwrite("repeat_penalty", &GenerationParams::repeat_penalty)
@@ -308,27 +308,27 @@ PYBIND11_MODULE(hegemonikon_py, m)
               py::arg("audio_file_path"), py::arg("whisper_model_params"))
          .def("tokenization", &CoreAIService::tokenization, "Tokenize text using Llama model parameters",
               py::arg("text"))
-          .def("detokenization", &CoreAIService::detokenization, "Detokenize a list of tokens into text",
-               py::arg("tokens"));
+         .def("detokenization", &CoreAIService::detokenization, "Detokenize a list of tokens into text",
+              py::arg("tokens"));
 
      py::class_<QuantizedModelInfo>(m, "QuantizedModelInfo", "Information about a quantized model.")
          .def(py::init<>())
-         .def_readwrite("modelId", &QuantizedModelInfo::modelId, "Unique identifier for the model.")
-         .def_readwrite("fileName", &QuantizedModelInfo::fileName, "File name of the quantized model.")
-         .def_readwrite("lastModified", &QuantizedModelInfo::lastModified, "Last modified timestamp of the model file.")
+         .def_readwrite("model_id", &QuantizedModelInfo::model_id, "Unique identifier for the model.")
+         .def_readwrite("file_name", &QuantizedModelInfo::file_name, "File name of the quantized model.")
+         .def_readwrite("last_modified", &QuantizedModelInfo::last_modified, "Last modified timestamp of the model file.")
          .def_readwrite("quantization", &QuantizedModelInfo::quantization, "Quantization type (e.g., 'Q4_0', 'Q8_0').")
          .def_readwrite("fileSize", &QuantizedModelInfo::fileSize, "Size of the model file in bytes.")
          .def_static("from_dict", [](const py::dict &d)
                      {
              QuantizedModelInfo info;
-             if (d.contains("modelId")) {
-                 info.modelId = d["modelId"].cast<std::string>();
+             if (d.contains("model_id")) {
+                 info.model_id = d["model_id"].cast<std::string>();
              }
-             if (d.contains("fileName")) {
-                 info.fileName = d["fileName"].cast<std::string>();
+             if (d.contains("file_name")) {
+                 info.file_name = d["file_name"].cast<std::string>();
              }
-             if (d.contains("lastModified")) {
-                 info.lastModified = d["lastModified"].cast<std::string>();
+             if (d.contains("last_modified")) {
+                 info.last_modified = d["last_modified"].cast<std::string>();
              }
              if (d.contains("quantization")) {
                  info.quantization = d["quantization"].cast<std::string>();
@@ -337,7 +337,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
                  info.fileSize = d["fileSize"].cast<size_t>();
              }
              return info; })
-         .def("is_valid", &QuantizedModelInfo::isValid, "Check if the model info is valid (non-empty modelId and fileName).")
+         .def("is_valid", &QuantizedModelInfo::isValid, "Check if the model info is valid (non-empty model_id and file_name).")
          .def("__str__", [](const QuantizedModelInfo &info)
               { return info.to_string(); })
          .def("__hash__", [](const QuantizedModelInfo &info)
@@ -351,29 +351,66 @@ PYBIND11_MODULE(hegemonikon_py, m)
 
      py::class_<BenchmarkMetrics>(m, "BenchmarkMetrics", "Metrics collected during model benchmarking.")
          .def(py::init<>())
-         .def_readwrite("loadTime", &BenchmarkMetrics::loadTime, "Time taken to load the model in milliseconds.")
-         .def_readwrite("generationTime", &BenchmarkMetrics::generationTime, "Time taken to generate text in milliseconds.")
-         .def_readwrite("totalTime", &BenchmarkMetrics::totalTime, "Total time for the benchmark in milliseconds.")
-         .def_readwrite("tokensGenerated", &BenchmarkMetrics::tokensGenerated, "Number of tokens generated during the benchmark.")
-         .def_readwrite("tokensPerSecond", &BenchmarkMetrics::tokensPerSecond, "Tokens generated per second during the benchmark.")
-         .def_readwrite("memoryUsage", &BenchmarkMetrics::memoryUsage, "Memory usage during the benchmark in MB.")
+         .def_readwrite("load_time_ms", &BenchmarkMetrics::load_time_ms, "Time taken to load the model in milliseconds.")
+         .def_readwrite("generation_time", &BenchmarkMetrics::generation_time, "Time taken for text generation in seconds.")
+         .def_readwrite("total_time", &BenchmarkMetrics::total_time, "Total time for the benchmark in seconds.")
+         .def_readwrite("tokens_generated", &BenchmarkMetrics::tokens_generated, "Number of tokens generated during the benchmark.")
+         .def_readwrite("tokens_per_second", &BenchmarkMetrics::tokens_per_second, "Average tokens generated per second.")
+         .def_readwrite("memory_usage", &BenchmarkMetrics::memory_usage, "Memory usage during the benchmark in MB.")
          .def_readwrite("success", &BenchmarkMetrics::success, "Whether the benchmark was successful.")
-         .def_readwrite("errorMessage", &BenchmarkMetrics::errorMessage, "Error message if the benchmark failed.");
+         .def_readwrite("errorMessage", &BenchmarkMetrics::errorMessage, "Error message if the benchmark failed.")
+         .def_readwrite("generation_times", &BenchmarkMetrics::generation_times, "List of generation times for each run in seconds.")
+         .def_readwrite("tokens_per_second_history", &BenchmarkMetrics::tokens_per_second_history, "List of tokens per second for each run.")
+         .def_readwrite("avg_ttft_ms", &BenchmarkMetrics::avg_ttft_ms, "Average time to first token in milliseconds.")
+         .def_readwrite("avg_prefill_ms", &BenchmarkMetrics::avg_prefill_ms, "Average prefill time in milliseconds.")
+         .def_readwrite("avg_decode_tps", &BenchmarkMetrics::avg_decode_tps, "Average decode tokens per second.")
+         .def_readwrite("avg_end_to_end_latency_ms", &BenchmarkMetrics::avg_end_to_end_latency_ms, "Average end-to-end latency in milliseconds.")
+         .def_readwrite("ttft_history", &BenchmarkMetrics::ttft_history, "List of time to first token for each run in milliseconds.")
+         .def_readwrite("end_to_end_latency_history", &BenchmarkMetrics::end_to_end_latency_history, "List of end-to-end latencies for each run in milliseconds.");
 
      py::class_<BenchmarkResult>(m, "BenchmarkResult", "Result of a model benchmark.")
          .def(py::init<const std::string &>(), "Constructor with model ID")
-         .def_readwrite("modelId", &BenchmarkResult::modelId, "ID of the model being benchmarked.")
+         .def_readwrite("model_id", &BenchmarkResult::model_id, "ID of the model being benchmarked.")
          .def_readwrite("metrics", &BenchmarkResult::metrics, "Metrics collected during the benchmark.")
-         .def_readwrite("generatedText", &BenchmarkResult::generatedText, "Text generated during the benchmark.")
+         .def_readwrite("generated_text", &BenchmarkResult::generated_text, "Text generated during the benchmark.")
          .def_readwrite("promptUsed", &BenchmarkResult::promptUsed, "Prompt used for the benchmark.")
          .def("calculate_statistics", &BenchmarkResult::calculateStatistics, "Calculate statistical summaries from the benchmark metrics.");
 
+     py::class_<BenchmarkParams>(m, "BenchmarkParams", "Parameters for benchmarking models.")
+         .def(py::init<>())
+         .def(py::init<int, int, bool, const GenerationParams &>(), "Constructor with parameters",
+              py::arg("n_gpu_layers") = 0,
+              py::arg("repetitions") = 10,
+              py::arg("warmup") = true,
+              py::arg("generation_params") = GenerationParams())
+         .def_static("from_dict", [](const py::dict &d)
+                     {
+         BenchmarkParams params;
+         if (d.contains("n_gpu_layers")) {
+           params.n_gpu_layers = d["n_gpu_layers"].cast<int>();
+           }
+           if (d.contains("repetitions")) {
+               params.repetitions = d["repetitions"].cast<int>();
+               }
+               if (d.contains("warmup")) {
+                       params.warmup = d["warmup"].cast<bool>();
+                  }
+                    if (d.contains("generation_params")) {
+                          py::dict gen_params_dict = d["generation_params"].cast<py::dict>();
+                          params.generation_params = GenerationParams::from_dict(gen_params_dict);
+                    }
+           return params; })
+         .def_readwrite("n_gpu_layers", &BenchmarkParams::n_gpu_layers, "Number of GPU layers to use during benchmarking.")
+         .def_readwrite("repetitions", &BenchmarkParams::repetitions, "Number of times to repeat the benchmark.")
+         .def_readwrite("warmup", &BenchmarkParams::warmup, "Whether to perform a warmup run before benchmarking.")
+         .def_readwrite("generation_params", &BenchmarkParams::generation_params, "Generation parameters to use during benchmarking.");
+
      py::class_<LlamaBenchmarker>(m, "LlamaBenchmarker", "Benchmarks LLM models for performance and metrics.")
          .def(py::init<>(), "Default constructor")
+         .def(py::init<std::vector<QuantizedModelInfo>, std::vector<std::string>>(), "Constructor with model and prompt lists",
+              py::arg("models"), py::arg("prompts"))
          .def("benchmark_single_model", &LlamaBenchmarker::benchmarkSingleModel, "Benchmark a single LLM model",
-              py::arg("model_info"), py::arg("params"))
-         .def("benchmark_all_models", &LlamaBenchmarker::benchmarkAllModels, "Benchmark all loaded LLM models",
-              py::arg("params"));
+              py::arg("model_info"), py::arg("params"));
 
      py::class_<SecureKey>(m, "SecureKey", "A C++ class to hold sensitive data (like encryption keys) in locked memory.")
          .def("data", [](const SecureKey &self)

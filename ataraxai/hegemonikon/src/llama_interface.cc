@@ -6,6 +6,7 @@
 #include <memory>
 #include <mutex>
 #include <thread>
+#include <llama.h>
 
 static std::once_flag backend_init_flag;
 static std::atomic<bool> backend_initialized{false};
@@ -26,7 +27,6 @@ void LlamaInterface::init_backend()
                    {
         ggml_backend_load_all();
         llama_backend_init();
-        // only print errors
         llama_log_set([](enum ggml_log_level level, const char * text, void * /* user_data */) {
             if (level >= GGML_LOG_LEVEL_ERROR) {
                 fprintf(stderr, "%s", text);
@@ -181,10 +181,10 @@ bool LlamaInterface::load_model(const LlamaModelParams &params)
 
     llama_context_params ctx_p = llama_context_default_params();
     ctx_p.n_ctx = current_model_params_.n_ctx;
-    ctx_p.n_batch = std::min(512, current_model_params_.n_ctx / 4); 
+    ctx_p.n_batch = std::min(512, current_model_params_.n_ctx / 4);
     ctx_p.offload_kqv = true;
-    ctx_p.n_threads = std::max(1u, std::thread::hardware_concurrency() / 2);   
-    ctx_p.n_threads_batch = std::max(1u, std::thread::hardware_concurrency()); 
+    ctx_p.n_threads = std::max(1u, std::thread::hardware_concurrency() / 2);
+    ctx_p.n_threads_batch = std::max(1u, std::thread::hardware_concurrency());
 
     ctx_ = llama_init_from_model(model_, ctx_p);
     if (!ctx_)
@@ -285,7 +285,6 @@ std::vector<llama_token> LlamaInterface::tokenize(const std::string &text, bool 
     return result;
 }
 
-
 std::vector<int32_t> LlamaInterface::tokenization(const std::string &text) const
 {
     if (!is_model_loaded())
@@ -331,7 +330,7 @@ std::string LlamaInterface::detokenization(const std::vector<int32_t> &tokens) c
         result += piece;
     }
     return result;
-}   
+}
 
 /**
  * @brief Converts a token ID to its corresponding string representation.
@@ -351,7 +350,7 @@ std::string LlamaInterface::detokenize_token(int32_t token) const
         return "";
     }
 
-    constexpr size_t buf_size = 256; 
+    constexpr size_t buf_size = 256;
     char buf[buf_size];
     int n = llama_token_to_piece(vocab_, token, buf, buf_size, 0, true);
 
@@ -411,12 +410,12 @@ llama_sampler *LlamaInterface::create_sampler(const GenerationParams &params)
                                       params.penalty_freq,
                                       params.penalty_present));
 
-    llama_sampler_chain_add(smpl, llama_sampler_init_min_p(0.05f, 1)); 
+    llama_sampler_chain_add(smpl, llama_sampler_init_min_p(0.05f, 1));
 
     llama_sampler_chain_add(smpl, llama_sampler_init_top_k(params.top_k));
 
     llama_sampler_chain_add(smpl, llama_sampler_init_top_p(params.top_p, 1));
-    llama_sampler_chain_add(smpl, llama_sampler_init_temp(params.temp));
+    llama_sampler_chain_add(smpl, llama_sampler_init_temp(params.temperature));
 
     llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
 
@@ -435,8 +434,10 @@ llama_sampler *LlamaInterface::create_sampler(const GenerationParams &params)
  * @return The generated completion as a string. Returns an error message string if the model is not loaded,
  *         the prompt is empty, the context size is exceeded, or an exception occurs during generation.
  */
-std::string LlamaInterface::generate_completion(const std::string &prompt_text, const GenerationParams &gen_params)
+std::string LlamaInterface::generate_completion(const std::string &prompt_text, const GenerationParams &gen_params, double &ttft_ms, double &decode_duration_ms, int32_t &tokens_generated)
 {
+
+    auto start = std::chrono::high_resolution_clock::now();
     if (!is_model_loaded())
     {
         return "[Error: Model not loaded]";
@@ -453,14 +454,16 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
     ctx_params.n_ctx = current_model_params_.n_ctx;
     ctx_params.n_batch = current_model_params_.n_batch;
 
-    // std::cout << ctx_params.n_batch << std::endl;
-    // std::cout << gen_params.n_batch << std::endl;
+    bool first_token = true;
 
     try
     {
-        LlamaContextWrapper ctx(model_, ctx_params); 
+        LlamaContextWrapper ctx(model_, ctx_params);
         llama_sampler *sampler = create_sampler(gen_params);
+        auto tokenizer_start = std::chrono::high_resolution_clock::now();
         std::vector<llama_token> prompt_tokens = tokenize(prompt_text, true, false);
+        auto tokenizer_end = std::chrono::high_resolution_clock::now();
+        double tokenizer_duration = std::chrono::duration<double, std::milli>(tokenizer_end - tokenizer_start).count();
 
         llama_batch batch = llama_batch_get_one(prompt_tokens.data(), prompt_tokens.size());
         llama_token new_token_id;
@@ -487,6 +490,13 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
 
             new_token_id = llama_sampler_sample(sampler, ctx, -1);
 
+            if (first_token)
+            {
+                auto ttft_end = std::chrono::high_resolution_clock::now();
+                ttft_ms = std::chrono::duration<double, std::milli>(ttft_end - start).count();
+                first_token = false;
+            }
+
             if (llama_vocab_is_eog(vocab, new_token_id))
             {
                 break;
@@ -505,15 +515,15 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
             if (current_nb_predict >= gen_params.n_predict)
             {
                 printf("\033[0m\n");
-                break; 
+                break;
             }
 
             bool stopped_by_sequence = false;
             if (gen_params.stop_sequences.size() > 0)
-            { 
+            {
                 for (size_t i = 0; i < gen_params.stop_sequences.size(); ++i)
                 {
-                    const std::string &stop_seq = gen_params.stop_sequences[i]; 
+                    const std::string &stop_seq = gen_params.stop_sequences[i];
                     if (!stop_seq.empty() && completion_text.length() >= stop_seq.length())
                     {
                         if (completion_text.rfind(stop_seq) == (completion_text.length() - stop_seq.length()))
@@ -533,9 +543,11 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
             batch = llama_batch_get_one(&new_token_id, 1);
         }
 
-        llama_sampler_free(sampler); 
+        llama_sampler_free(sampler);
         // llama_free(ctx);
-
+        tokens_generated = current_nb_predict;
+        auto end = std::chrono::high_resolution_clock::now();
+        decode_duration_ms = std::chrono::duration<double, std::milli>(end - start).count() - tokenizer_duration;
         return completion_text;
     }
     catch (const std::exception &e)

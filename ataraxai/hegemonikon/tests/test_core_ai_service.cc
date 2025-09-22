@@ -27,8 +27,11 @@ public:
         unload_model_called = true;
     }
 
-    std::string generate_completion(const std::string& prompt, const GenerationParams&) override {
+    std::string generate_completion(const std::string& prompt, const GenerationParams&,  double &ttft_ms, double &decode_duration_ms, int32_t &tokens_generated) override {
         generate_completion_called = true;
+        ttft_ms = 10.0;
+        decode_duration_ms = 5.0;
+        tokens_generated = 42;
         return "mocked completion: " + prompt;
     }
 
