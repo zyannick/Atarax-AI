@@ -124,6 +124,10 @@ class BenchmarkMetrics(BaseModel):
 
     def to_hegemonikon(self) -> HegemonikonBenchmarkMetrics:
         return HegemonikonBenchmarkMetrics.from_dict(self.model_dump())
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> "BenchmarkMetrics":
+        return cls(**data)
 
 
 class BenchmarkParams(BaseModel):
@@ -191,23 +195,24 @@ class BenchmarkJob(BaseModel):
         ..., description="Llama model parameters to use during benchmarking."
     )
     status: BenchmarkJobStatus = Field(
-        BenchmarkJobStatus.QUEUED, description="Current status of the benchmark job."
+        default=BenchmarkJobStatus.QUEUED,
+        description="Current status of the benchmark job.",
     )
     created_at: str = Field(
         default_factory=lambda: datetime.now().isoformat(),
         description="Timestamp when the job was created.",
     )
     started_at: Optional[str] = Field(
-        None, description="Timestamp when the job started."
+        default=None, description="Timestamp when the job started."
     )
     completed_at: Optional[str] = Field(
-        None, description="Timestamp when the job completed."
+        default=None, description="Timestamp when the job completed."
     )
     result: Optional[BenchmarkResult] = Field(
-        None, description="Result of the benchmark job."
+        default=None, description="Result of the benchmark job."
     )
     error_message: Optional[str] = Field(
-        None, description="Error message if the job failed."
+        default=None, description="Error message if the job failed."
     )
 
     @classmethod
@@ -231,10 +236,33 @@ class BenchmarkJob(BaseModel):
 
 class BenchmarkQueueManager:
 
-    def __init__(self, max_concurrent: int = 1, persistence_file: Optional[str] = None):
-        self.max_concurrent = max_concurrent
-        self.persistence_file = Path(persistence_file) if persistence_file else None
+    def __init__(self, max_concurrent: int = 1, persistence_file: Optional[Path] = None):
+        """
+        Initializes the Benchmarker instance.
 
+        Args:
+            max_concurrent (int, optional): Maximum number of concurrent benchmark jobs. Defaults to 1.
+            persistence_file (Optional[str], optional): Path to the file used for persisting job state. Defaults to None.
+
+        Attributes:
+            max_concurrent (int): Maximum number of concurrent jobs.
+            persistence_file (Optional[Path]): Path object for the persistence file, if provided.
+            _queue (List[BenchmarkJob]): Queue of pending benchmark jobs.
+            _running (Dict[str, BenchmarkJob]): Dictionary of currently running jobs.
+            _completed (Dict[str, BenchmarkJob]): Dictionary of completed jobs.
+            _lock (threading.RLock): Reentrant lock for thread safety.
+            _worker_task (Optional[asyncio.Task]): Async worker task for job processing.
+            _shutdown_event (asyncio.Event): Event to signal shutdown.
+            _job_added_event (asyncio.Event): Event to signal a new job has been added.
+            _job_started_callbacks (List[Callable[[BenchmarkJob], None]]): Callbacks for job start events.
+            _job_completed_callbacks (List[Callable[[BenchmarkJob], None]]): Callbacks for job completion events.
+            _job_failed_callbacks (List[Callable[[BenchmarkJob], None]]): Callbacks for job failure events.
+
+        Calls:
+            _load_persisted_jobs(): Loads jobs from the persistence file if provided.
+        """
+        self.max_concurrent = max_concurrent
+        self.persistence_file = persistence_file
         self._queue: List[BenchmarkJob] = []
         self._running: Dict[str, BenchmarkJob] = {}
         self._completed: Dict[str, BenchmarkJob] = {}
@@ -399,7 +427,7 @@ class BenchmarkQueueManager:
     def _get_next_job(self) -> Optional[BenchmarkJob]:
         with self._lock:
             if self._queue and len(self._running) < self.max_concurrent:
-                return self._queue.pop(0)  # FIFO with priority
+                return self._queue.pop(0)
         return None
 
     def _move_job_to_running(self, job: BenchmarkJob):
@@ -420,14 +448,20 @@ class BenchmarkQueueManager:
         self, job: BenchmarkJob, runner: HegemonikonLlamaBenchmarker
     ):
         try:
-            result = await asyncio.to_thread(runner.benchmarkSingleModel,
+            result : HegemonikonBenchmarkResult = await asyncio.to_thread(
+                runner.benchmarkSingleModel,
                 job.model_info.to_hegemonikon(),
                 job.benchmark_params.to_hegemonikon(),
                 job.llama_model_params.to_hegemonikon(),
             )
 
             with self._lock:
-                job.result = result
+                job.result = BenchmarkResult(
+                    model_id=job.model_info.model_id,
+                    metrics=BenchmarkMetrics.from_dict(
+                        asdict(result.metrics)
+                    ),
+                )
                 job.status = BenchmarkJobStatus.COMPLETED
                 job.completed_at = datetime.now().isoformat()
 
@@ -470,9 +504,9 @@ class BenchmarkQueueManager:
         try:
             with self._lock:
                 data = {
-                    "queued": [job.to_dict() for job in self._queue],
-                    "running": [job.to_dict() for job in self._running.values()],
-                    "completed": [job.to_dict() for job in self._completed.values()],
+                    "queued": [job.model_dump() for job in self._queue],
+                    "running": [job.model_dump() for job in self._running.values()],
+                    "completed": [job.model_dump() for job in self._completed.values()],
                     "last_updated": datetime.now().isoformat(),
                 }
 
@@ -521,4 +555,3 @@ class BenchmarkQueueManager:
 
         except Exception as e:
             logger.error(f"Failed to load persisted jobs: {e}")
-
