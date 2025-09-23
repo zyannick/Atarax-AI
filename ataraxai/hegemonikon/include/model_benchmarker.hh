@@ -148,8 +148,8 @@ struct HegemonikonBenchmarkResult
 {
     std::string model_id;
     HegemonikonBenchmarkMetrics metrics;
-    HegemonikonBenchmarkParams benchmark_params;
-    HegemonikonLlamaModelParams llama_model_params;
+    // HegemonikonBenchmarkParams benchmark_params;
+    // HegemonikonLlamaModelParams llama_model_params;
     std::string generated_text;
     std::string promptUsed;
     std::string errorMessage;
@@ -193,11 +193,11 @@ public:
         initializeDefaultPrompts();
     }
 
-    HegemonikonLlamaBenchmarker(std::vector<HegemonikonQuantizedModelInfo> models, std::vector<std::string> prompts)
-        : quantized_models(std::move(models)), benchmark_prompts(std::move(prompts))
-    {
-        initializeDefaultPrompts();
-    }
+    // HegemonikonLlamaBenchmarker(std::vector<HegemonikonQuantizedModelInfo> models, std::vector<std::string> prompts)
+    //     : quantized_models(std::move(models)), benchmark_prompts(std::move(prompts))
+    // {
+    //     initializeDefaultPrompts();
+    // }
 
     void initializeDefaultPrompts()
     {
@@ -214,8 +214,8 @@ public:
     HegemonikonBenchmarkResult benchmarkSingleModel(const HegemonikonQuantizedModelInfo &quantized_model_info, const HegemonikonBenchmarkParams &benchmark_params, HegemonikonLlamaModelParams llama_model_params)
     {
         HegemonikonBenchmarkResult result(quantized_model_info.model_id);
-        result.benchmark_params = benchmark_params;
-        result.llama_model_params = llama_model_params;
+        // result.benchmark_params = benchmark_params;
+        // result.llama_model_params = llama_model_params;
 
         try
         {

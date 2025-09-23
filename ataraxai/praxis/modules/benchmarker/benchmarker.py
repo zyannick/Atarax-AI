@@ -1,5 +1,13 @@
+import asyncio
+import json
+import logging
+import threading
+import uuid
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from enum import Enum
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Callable, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -7,9 +15,9 @@ from ataraxai.hegemonikon_py import (  # type: ignore
     HegemonikonBenchmarkMetrics,
     HegemonikonBenchmarkParams,
     HegemonikonBenchmarkResult,
+    HegemonikonLlamaBenchmarker,
     HegemonikonLlamaModelParams,
     HegemonikonQuantizedModelInfo,
-    HegemonikonLlamaBenchmarker,
 )
 from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
     GenerationParams,
@@ -31,15 +39,15 @@ class QuantizedModelInfo(BaseModel):
         if value < 0:
             raise ValueError("Size in bytes must be non-negative.")
         return value
-    
-    # @field_validator("local_path")
-    # def validate_local_path(cls, value: str) -> str:
-    #     if not value:
-    #         raise ValueError("Local path must be a non-empty string.")
-    #     if not Path(value).exists():
-    #         raise ValueError("Local path must point to an existing file.")
-    #     return value
-    
+
+    @field_validator("local_path")
+    def validate_local_path(cls, value: str) -> str:
+        if not value:
+            raise ValueError("Local path must be a non-empty string.")
+        if not Path(value).exists():
+            raise ValueError("Local path must point to an existing file.")
+        return value
+
     def to_hegemonikon(self) -> HegemonikonQuantizedModelInfo:
         return HegemonikonQuantizedModelInfo.from_dict(self.model_dump())
 
@@ -106,14 +114,17 @@ class BenchmarkMetrics(BaseModel):
         0.0, description="99th percentile latency in milliseconds."
     )
 
-    @field_validator("load_time_ms", "generation_time_ms", "total_time_ms", "memory_usage_mb")
+    @field_validator(
+        "load_time_ms", "generation_time_ms", "total_time_ms", "memory_usage_mb"
+    )
     def validate_non_negative(cls, value: float) -> float:
         if value < 0:
             raise ValueError("Value must be non-negative.")
         return value
-    
+
     def to_hegemonikon(self) -> HegemonikonBenchmarkMetrics:
         return HegemonikonBenchmarkMetrics.from_dict(self.model_dump())
+
 
 class BenchmarkParams(BaseModel):
     n_gpu_layers: int = Field(..., description="Number of GPU layers to use.")
@@ -130,7 +141,7 @@ class BenchmarkParams(BaseModel):
         if value < 0:
             raise ValueError("Value must be a non-negative integer.")
         return value
-    
+
     def to_hegemonikon(self) -> HegemonikonBenchmarkParams:
         return HegemonikonBenchmarkParams.from_dict(self.model_dump())
 
@@ -140,12 +151,12 @@ class BenchmarkResult(BaseModel):
     metrics: BenchmarkMetrics = Field(
         ..., description="Benchmark metrics for the model."
     )
-    benchmark_params: BenchmarkParams = Field(
-        ..., description="Parameters used for benchmarking."
-    )
-    llama_model_params: LlamaModelParams = Field(
-        ..., description="Llama model parameters used during benchmarking."
-    )
+    # benchmark_params: BenchmarkParams = Field(
+    #     ..., description="Parameters used for benchmarking."
+    # )
+    # llama_model_params: LlamaModelParams = Field(
+    #     ..., description="Llama model parameters used during benchmarking."
+    # )
 
     @field_validator("model_id")
     def validate_model_id(cls, value: str) -> str:
@@ -154,62 +165,360 @@ class BenchmarkResult(BaseModel):
         return value
 
 
-class BenchmarkRunner:
-    def __init__(self, quantized_model_info: QuantizedModelInfo, benchmark_params: BenchmarkParams, llama_model_params: LlamaModelParams):
-        self.quantized_model_info = quantized_model_info
-        self.benchmark_params = benchmark_params
-        self.llama_model_params = llama_model_params
-        self.benchmarker = HegemonikonLlamaBenchmarker(quantized_model_info.to_hegemonikon(), benchmark_params.to_hegemonikon(), llama_model_params.to_hegemonikon())
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 
+class BenchmarkJobStatus(Enum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
 
-if __name__ == "__main__":
-    import time
 
-    quantized_model_info = QuantizedModelInfo(
-        model_id="test-model",
-        local_path="path/to/model.bin",
-        last_modified="2023-10-01T12:00:00Z",
-        quantisation_type="Q4_0",
-        size_bytes=123456789,
+class BenchmarkJob(BaseModel):
+    id: str = Field(..., description="Unique identifier for the benchmark job.")
+    model_info: QuantizedModelInfo = Field(
+        ..., description="Information about the quantized model to benchmark."
+    )
+    benchmark_params: BenchmarkParams = Field(
+        ..., description="Parameters for the benchmark."
+    )
+    llama_model_params: LlamaModelParams = Field(
+        ..., description="Llama model parameters to use during benchmarking."
+    )
+    status: BenchmarkJobStatus = Field(
+        BenchmarkJobStatus.QUEUED, description="Current status of the benchmark job."
+    )
+    created_at: str = Field(
+        default_factory=lambda: datetime.now().isoformat(),
+        description="Timestamp when the job was created.",
+    )
+    started_at: Optional[str] = Field(
+        None, description="Timestamp when the job started."
+    )
+    completed_at: Optional[str] = Field(
+        None, description="Timestamp when the job completed."
+    )
+    result: Optional[BenchmarkResult] = Field(
+        None, description="Result of the benchmark job."
+    )
+    error_message: Optional[str] = Field(
+        None, description="Error message if the job failed."
     )
 
-    benchmark_params = BenchmarkParams(
-        n_gpu_layers=0,
-        repetitions=1,
-        warmup=True,
-        generation_params=GenerationParams(
-            n_predict=50,
-            temperature=0.7,
-            top_k=40,
-            top_p=0.9,
-            repeat_penalty=1.1,
-            penalty_last_n=64,
-            penalty_freq=0.5,
-            penalty_present=0.0,
-            stop_sequences=["</s>"],
-            n_batch=1,
-            n_threads=4,
-        ),
-    )
+    @classmethod
+    def from_dict(cls, data: Dict) -> "BenchmarkJob":
+        job = cls(
+            id=data["id"],
+            model_info=QuantizedModelInfo(**data["model_info"]),
+            benchmark_params=BenchmarkParams(**data["benchmark_params"]),
+            llama_model_params=LlamaModelParams(**data["llama_model_params"]),
+            status=BenchmarkJobStatus(data["status"]),
+            created_at=data["created_at"],
+            started_at=data.get("started_at"),
+            completed_at=data.get("completed_at"),
+            error_message=data.get("error_message"),
+        )
+        if data.get("result"):
+            job.result = BenchmarkResult(**data["result"])
+            pass
+        return job
 
-    llama_model_params = LlamaModelParams(
-        model_info=None,  # Assuming model_info is optional
-        n_ctx=512,
-        n_parts=-1,
-        seed=-1,
-        f16_kv=False,
-        logits_all=False,
-        vocab_only=False,
-        use_mmap=True,
-        use_mlock=False,
-    )
 
-    benchmark_runner = BenchmarkRunner(quantized_model_info, benchmark_params, llama_model_params)
-    
-    start_time = time.time()
-    # result = benchmark_runner.run_benchmark()
-    end_time = time.time()
-    
-    print(f"Benchmark completed in {end_time - start_time:.2f} seconds.")
-    # print(result)
+class BenchmarkQueueManager:
+
+    def __init__(self, max_concurrent: int = 1, persistence_file: Optional[str] = None):
+        self.max_concurrent = max_concurrent
+        self.persistence_file = Path(persistence_file) if persistence_file else None
+
+        self._queue: List[BenchmarkJob] = []
+        self._running: Dict[str, BenchmarkJob] = {}
+        self._completed: Dict[str, BenchmarkJob] = {}
+        self._lock = threading.RLock()
+
+        self._worker_task: Optional[asyncio.Task] = None
+        self._shutdown_event = asyncio.Event()
+        self._job_added_event = asyncio.Event()
+
+        self._job_started_callbacks: List[Callable[[BenchmarkJob], None]] = []
+        self._job_completed_callbacks: List[Callable[[BenchmarkJob], None]] = []
+        self._job_failed_callbacks: List[Callable[[BenchmarkJob], None]] = []
+
+        self._load_persisted_jobs()
+
+    def add_job_started_callback(self, callback: Callable[[BenchmarkJob], None]):
+        self._job_started_callbacks.append(callback)
+
+    def add_job_completed_callback(self, callback: Callable[[BenchmarkJob], None]):
+        self._job_completed_callbacks.append(callback)
+
+    def add_job_failed_callback(self, callback: Callable[[BenchmarkJob], None]):
+        self._job_failed_callbacks.append(callback)
+
+    def enqueue_job(
+        self,
+        model_info: QuantizedModelInfo,
+        benchmark_params: BenchmarkParams,
+        llama_model_params: Any,
+    ) -> str:
+        job_id = str(uuid.uuid4())
+        job = BenchmarkJob(
+            id=job_id,
+            model_info=model_info,
+            benchmark_params=benchmark_params,
+            llama_model_params=llama_model_params,
+        )
+
+        with self._lock:
+            self._queue.append(job)
+            self._persist_jobs()
+
+        self._job_added_event.set()
+        return job_id
+
+    def get_job_status(self, job_id: str) -> Optional[BenchmarkJobStatus]:
+        with self._lock:
+            if job_id in self._running:
+                return self._running[job_id].status
+
+            if job_id in self._completed:
+                return self._completed[job_id].status
+
+            for job in self._queue:
+                if job.id == job_id:
+                    return job.status
+
+        return None
+
+    def get_job(self, job_id: str) -> Optional[BenchmarkJob]:
+        with self._lock:
+            if job_id in self._running:
+                return self._running[job_id]
+            if job_id in self._completed:
+                return self._completed[job_id]
+            for job in self._queue:
+                if job.id == job_id:
+                    return job
+        return None
+
+    def cancel_job(self, job_id: str) -> bool:
+        with self._lock:
+            for i, job in enumerate(self._queue):
+                if job.id == job_id:
+                    job.status = BenchmarkJobStatus.CANCELLED
+                    cancelled_job = self._queue.pop(i)
+                    self._completed[job_id] = cancelled_job
+                    logger.info(f"Cancelled job {job_id}")
+                    self._persist_jobs()
+                    return True
+
+        return False
+
+    def get_queue_status(self) -> Dict[str, Any]:
+        with self._lock:
+            return {
+                "queued": len(self._queue),
+                "running": len(self._running),
+                "completed": len(self._completed),
+                "queue_jobs": [
+                    {"id": job.id, "model": job.model_info.model_id}
+                    for job in self._queue
+                ],
+                "running_jobs": [
+                    {
+                        "id": job.id,
+                        "model": job.model_info.model_id,
+                        "started_at": job.started_at,
+                    }
+                    for job in self._running.values()
+                ],
+                "max_concurrent": self.max_concurrent,
+            }
+
+    def clear_completed_jobs(self):
+        with self._lock:
+            cleared_count = len(self._completed)
+            self._completed.clear()
+            logger.info(f"Cleared {cleared_count} completed jobs")
+            self._persist_jobs()
+
+    async def start_worker(self):
+        if self._worker_task and not self._worker_task.done():
+            logger.warning("Worker already running")
+            return
+
+        logger.info("Starting benchmark queue worker")
+        self._shutdown_event.clear()
+        self._worker_task = asyncio.create_task(self._worker_loop())
+
+    async def stop_worker(self):
+        logger.info("Stopping benchmark queue worker")
+        self._shutdown_event.set()
+
+        if self._worker_task:
+            try:
+                await asyncio.wait_for(self._worker_task, timeout=30.0)
+            except asyncio.TimeoutError:
+                logger.warning("Worker did not stop gracefully, cancelling")
+                self._worker_task.cancel()
+                try:
+                    await self._worker_task
+                except asyncio.CancelledError:
+                    pass
+
+    async def _worker_loop(self):
+        runner = HegemonikonLlamaBenchmarker()
+
+        while not self._shutdown_event.is_set():
+            try:
+                if not self._queue or len(self._running) >= self.max_concurrent:
+                    self._job_added_event.clear()
+                    await asyncio.wait_for(self._job_added_event.wait(), timeout=1.0)
+                    continue
+
+                job = self._get_next_job()
+                if not job:
+                    continue
+
+                self._move_job_to_running(job)
+
+                await self._process_job(job, runner)
+
+            except asyncio.TimeoutError:
+                continue
+            except Exception as e:
+                logger.error(f"Unexpected error in worker loop: {e}")
+                await asyncio.sleep(1)
+
+        logger.info("Worker loop stopped")
+
+    def _get_next_job(self) -> Optional[BenchmarkJob]:
+        with self._lock:
+            if self._queue and len(self._running) < self.max_concurrent:
+                return self._queue.pop(0)  # FIFO with priority
+        return None
+
+    def _move_job_to_running(self, job: BenchmarkJob):
+        with self._lock:
+            job.status = BenchmarkJobStatus.RUNNING
+            job.started_at = datetime.now().isoformat()
+            self._running[job.id] = job
+            logger.info(f"Started job {job.id} for model {job.model_info.model_id}")
+            self._persist_jobs()
+
+        for callback in self._job_started_callbacks:
+            try:
+                callback(job)
+            except Exception as e:
+                logger.error(f"Error in job started callback: {e}")
+
+    async def _process_job(
+        self, job: BenchmarkJob, runner: HegemonikonLlamaBenchmarker
+    ):
+        try:
+            result = await asyncio.to_thread(runner.benchmarkSingleModel,
+                job.model_info.to_hegemonikon(),
+                job.benchmark_params.to_hegemonikon(),
+                job.llama_model_params.to_hegemonikon(),
+            )
+
+            with self._lock:
+                job.result = result
+                job.status = BenchmarkJobStatus.COMPLETED
+                job.completed_at = datetime.now().isoformat()
+
+                self._running.pop(job.id, None)
+                self._completed[job.id] = job
+
+                logger.info(f"Completed job {job.id} successfully")
+                self._persist_jobs()
+
+            for callback in self._job_completed_callbacks:
+                try:
+                    callback(job)
+                except Exception as e:
+                    logger.error(f"Error in job completed callback: {e}")
+
+        except Exception as e:
+            logger.error(f"Job {job.id} failed: {str(e)}")
+
+            with self._lock:
+                job.status = BenchmarkJobStatus.FAILED
+                job.error_message = str(e)
+                job.completed_at = datetime.now().isoformat()
+
+                self._running.pop(job.id, None)
+                self._completed[job.id] = job
+                self._persist_jobs()
+
+            for callback in self._job_failed_callbacks:
+                try:
+                    callback(job)
+                except Exception as e:
+                    logger.error(f"Error in job failed callback: {e}")
+
+        self._job_added_event.set()
+
+    def _persist_jobs(self):
+        if not self.persistence_file:
+            return
+
+        try:
+            with self._lock:
+                data = {
+                    "queued": [job.to_dict() for job in self._queue],
+                    "running": [job.to_dict() for job in self._running.values()],
+                    "completed": [job.to_dict() for job in self._completed.values()],
+                    "last_updated": datetime.now().isoformat(),
+                }
+
+            with open(self.persistence_file, "w") as f:
+                json.dump(data, f, indent=2)
+
+        except Exception as e:
+            logger.error(f"Failed to persist jobs: {e}")
+
+    def _load_persisted_jobs(self):
+        if not self.persistence_file or not self.persistence_file.exists():
+            return
+
+        try:
+            with open(self.persistence_file, "r") as f:
+                data = json.load(f)
+
+            with self._lock:
+                for job_data in data.get("queued", []):
+                    try:
+                        job = BenchmarkJob.from_dict(job_data)
+                        self._queue.append(job)
+                    except Exception as e:
+                        logger.error(f"Failed to load queued job: {e}")
+
+                for job_data in data.get("completed", []):
+                    try:
+                        job = BenchmarkJob.from_dict(job_data)
+                        self._completed[job.id] = job
+                    except Exception as e:
+                        logger.error(f"Failed to load completed job: {e}")
+
+                for job_data in data.get("running", []):
+                    try:
+                        job = BenchmarkJob.from_dict(job_data)
+                        job.status = BenchmarkJobStatus.QUEUED
+                        job.started_at = None
+                        self._queue.append(job)
+                        logger.info(f"Re-queued previously running job {job.id}")
+                    except Exception as e:
+                        logger.error(f"Failed to re-queue running job: {e}")
+
+            logger.info(
+                f"Loaded {len(self._queue)} queued and {len(self._completed)} completed jobs from persistence"
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to load persisted jobs: {e}")
+
