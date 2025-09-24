@@ -5,9 +5,10 @@ import threading
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from enum import Enum
+from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
+from venv import logger
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -19,168 +20,24 @@ from ataraxai.hegemonikon_py import (  # type: ignore
     HegemonikonLlamaModelParams,
     HegemonikonQuantizedModelInfo,
 )
+from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from ataraxai.praxis.utils.configs.config_schemas.benchmarker_config_schema import (
+    BenchmarkMetrics,
+    BenchmarkParams,
+    BenchmarkResult,
+    QuantizedModelInfo,
+)
 from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
-    GenerationParams,
     LlamaModelParams,
 )
 
 
-class QuantizedModelInfo(BaseModel):
-    model_id: str = Field(..., description="Unique identifier for the model.")
-    local_path: str = Field(..., description="Local filesystem path to the model.")
-    last_modified: str = Field(..., description="Timestamp of the last modification.")
-    quantisation_type: str = Field(
-        ..., description="Type of quantization applied to the model."
-    )
-    size_bytes: int = Field(..., description="Size of the model file in bytes.")
-
-    @field_validator("size_bytes")
-    def validate_size_bytes(cls, value: int) -> int:
-        if value < 0:
-            raise ValueError("Size in bytes must be non-negative.")
-        return value
-
-    @field_validator("local_path")
-    def validate_local_path(cls, value: str) -> str:
-        if not value:
-            raise ValueError("Local path must be a non-empty string.")
-        if not Path(value).exists():
-            raise ValueError("Local path must point to an existing file.")
-        return value
-
-    def to_hegemonikon(self) -> HegemonikonQuantizedModelInfo:
-        return HegemonikonQuantizedModelInfo.from_dict(self.model_dump())
-
-
-class BenchmarkMetrics(BaseModel):
-    load_time_ms: float = Field(
-        ..., description="Time taken to load the model in milliseconds."
-    )
-    generation_time_ms: float = Field(
-        ..., description="Time taken for generation in milliseconds."
-    )
-    total_time_ms: float = Field(
-        ..., description="Total time taken for the benchmark in milliseconds."
-    )
-    tokens_generated: int = Field(
-        ..., description="Number of tokens generated during the benchmark."
-    )
-    token_per_second: float = Field(..., description="Tokens generated per second.")
-    error_message: str = Field(
-        "", description="Error message if any error occurred during benchmarking."
-    )
-    memory_usage_mb: float = Field(
-        ..., description="Memory usage in megabytes during the benchmark."
-    )
-    success: bool = Field(..., description="Indicates if the benchmark was successful.")
-
-    generation_time_history_ms: List[float] = Field(
-        default_factory=list,
-        description="List of individual generation times in milliseconds.",
-    )
-    token_per_second_times_history_ms: List[float] = Field(
-        default_factory=list,
-        description="List of tokens per second recorded at different intervals.",
-    )
-    ttft_history_ms: List[float] = Field(
-        default_factory=list,
-        description="List of time to first token measurements in milliseconds.",
-    )
-    end_to_end_latency_history_ms: List[float] = Field(
-        default_factory=list,
-        description="List of end-to-end latency measurements in milliseconds.",
-    )
-    decode_times_ms: List[float] = Field(
-        default_factory=list, description="List of decode times in milliseconds."
-    )
-
-    avg_ttft_ms: float = Field(
-        0.0, description="Average time to first token in milliseconds."
-    )
-    avg_decode_time_ms: float = Field(
-        0.0, description="Average decode time in milliseconds."
-    )
-    avg_end_to_end_time_latency_ms: float = Field(
-        0.0, description="Average end-to-end latency in milliseconds."
-    )
-
-    p50_latency_ms: float = Field(
-        0.0, description="50th percentile latency in milliseconds."
-    )
-    p95_latency_ms: float = Field(
-        0.0, description="95th percentile latency in milliseconds."
-    )
-    p99_latency_ms: float = Field(
-        0.0, description="99th percentile latency in milliseconds."
-    )
-
-    @field_validator(
-        "load_time_ms", "generation_time_ms", "total_time_ms", "memory_usage_mb"
-    )
-    def validate_non_negative(cls, value: float) -> float:
-        if value < 0:
-            raise ValueError("Value must be non-negative.")
-        return value
-
-    def to_hegemonikon(self) -> HegemonikonBenchmarkMetrics:
-        return HegemonikonBenchmarkMetrics.from_dict(self.model_dump())
-    
-    @classmethod
-    def from_dict(cls, data: Dict) -> "BenchmarkMetrics":
-        return cls(**data)
-
-
-class BenchmarkParams(BaseModel):
-    n_gpu_layers: int = Field(..., description="Number of GPU layers to use.")
-    repetitions: int = Field(
-        ..., description="Number of repetitions for the benchmark."
-    )
-    warmup: bool = Field(..., description="Whether to perform warmup runs.")
-    generation_params: GenerationParams = Field(
-        ..., description="Parameters for text generation."
-    )
-
-    @field_validator("n_gpu_layers", "repetitions")
-    def validate_non_negative_int(cls, value: int) -> int:
-        if value < 0:
-            raise ValueError("Value must be a non-negative integer.")
-        return value
-
-    def to_hegemonikon(self) -> HegemonikonBenchmarkParams:
-        return HegemonikonBenchmarkParams.from_dict(self.model_dump())
-
-
-class BenchmarkResult(BaseModel):
-    model_id: str = Field(..., description="Unique identifier for the model.")
-    metrics: BenchmarkMetrics = Field(
-        ..., description="Benchmark metrics for the model."
-    )
-    # benchmark_params: BenchmarkParams = Field(
-    #     ..., description="Parameters used for benchmarking."
-    # )
-    # llama_model_params: LlamaModelParams = Field(
-    #     ..., description="Llama model parameters used during benchmarking."
-    # )
-
-    @field_validator("model_id")
-    def validate_model_id(cls, value: str) -> str:
-        if not value:
-            raise ValueError("Model ID must be a non-empty string.")
-        return value
-
-
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger(__name__)
-
-
 class BenchmarkJobStatus(Enum):
-    QUEUED = "queued"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+    QUEUED = auto()
+    RUNNING = auto()
+    COMPLETED = auto()
+    FAILED = auto()
+    CANCELLED = auto()
 
 
 class BenchmarkJob(BaseModel):
@@ -236,7 +93,12 @@ class BenchmarkJob(BaseModel):
 
 class BenchmarkQueueManager:
 
-    def __init__(self, max_concurrent: int = 1, persistence_file: Optional[Path] = None):
+    def __init__(
+        self,
+        logger=AtaraxAILogger().get_logger(),
+        max_concurrent: int = 1,
+        persistence_file: Optional[Path] = None,
+    ):
         """
         Initializes the Benchmarker instance.
 
@@ -261,6 +123,7 @@ class BenchmarkQueueManager:
         Calls:
             _load_persisted_jobs(): Loads jobs from the persistence file if provided.
         """
+        self.logger = logger or logging.getLogger(__name__)
         self.max_concurrent = max_concurrent
         self.persistence_file = persistence_file
         self._queue: List[BenchmarkJob] = []
@@ -277,15 +140,6 @@ class BenchmarkQueueManager:
         self._job_failed_callbacks: List[Callable[[BenchmarkJob], None]] = []
 
         self._load_persisted_jobs()
-
-    def add_job_started_callback(self, callback: Callable[[BenchmarkJob], None]):
-        self._job_started_callbacks.append(callback)
-
-    def add_job_completed_callback(self, callback: Callable[[BenchmarkJob], None]):
-        self._job_completed_callbacks.append(callback)
-
-    def add_job_failed_callback(self, callback: Callable[[BenchmarkJob], None]):
-        self._job_failed_callbacks.append(callback)
 
     def enqueue_job(
         self,
@@ -340,7 +194,7 @@ class BenchmarkQueueManager:
                     job.status = BenchmarkJobStatus.CANCELLED
                     cancelled_job = self._queue.pop(i)
                     self._completed[job_id] = cancelled_job
-                    logger.info(f"Cancelled job {job_id}")
+                    self.logger.info(f"Cancelled job {job_id}")
                     self._persist_jobs()
                     return True
 
@@ -371,27 +225,27 @@ class BenchmarkQueueManager:
         with self._lock:
             cleared_count = len(self._completed)
             self._completed.clear()
-            logger.info(f"Cleared {cleared_count} completed jobs")
+            self.logger.info(f"Cleared {cleared_count} completed jobs")
             self._persist_jobs()
 
     async def start_worker(self):
         if self._worker_task and not self._worker_task.done():
-            logger.warning("Worker already running")
+            self.logger.warning("Worker already running")
             return
 
-        logger.info("Starting benchmark queue worker")
+        self.logger.info("Starting benchmark queue worker")
         self._shutdown_event.clear()
         self._worker_task = asyncio.create_task(self._worker_loop())
 
     async def stop_worker(self):
-        logger.info("Stopping benchmark queue worker")
+        self.logger.info("Stopping benchmark queue worker")
         self._shutdown_event.set()
 
         if self._worker_task:
             try:
                 await asyncio.wait_for(self._worker_task, timeout=30.0)
             except asyncio.TimeoutError:
-                logger.warning("Worker did not stop gracefully, cancelling")
+                self.logger.warning("Worker did not stop gracefully, cancelling")
                 self._worker_task.cancel()
                 try:
                     await self._worker_task
@@ -419,10 +273,10 @@ class BenchmarkQueueManager:
             except asyncio.TimeoutError:
                 continue
             except Exception as e:
-                logger.error(f"Unexpected error in worker loop: {e}")
+                self.logger.error(f"Unexpected error in worker loop: {e}")
                 await asyncio.sleep(1)
 
-        logger.info("Worker loop stopped")
+        self.logger.info("Worker loop stopped")
 
     def _get_next_job(self) -> Optional[BenchmarkJob]:
         with self._lock:
@@ -435,7 +289,9 @@ class BenchmarkQueueManager:
             job.status = BenchmarkJobStatus.RUNNING
             job.started_at = datetime.now().isoformat()
             self._running[job.id] = job
-            logger.info(f"Started job {job.id} for model {job.model_info.model_id}")
+            self.logger.info(
+                f"Started job {job.id} for model {job.model_info.model_id}"
+            )
             self._persist_jobs()
 
         for callback in self._job_started_callbacks:
@@ -448,7 +304,7 @@ class BenchmarkQueueManager:
         self, job: BenchmarkJob, runner: HegemonikonLlamaBenchmarker
     ):
         try:
-            result : HegemonikonBenchmarkResult = await asyncio.to_thread(
+            result: HegemonikonBenchmarkResult = await asyncio.to_thread(
                 runner.benchmarkSingleModel,
                 job.model_info.to_hegemonikon(),
                 job.benchmark_params.to_hegemonikon(),
@@ -458,9 +314,7 @@ class BenchmarkQueueManager:
             with self._lock:
                 job.result = BenchmarkResult(
                     model_id=job.model_info.model_id,
-                    metrics=BenchmarkMetrics.from_dict(
-                        asdict(result.metrics)
-                    ),
+                    metrics=BenchmarkMetrics.from_dict(asdict(result.metrics)),
                 )
                 job.status = BenchmarkJobStatus.COMPLETED
                 job.completed_at = datetime.now().isoformat()

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from hegemonikon_py import HegemonikonWhisperModelParams, HegemonikonWhisperTranscriptionParams  # type: ignore
+from ataraxai.hegemonikon_py import HegemonikonWhisperModelParams, HegemonikonWhisperGenerationParams  # type: ignore
 
 class WhisperModelParams(BaseModel):
     n_threads: int = Field(default=0, description="Number of threads to use for processing.")
@@ -25,8 +25,8 @@ class WhisperTranscriptionParams(BaseModel):
     single_segment: bool = Field(default=False, description="Whether to use a single segment.")
     temperature: float = Field(default=0.8, description="Temperature for sampling.")
 
-    def to_hegemonikon(self) -> HegemonikonWhisperTranscriptionParams:
-        return HegemonikonWhisperTranscriptionParams.from_dict(self.model_dump())
+    def to_hegemonikon(self) -> HegemonikonWhisperGenerationParams:
+        return HegemonikonWhisperGenerationParams.from_dict(self.model_dump())
 
 
 class WhisperConfig(BaseModel):

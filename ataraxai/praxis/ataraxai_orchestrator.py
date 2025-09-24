@@ -324,7 +324,6 @@ class AtaraxAIOrchestrator:
     async def run_task_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
-        # assert 1 == 2 , "Orchestrator run_task_chain should be called"
         current_state = await self.get_state()
         if current_state != AppState.UNLOCKED:
             raise AtaraxAILockError(
@@ -512,6 +511,7 @@ class AtaraxAIOrchestratorFactory:
             )
 
             benchmark_queue_manager = BenchmarkQueueManager(
+                logger=logger,
                 max_concurrent=1,
                 persistence_file=directories.data / "benchmark_jobs.json"
             )

@@ -189,7 +189,6 @@ class Services:
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
 
-        # assert 1 == 2, "service run_task_chain should be called"
         InputValidator.validate_string(initial_user_query, "Initial user query")
 
         if not chain_definition:

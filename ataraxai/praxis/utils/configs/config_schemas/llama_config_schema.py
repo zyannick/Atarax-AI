@@ -8,18 +8,18 @@ from ataraxai.hegemonikon_py import HegemonikonLlamaModelParams, HegemonikonGene
 
 class LlamaModelParams(BaseModel):
     config_version: str = Field(
-        "1.0", description="Version of the model configuration."
+        default="1.0", description="Version of the model configuration."
     )
     model_info: Optional[LlamaCPPModelInfo] = Field(
         None, description="Model information including local path and metadata."
     )
-    n_ctx: int = Field(2048, description="Context size for the model.")
-    n_gpu_layers: int = Field(0, description="Number of GPU layers to use.")
-    main_gpu: int = Field(0, description="Main GPU to use.")
-    tensor_split: bool = Field(False, description="Whether to use tensor splitting.")
-    vocab_only: bool = Field(False, description="Whether to use vocabulary only.")
-    use_map: bool = Field(False, description="Whether to use memory mapping.")
-    use_mlock: bool = Field(False, description="Whether to use mlock.")
+    n_ctx: int = Field(default=2048, description="Context size for the model.")
+    n_gpu_layers: int = Field(default=0, description="Number of GPU layers to use.")
+    main_gpu: int = Field(default=0, description="Main GPU to use.")
+    tensor_split: bool = Field(default=False, description="Whether to use tensor splitting.")
+    vocab_only: bool = Field(default=False, description="Whether to use vocabulary only.")
+    use_map: bool = Field(default=False, description="Whether to use memory mapping.")
+    use_mlock: bool = Field(default=False, description="Whether to use mlock.")
 
     @computed_field
     def model_path(self) -> str:
@@ -34,26 +34,26 @@ class LlamaModelParams(BaseModel):
 
 class GenerationParams(BaseModel):
     config_version: str = Field(
-        "1.0", description="Version of the generation parameters schema."
+        default="1.0", description="Version of the generation parameters schema."
     )
-    n_predict: int = Field(128, description="Number of tokens to predict.")
-    temperature: float = Field(0.8, description="Temperature for sampling.")
-    top_k: int = Field(40, description="Top-k sampling parameter.")
-    top_p: float = Field(0.95, description="Top-p sampling parameter.")
-    repeat_penalty: float = Field(1.2, description="Penalty for repeated tokens.")
-    penalty_last_n: int = Field(64, description="Last N tokens to apply penalty.")
+    n_predict: int = Field(default=128, description="Number of tokens to predict.")
+    temperature: float = Field(default=0.8, description="Temperature for sampling.")
+    top_k: int = Field(default=40, description="Top-k sampling parameter.")
+    top_p: float = Field(default=0.95, description="Top-p sampling parameter.")
+    repeat_penalty: float = Field(default=1.2, description="Penalty for repeated tokens.")
+    penalty_last_n: int = Field(default=64, description="Last N tokens to apply penalty.")
     penalty_freq: float = Field(
-        0.7, description="Frequency penalty for repeated tokens."
+        default=0.7, description="Frequency penalty for repeated tokens."
     )
     penalty_present: float = Field(
-        0.0, description="Present penalty for repeated tokens."
+        default=0.0, description="Present penalty for repeated tokens."
     )
     stop_sequences: List[str] = Field(
         default_factory=lambda: ["</s>", "\n\n", "User:"],
         description="Sequences that will stop generation.",
     )
-    n_batch: int = Field(1, description="Batch size for generation.")
-    n_threads: int = Field(4, description="Number of threads to use for generation.")
+    n_batch: int = Field(default=1, description="Batch size for generation.")
+    n_threads: int = Field(default=4, description="Number of threads to use for generation.")
 
     def is_setup_complete(self) -> bool:
         return (

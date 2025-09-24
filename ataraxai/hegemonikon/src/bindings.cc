@@ -208,27 +208,23 @@ PYBIND11_MODULE(hegemonikon_py, m)
          .def("initialize_llama_model", &CoreAIService::initialize_llama_model, "Initialize and load the Llama model",
               py::arg("llama_model_params"))
          .def("unload_llama_model", &CoreAIService::unload_llama_model, "Unload the currently loaded Llama model")
-         .def("is_llama_model_loaded", &CoreAIService::is_llama_model_loaded, "Check if a Llama model is loaded", py::call_guard<py::gil_scoped_release>())
+         .def("is_llama_model_loaded", &CoreAIService::is_llama_model_loaded)
          .def("process_prompt", &CoreAIService::process_prompt, "Process a text prompt using the Llama model",
-              py::arg("prompt_text"), py::arg("llama_generation_params"), "Process a text prompt and return the generated text.",
-              py::call_guard<py::gil_scoped_release>())
+              py::arg("prompt_text"), py::arg("llama_generation_params"))
          .def("stream_prompt", &CoreAIService::stream_prompt, "Stream generation of text from a prompt",
-              py::arg("prompt_text"), py::arg("llama_generation_params"), py::arg("callback"), "Stream generation of text from a prompt using a callback function.",
-              py::call_guard<py::gil_scoped_release>())
+              py::arg("prompt_text"), py::arg("llama_generation_params"), py::arg("callback"))
          .def("initialize_whisper_model", &CoreAIService::initialize_whisper_model, "Initialize and load the Whisper model",
-              py::arg("whisper_model_params"), "Initialize and load the Whisper model.", py::call_guard<py::gil_scoped_release>())
+              py::arg("whisper_model_params"))
          .def("unload_whisper_model", &CoreAIService::unload_whisper_model, "Unload the currently loaded Whisper model")
-         .def("is_whisper_model_loaded", &CoreAIService::is_whisper_model_loaded, "Check if a Whisper model is loaded", py::call_guard<py::gil_scoped_release>())
+         .def("is_whisper_model_loaded", &CoreAIService::is_whisper_model_loaded)
          .def("transcribe_audio_pcm", &CoreAIService::transcribe_audio_pcm, "Transcribe PCM audio data using Whisper",
-              py::arg("pcm_f32_data"), py::arg("whisper_model_params"), "Transcribe PCM audio data using the loaded Whisper model.",
-              py::call_guard<py::gil_scoped_release>())
+              py::arg("pcm_f32_data"), py::arg("whisper_model_params"))
          .def("transcribe_audio_file", &CoreAIService::transcribe_audio_file, "Transcribe an audio file using Whisper",
-              py::arg("audio_file_path"), py::arg("whisper_model_params"), "Transcribe an audio file using the loaded Whisper model.",
-              py::call_guard<py::gil_scoped_release>())
+              py::arg("audio_file_path"), py::arg("whisper_model_params"))
          .def("tokenization", &CoreAIService::tokenization, "Tokenize text using Llama model parameters",
-              py::arg("text"),  "Tokenize text into a list of tokens.", py::call_guard<py::gil_scoped_release>())
+              py::arg("text"))
          .def("detokenization", &CoreAIService::detokenization, "Detokenize a list of tokens into text",
-              py::arg("tokens"), "Detokenize a list of tokens into text.", py::call_guard<py::gil_scoped_release>());
+              py::arg("tokens"));
               
      py::class_<HegemonikonQuantizedModelInfo>(m, "HegemonikonQuantizedModelInfo", "Information about a quantized model.")
          .def(py::init<>())
