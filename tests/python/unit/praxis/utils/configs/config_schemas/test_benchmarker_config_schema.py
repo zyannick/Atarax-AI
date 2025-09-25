@@ -1,5 +1,4 @@
 import pytest
-from unittest import mock
 from pathlib import Path
 from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import GenerationParams
 
@@ -10,7 +9,7 @@ from ataraxai.praxis.utils.configs.config_schemas.benchmarker_config_schema impo
     BenchmarkResult,
 )
 
-def test_quantized_model_info_valid(tmp_path):
+def test_quantized_model_info_valid(tmp_path : Path):
     file_path = tmp_path / "model.bin"
     file_path.write_text("dummy")
     info = QuantizedModelInfo(
@@ -23,7 +22,7 @@ def test_quantized_model_info_valid(tmp_path):
     assert info.model_id == "test-model"
     assert info.size_bytes == 123456
 
-def test_quantized_model_info_invalid_size_bytes(tmp_path):
+def test_quantized_model_info_invalid_size_bytes(tmp_path : Path):
     file_path = tmp_path / "model.bin"
     file_path.write_text("dummy")
     with pytest.raises(ValueError):
@@ -65,7 +64,7 @@ def test_benchmark_metrics_non_negative():
     ("total_time_ms", -1.0),
     ("memory_usage_mb", -1.0),
 ])
-def test_benchmark_metrics_negative_values(field, value):
+def test_benchmark_metrics_negative_values(field: str, value: float):
     kwargs = dict(
         load_time_ms=1.0,
         generation_time_ms=1.0,

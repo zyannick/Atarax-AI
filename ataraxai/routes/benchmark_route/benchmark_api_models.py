@@ -13,9 +13,11 @@ from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config_api_
 )
 
 class QuantizedModelInfoAPI(BaseModel):
-    name: str = Field(..., description="Name of the quantized model.")
+    model_id: str = Field(..., description="ID of the quantized model.")
     local_path: str = Field(..., description="Local path to the quantized model file.")
-    quantization: str = Field(..., description="Quantization type of the model.")
+    last_modified: str = Field(..., description="Timestamp of the last modification.")
+    quantisation_type: str = Field(..., description="Quantization type of the model.")
+    size_bytes: int = Field(..., description="Size of the model file in bytes.")
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "QuantizedModelInfoAPI":

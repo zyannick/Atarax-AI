@@ -15,7 +15,7 @@ import requests
 import tqdm
 from huggingface_hub import HfApi, hf_hub_url
 from huggingface_hub.errors import HfHubHTTPError
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
@@ -64,6 +64,14 @@ class LlamaCPPModelInfo(BaseModel):
         0, description="Number of times the model has been downloaded."
     )
     likes: int = Field(0, description="Number of likes for the model.")
+
+    @property
+    def quantization(self) -> str:
+        return f"{self.quantization_bit}_{self.quantization_scheme}" + (
+            f"_{self.quantization_modifier}"
+            if self.quantization_modifier != "default"
+            else ""
+        )
 
     def is_valid(self) -> bool:
         """
@@ -288,7 +296,7 @@ class ModelsManager:
         """
 
         self.logger.debug(f"Searching models with criteria: {search_infos}")
-        self.logger.debug(f"Current manifest: {len(self.manifest['models'])}") # type: ignore
+        self.logger.debug(f"Current manifest: {len(self.manifest['models'])}")  # type: ignore
 
         results = []
 
@@ -308,7 +316,7 @@ class ModelsManager:
             else None
         )
 
-        for model in self.manifest.get("models", []): # type: ignore
+        for model in self.manifest.get("models", []):  # type: ignore
 
             if (
                 search_repo_id
@@ -707,13 +715,13 @@ class ModelsManager:
         )
         model_info.downloaded_at = datetime.now()
 
-        for i, existing in enumerate(self.manifest["models"]): # type: ignore
+        for i, existing in enumerate(self.manifest["models"]):  # type: ignore
             if existing["repo_id"] == repo_id and existing["filename"] == filename:
-                self.manifest["models"][i] = model_info.model_dump(mode="json") # type: ignore
+                self.manifest["models"][i] = model_info.model_dump(mode="json")  # type: ignore
                 self._save_manifest()
                 return
 
-        self.manifest["models"].append(model_info.model_dump(mode="json")) # type: ignore
+        self.manifest["models"].append(model_info.model_dump(mode="json"))  # type: ignore
         self._save_manifest()
 
     def get_download_status(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -762,7 +770,7 @@ class ModelsManager:
         Returns:
             List[Dict]: A list of dictionaries, each representing a downloaded model.
         """
-        return self.manifest.get("models", []) # type: ignore
+        return self.manifest.get("models", [])  # type: ignore
 
     async def remove_all_models(self) -> bool:
         """

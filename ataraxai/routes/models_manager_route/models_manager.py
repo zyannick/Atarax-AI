@@ -211,9 +211,8 @@ async def download_model(
     )
 
     print(
-        "Future created for download task: **************************************************************************************************************"
+        f"Future created for download task: {future}"
     )
-    print(future)
 
     task_id = await future
 

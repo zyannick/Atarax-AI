@@ -11,7 +11,6 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-# Assuming these are your pybind11-generated classes
 from ataraxai.hegemonikon_py import ( # type: ignore
     HegemonikonBenchmarkResult, # type: ignore
     HegemonikonLlamaBenchmarker, # type: ignore
@@ -28,8 +27,6 @@ from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
 
 
 class BenchmarkJobStatus(str, Enum):
-    """Using str Enum for easier JSON serialization."""
-
     QUEUED = "QUEUED"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
@@ -50,7 +47,7 @@ class BenchmarkJob(BaseModel):
     error_message: Optional[str] = None
 
     class Config:
-        use_enum_values = True  # Ensures the string value of the enum is used
+        use_enum_values = True
 
 
 class BenchmarkQueueManager:
@@ -348,7 +345,7 @@ class BenchmarkQueueManager:
         """
         try:
             result_cpp: HegemonikonBenchmarkResult = await asyncio.to_thread( # type: ignore
-                runner.benchmarkSingleModel, # type: ignore
+                runner.benchmark_single_model, # type: ignore
                 job.model_info.model_dump(
                     by_alias=True
                 ),

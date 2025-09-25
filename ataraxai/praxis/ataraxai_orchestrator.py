@@ -8,7 +8,9 @@ from typing import Any, Dict, List, Optional, Type
 
 from ataraxai import __version__  # type: ignore
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
-from ataraxai.praxis.modules.benchmark.benchmark_queue_manager import BenchmarkQueueManager
+from ataraxai.praxis.modules.benchmark.benchmark_queue_manager import (
+    BenchmarkQueueManager,
+)
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
@@ -109,7 +111,7 @@ class AtaraxAIOrchestrator:
 
             self._state = await self._determine_initial_state()
 
-            self.logger.info(f"directories created {self.services.directories}") # type: ignore
+            self.logger.info(f"directories created {self.services.directories}")  # type: ignore
 
             if await self.state_machine.get_state() == AppState.FIRST_LAUNCH:
                 await self._initialize_base_components()
@@ -360,8 +362,8 @@ class AtaraxAIOrchestrator:
         except Exception as e:
             self.logger.error(f"Error during shutdown: {e}", exc_info=True)
         finally:
-            self.services = None # type: ignore
-            self.setup_manager = None # type: ignore
+            self.services = None  # type: ignore
+            self.setup_manager = None  # type: ignore
 
     def _ensure_initialized(self) -> None:
         if not self._initialized:
@@ -446,8 +448,7 @@ class AtaraxAIOrchestrator:
             if self.services is None or self.services.directories is None:
                 raise RuntimeError("App directories are not initialized.")
             return self.services.directories
-        
-    
+
     async def get_benchmark_queue_manager(self) -> BenchmarkQueueManager:
         async with self.state_machine._lock:
             if self.services is None or self.services.benchmark_queue_manager is None:
@@ -513,7 +514,7 @@ class AtaraxAIOrchestratorFactory:
             benchmark_queue_manager = BenchmarkQueueManager(
                 logger=logger,
                 max_concurrent=1,
-                persistence_file=directories.data / "benchmark_jobs.json"
+                persistence_file=directories.data / "benchmark_jobs.json",
             )
 
             services = Services(

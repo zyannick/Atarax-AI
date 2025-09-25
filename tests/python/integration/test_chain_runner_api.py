@@ -49,7 +49,7 @@ async def unlocked_client_with_project_and_session(
     selected_model = LlamaCPPModelInfo(**selected_model_dict)
     llama_cpp_config = LlamaCPPConfigAPI(
         model_info=selected_model,
-        n_ctx=1024,  # Reduced context size for testing
+        n_ctx=1024,
         n_gpu_layers=40,
         main_gpu=0,
         tensor_split=False,

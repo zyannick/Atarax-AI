@@ -33,6 +33,7 @@ from ataraxai.routes.configs_routes.user_preferences_route.user_preferences impo
 from ataraxai.routes.core_ai_service.core_ai_service import (
     router_core_ai_service_config,
 )
+from ataraxai.routes.benchmark_route.benchmarker import router_benchmark
 from ataraxai.routes.dependency_api import (
     get_orchestrator,
     verify_token,
@@ -130,6 +131,7 @@ all_routers = [
     router_rag_config,
     router_core_ai_service_config,
     router_chain_runner,
+    router_benchmark
 ]
 
 for router in all_routers:

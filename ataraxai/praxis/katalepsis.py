@@ -1,12 +1,12 @@
 import functools
+import inspect
 import threading
-from prometheus_client import Counter, Histogram
 import time
 from contextlib import contextmanager
-from typing import Callable, Dict, Any, Optional
-from typing import TypeVar
-import inspect
+from typing import Any, Callable, Dict, Optional, TypeVar
+
 from fastapi import Request
+from prometheus_client import Counter, Histogram
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -30,11 +30,6 @@ VAULT_UNLOCK_ATTEMPTS_TOTAL = Counter(
 
 
 class Katalepsis:
-    """
-    A Singleton class for application-wide observability and metrics collection.
-    Provides decorators and context managers to instrument code.
-    """
-
     _instance: Optional["Katalepsis"] = None
     _lock = threading.Lock()
 
@@ -75,23 +70,24 @@ class Katalepsis:
         """
 
         def decorator(func: F) -> F:
-            def record_metrics(start_time: float, status_code: str, *args, **kwargs):
+            def record_metrics(start_time: float, status_code: str, *args, **kwargs):  # type: ignore
                 duration = time.time() - start_time
-                
-                request = next((arg for arg in args if isinstance(arg, Request)), None)
-                if not request:
-                     request = kwargs.get("request")
-                
-                if request and hasattr(request, "scope"):
-                    endpoint_path = request.scope.get("route", {}).get("path", f"/{func.__name__}") # type: ignore
-                else:
-                    endpoint_path = f"/{func.__name__}" # type: ignore
 
-                labels = {"method": method.upper(), "endpoint": endpoint_path, "status": status_code}
+                request = next((arg for arg in args if isinstance(arg, Request)), None)  # type: ignore
+                if not request:
+                    request = kwargs.get("request")  # type: ignore
+
+                if request and hasattr(request, "scope"):
+                    endpoint_path = request.scope.get("route", {}).get("path", f"/{func.__name__}")  # type: ignore
+                else:
+                    endpoint_path = f"/{func.__name__}"  # type: ignore
+
+                labels = {"method": method.upper(), "endpoint": endpoint_path, "status": status_code}  # type: ignore
                 API_REQUEST_LATENCY_SECONDS.labels(**labels).observe(duration)
                 HTTP_REQUESTS_TOTAL.labels(**labels).inc()
 
             if inspect.iscoroutinefunction(func):
+
                 @functools.wraps(func)
                 async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
                     start_time = time.time()
@@ -102,9 +98,11 @@ class Katalepsis:
                     except Exception:
                         record_metrics(start_time, "error", *args, **kwargs)
                         raise
+
                 return async_wrapper  # type: ignore
-            
+
             else:
+
                 @functools.wraps(func)
                 def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
                     start_time = time.time()
@@ -115,7 +113,9 @@ class Katalepsis:
                     except Exception:
                         record_metrics(start_time, "error", *args, **kwargs)
                         raise
+
                 return sync_wrapper  # type: ignore
+
         return decorator
 
 

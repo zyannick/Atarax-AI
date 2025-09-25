@@ -78,7 +78,7 @@ async def get_benchmarker_job_info(
 ) -> StatusResponse:
     job_info = bqm.get_job(job_id)
     if not job_info:
-        raise HTTPException(status_code=404, detail=f"Job with ID {job_id} not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Job with ID {job_id} not found.")
     return StatusResponse(
         status=Status.SUCCESS,
         message="Benchmarker job info retrieved successfully.",
@@ -95,7 +95,7 @@ async def cancel_benchmarker_job(
     success = await bqm.cancel_job(job_id)
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Failed to cancel job with ID {job_id}. It may not be in the queue.",
         )
     return StatusResponse(
