@@ -109,7 +109,7 @@ class AtaraxAIOrchestrator:
 
             self._state = await self._determine_initial_state()
 
-            self.logger.info(f"directories created {self.services.directories}")
+            self.logger.info(f"directories created {self.services.directories}") # type: ignore
 
             if await self.state_machine.get_state() == AppState.FIRST_LAUNCH:
                 await self._initialize_base_components()

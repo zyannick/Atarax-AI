@@ -3,22 +3,18 @@ import json
 import logging
 import threading
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from datetime import datetime
 from enum import Enum, auto
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 from venv import logger
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from ataraxai.hegemonikon_py import (  # type: ignore
-    HegemonikonBenchmarkMetrics,
-    HegemonikonBenchmarkParams,
-    HegemonikonBenchmarkResult,
-    HegemonikonLlamaBenchmarker,
-    HegemonikonLlamaModelParams,
-    HegemonikonQuantizedModelInfo,
+    HegemonikonBenchmarkResult, # type: ignore
+    HegemonikonLlamaBenchmarker, # type: ignore
 )
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.configs.config_schemas.benchmarker_config_schema import (
@@ -95,7 +91,7 @@ class BenchmarkQueueManager:
 
     def __init__(
         self,
-        logger=AtaraxAILogger().get_logger(),
+        logger: logging.Logger = AtaraxAILogger().get_logger(),
         max_concurrent: int = 1,
         persistence_file: Optional[Path] = None,
     ):
@@ -145,7 +141,7 @@ class BenchmarkQueueManager:
         self,
         model_info: QuantizedModelInfo,
         benchmark_params: BenchmarkParams,
-        llama_model_params: Any,
+        llama_model_params: LlamaModelParams,
     ) -> str:
         job_id = str(uuid.uuid4())
         job = BenchmarkJob(
@@ -187,7 +183,7 @@ class BenchmarkQueueManager:
                     return job
         return None
 
-    def cancel_job(self, job_id: str) -> bool:
+    async def cancel_job(self, job_id: str) -> bool:
         with self._lock:
             for i, job in enumerate(self._queue):
                 if job.id == job_id:
@@ -227,6 +223,12 @@ class BenchmarkQueueManager:
             self._completed.clear()
             self.logger.info(f"Cleared {cleared_count} completed jobs")
             self._persist_jobs()
+
+    def get_status(self) -> bool:
+        if self._worker_task and not self._worker_task.done():
+            self.logger.warning("Worker already running")
+            return True
+        return False
 
     async def start_worker(self):
         if self._worker_task and not self._worker_task.done():

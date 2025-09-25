@@ -1,13 +1,5 @@
-import asyncio
-import json
-import logging
-import threading
-import uuid
-from dataclasses import asdict, dataclass
-from datetime import datetime
-from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import  Dict, List
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -21,7 +13,6 @@ from ataraxai.hegemonikon_py import (  # type: ignore
 )
 from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
     GenerationParams,
-    LlamaModelParams,
 )
 
 
@@ -49,7 +40,7 @@ class QuantizedModelInfo(BaseModel):
         return value
 
     def to_hegemonikon(self) -> HegemonikonQuantizedModelInfo:
-        return HegemonikonQuantizedModelInfo.from_dict(self.model_dump())
+        return HegemonikonQuantizedModelInfo.from_dict(self.model_dump()) # type: ignore
 
 
 class BenchmarkMetrics(BaseModel):
@@ -75,23 +66,23 @@ class BenchmarkMetrics(BaseModel):
     success: bool = Field(..., description="Indicates if the benchmark was successful.")
 
     generation_time_history_ms: List[float] = Field(
-        default_factory=list,
+        default=[],
         description="List of individual generation times in milliseconds.",
     )
     token_per_second_times_history_ms: List[float] = Field(
-        default_factory=list,
+        default=[],
         description="List of tokens per second recorded at different intervals.",
     )
     ttft_history_ms: List[float] = Field(
-        default_factory=list,
+        default=[],
         description="List of time to first token measurements in milliseconds.",
     )
     end_to_end_latency_history_ms: List[float] = Field(
-        default_factory=list,
+        default=[],
         description="List of end-to-end latency measurements in milliseconds.",
     )
     decode_times_ms: List[float] = Field(
-        default_factory=list, description="List of decode times in milliseconds."
+        default=[], description="List of decode times in milliseconds."
     )
 
     avg_ttft_ms: float = Field(
@@ -123,7 +114,7 @@ class BenchmarkMetrics(BaseModel):
         return value
 
     def to_hegemonikon(self) -> HegemonikonBenchmarkMetrics:
-        return HegemonikonBenchmarkMetrics.from_dict(self.model_dump())
+        return HegemonikonBenchmarkMetrics.from_dict(self.model_dump()) # type: ignore
 
     @classmethod
     def from_dict(cls, data: Dict) -> "BenchmarkMetrics":
@@ -147,7 +138,7 @@ class BenchmarkParams(BaseModel):
         return value
 
     def to_hegemonikon(self) -> HegemonikonBenchmarkParams:
-        return HegemonikonBenchmarkParams.from_dict(self.model_dump())
+        return HegemonikonBenchmarkParams.from_dict(self.model_dump()) # type: ignore
 
 
 class BenchmarkResult(BaseModel):

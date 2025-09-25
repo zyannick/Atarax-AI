@@ -29,7 +29,7 @@ class LlamaModelParams(BaseModel):
         return bool(self.model_path)
     
     def to_hegemonikon(self) -> HegemonikonLlamaModelParams:
-        return HegemonikonLlamaModelParams.from_dict(self.model_dump())
+        return HegemonikonLlamaModelParams.from_dict(self.model_dump()) # type: ignore
 
 
 class GenerationParams(BaseModel):
@@ -70,7 +70,7 @@ class GenerationParams(BaseModel):
         return value
     
     def to_hegemonikon(self) -> HegemonikonGenerationParams:
-        return HegemonikonGenerationParams.from_dict(self.model_dump())
+        return HegemonikonGenerationParams.from_dict(self.model_dump()) # type: ignore
 
 
 class LlamaConfig(BaseModel):
