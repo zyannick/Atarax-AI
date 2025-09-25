@@ -1,14 +1,9 @@
 from datetime import datetime
 from typing import Any, Dict,Optional
-from venv import logger
 
 from pydantic import BaseModel, Field
 
-from ataraxai.hegemonikon_py import HegemonikonBenchmarkResult  # type: ignore
-from ataraxai.hegemonikon_py import (
-    HegemonikonLlamaBenchmarker,  # type: ignore; type: ignore
-)
-from ataraxai.praxis.modules.benchmarker.benchmarker import BenchmarkJobStatus
+from ataraxai.praxis.modules.benchmark.benchmark_queue_manager import BenchmarkJobStatus
 from ataraxai.praxis.utils.configs.config_schemas.benchmarker_config_schema import (
     BenchmarkResult,
 )

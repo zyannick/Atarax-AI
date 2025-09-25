@@ -1,17 +1,10 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from ataraxai import hegemonikon_py  # type: ignore
 
-# from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
-    LlamaModelParams,
-)
-from ataraxai.praxis.utils.configs.config_schemas.whisper_config_schema import (
-    WhisperModelParams,
-)
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
 from ataraxai.praxis.utils.exceptions import ServiceInitializationError, ValidationError
 from ataraxai.praxis.utils.service_status import ServiceStatus
@@ -81,7 +74,7 @@ class CoreAIServiceManager:
         response = await asyncio.to_thread(
             self.core_ai_service.process_prompt,
             prompt.encode("utf-8"),
-            llama_generation_params.to_hegemonikon()
+            llama_generation_params.to_hegemonikon() # type: ignore
         )
 
         return response
@@ -237,14 +230,14 @@ class CoreAIServiceManager:
             None
         """
         llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
-        whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
+        # whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
 
         # self.llama_cpp_params_cc, self.llama_cpp_generation_params_cc = (
         #     self._convert_params(llama_params, whisper_params)
         # )
 
         self.core_ai_service = self._create_core_ai_service(
-            llama_params.to_hegemonikon(), None
+            llama_params.to_hegemonikon(), None # type: ignore
         )
 
 

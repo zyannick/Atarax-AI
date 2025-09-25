@@ -4,7 +4,7 @@ from pathlib import Path
 from ataraxai.praxis.ataraxai_orchestrator import (
     AtaraxAIOrchestrator,
 )
-from ataraxai.praxis.modules.benchmarker.benchmarker import BenchmarkQueueManager
+from ataraxai.praxis.modules.benchmark.benchmark_queue_manager import BenchmarkQueueManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.models_manager.models_manager import (
