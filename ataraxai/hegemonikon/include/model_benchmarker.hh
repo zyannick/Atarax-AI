@@ -12,12 +12,14 @@
 #include <algorithm>
 #include <thread>
 #include <future>
+#include <filesystem>
 
 #include "llama_interface.hh"
 #include "json.hpp"
 
 using namespace std::chrono;
 using json = nlohmann::json;
+namespace fs = std::filesystem;
 
 /**
  * @brief Computes the average value of the elements in a vector.
@@ -104,28 +106,28 @@ struct HegemonikonQuantizedModelInfo
                ", fileSize=" + std::to_string(fileSize) + ")";
     }
 };
-    
+
 struct HegemonikonBenchmarkMetrics
 {
     float load_time_ms = 0.0f;
-    float generation_time = 0.0f;
-    float total_time = 0.0f;
+    float generation_time_ms = 0.0f;
+    float total_time_ms = 0.0f;
     int tokens_generated = 0;
     float tokens_per_second = 0.0f;
-    float memory_usage = 0.0f;
+    float memory_usage_mb = 0.0f;
     bool success = false;
     std::string errorMessage;
 
-    std::vector<float> generation_times;
+    std::vector<float> generation_time_history_ms;
     std::vector<float> tokens_per_second_history;
 
     float avg_ttft_ms = 0.0f;
-    float avg_decode_tps = 0.0f;
-    float avg_end_to_end_latency_ms = 0.0f;
+    float avg_decode_time_ms = 0.0f;
+    float avg_end_to_end_time_latency_ms = 0.0f;
 
-    std::vector<float> ttft_history;
-    std::vector<float> end_to_end_latency_history;
-    std::vector<float> decode_tps_history;
+    std::vector<float> ttft_history_ms;
+    std::vector<float> end_to_end_latency_history_ms;
+    std::vector<float> decode_times_history_ms;
 
     float p50_latency_ms = 0.0f;
     float p95_latency_ms = 0.0f;
@@ -158,28 +160,26 @@ struct HegemonikonBenchmarkResult
 
     void calculateStatistics()
     {
-        if (!metrics.ttft_history.empty())
+        if (!metrics.ttft_history_ms.empty())
         {
-            metrics.avg_ttft_ms = avg(metrics.ttft_history);
+            metrics.avg_ttft_ms = avg(metrics.ttft_history_ms);
         }
-        if (!metrics.decode_tps_history.empty())
+        if (!metrics.decode_times_history_ms.empty())
         {
-            metrics.avg_decode_tps = avg(metrics.decode_tps_history);
+            metrics.avg_decode_time_ms = avg(metrics.decode_times_history_ms);
         }
-        if (!metrics.end_to_end_latency_history.empty())
+        if (!metrics.end_to_end_latency_history_ms.empty())
         {
-            metrics.avg_end_to_end_latency_ms = avg(metrics.end_to_end_latency_history);
-            if (metrics.end_to_end_latency_history.size() > 1)
+            metrics.avg_end_to_end_time_latency_ms = avg(metrics.end_to_end_latency_history_ms);
+            if (metrics.end_to_end_latency_history_ms.size() > 1)
             {
-                metrics.p50_latency_ms = percentile(metrics.end_to_end_latency_history, 0.50);
-                metrics.p95_latency_ms = percentile(metrics.end_to_end_latency_history, 0.95);
-                metrics.p99_latency_ms = percentile(metrics.end_to_end_latency_history, 0.99);
+                metrics.p50_latency_ms = percentile(metrics.end_to_end_latency_history_ms, 0.50);
+                metrics.p95_latency_ms = percentile(metrics.end_to_end_latency_history_ms, 0.95);
+                metrics.p99_latency_ms = percentile(metrics.end_to_end_latency_history_ms, 0.99);
             }
         }
     }
 };
-
-
 
 class HegemonikonLlamaBenchmarker
 {
@@ -224,10 +224,18 @@ public:
             llama_model_params.n_gpu_layers = benchmark_params.n_gpu_layers;
 
             auto load_start = high_resolution_clock::now();
+            fs::path model_path_(llama_model_params.model_path);
+            if (!fs::exists(model_path_))
+            {
+                throw std::runtime_error("Model file does not exist: " + llama_model_params.model_path);
+            }
             if (!interface.load_model(llama_model_params))
             {
-                throw std::runtime_error("Failed to load model via LlamaInterface");
+                throw std::runtime_error("LlamaInterface failed to load model: " + llama_model_params.model_path);
             }
+
+            std::cout << "Benchmarking model: " << llama_model_params.model_path << std::endl;
+
             result.metrics.load_time_ms = duration_cast<milliseconds>(
                                               high_resolution_clock::now() - load_start)
                                               .count();
@@ -261,11 +269,11 @@ public:
                                           .count() /
                                       1000.0;
 
-                result.metrics.end_to_end_latency_history.push_back(e2e_latency_ms);
-                result.metrics.ttft_history.push_back(ttft_ms);
+                result.metrics.end_to_end_latency_history_ms.push_back(e2e_latency_ms);
+                result.metrics.ttft_history_ms.push_back(ttft_ms);
 
                 double decode_tps = (decode_duration_ms > 0) ? (tokens_generated * 1000.0) / decode_duration_ms : 0.0;
-                result.metrics.decode_tps_history.push_back(decode_tps);
+                result.metrics.decode_times_history_ms.push_back(decode_tps);
 
                 if (i == 0)
                 {
@@ -295,8 +303,8 @@ public:
         std::cout << std::fixed << std::setprecision(2);
         std::cout << "  Load Time:          " << result.metrics.load_time_ms << " ms" << std::endl;
         std::cout << "  Avg TTFT:           " << result.metrics.avg_ttft_ms << " ms" << std::endl;
-        std::cout << "  Avg Decode Speed:   " << result.metrics.avg_decode_tps << " tokens/sec" << std::endl;
-        std::cout << "  Avg E2E Latency:    " << result.metrics.avg_end_to_end_latency_ms << " ms" << std::endl;
+        std::cout << "  Avg Decode Speed:   " << result.metrics.avg_decode_time_ms << " tokens/sec" << std::endl;
+        std::cout << "  Avg E2E Latency:    " << result.metrics.avg_end_to_end_time_latency_ms << " ms" << std::endl;
         std::cout << "  Latency (P50/P95/P99): "
                   << result.metrics.p50_latency_ms << " / "
                   << result.metrics.p95_latency_ms << " / "
@@ -313,13 +321,13 @@ public:
         auto fastest = std::max_element(results.begin(), results.end(),
                                         [](const HegemonikonBenchmarkResult &a, const HegemonikonBenchmarkResult &b)
                                         {
-                                            return a.metrics.success && b.metrics.success ? a.metrics.avg_decode_tps < b.metrics.avg_decode_tps : !a.metrics.success;
+                                            return a.metrics.success && b.metrics.success ? a.metrics.avg_decode_time_ms < b.metrics.avg_decode_time_ms : !a.metrics.success;
                                         });
 
         if (fastest != results.end() && fastest->metrics.success)
         {
             std::cout << "Fastest model (by decode TPS): " << fastest->model_id
-                      << " (" << fastest->metrics.avg_decode_tps << " tokens/sec)" << std::endl;
+                      << " (" << fastest->metrics.avg_decode_time_ms << " tokens/sec)" << std::endl;
         }
 
         int successful = std::count_if(results.begin(), results.end(),

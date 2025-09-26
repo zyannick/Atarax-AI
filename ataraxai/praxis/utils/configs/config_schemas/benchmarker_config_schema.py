@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import  Dict, List
+from typing import Dict, List
 
 from pydantic import BaseModel, Field, field_validator
 
-from ataraxai.hegemonikon_py import (  # type: ignore
-    HegemonikonBenchmarkMetrics, # type: ignore
-    HegemonikonBenchmarkParams, # type: ignore
-    HegemonikonQuantizedModelInfo, # type: ignore
+from ataraxai.hegemonikon_py import HegemonikonBenchmarkMetrics  # type: ignore
+from ataraxai.hegemonikon_py import HegemonikonBenchmarkParams  # type: ignore
+from ataraxai.hegemonikon_py import (
+    HegemonikonQuantizedModelInfo,  # type: ignore; type: ignore
 )
 from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
     GenerationParams,
@@ -37,7 +37,14 @@ class QuantizedModelInfo(BaseModel):
         return value
 
     def to_hegemonikon(self) -> HegemonikonQuantizedModelInfo:
-        return HegemonikonQuantizedModelInfo.from_dict(self.model_dump()) # type: ignore
+        # cpp_obj: HegemonikonQuantizedModelInfo = HegemonikonQuantizedModelInfo()  # type: ignore
+        # cpp_obj.model_id = self.model_id
+        # cpp_obj.local_path = self.local_path
+        # cpp_obj.last_modified = self.last_modified or ""
+        # cpp_obj.quantization = self.quantisation_type
+        # cpp_obj.fileSize = self.size_bytes
+        # return cpp_obj  # type: ignore
+        return HegemonikonQuantizedModelInfo.from_dict(self.model_dump())  # type: ignore
 
 
 class BenchmarkMetrics(BaseModel):
@@ -66,7 +73,7 @@ class BenchmarkMetrics(BaseModel):
         default=[],
         description="List of individual generation times in milliseconds.",
     )
-    token_per_second_times_history_ms: List[float] = Field(
+    tokens_per_second_history: List[float] = Field(
         default=[],
         description="List of tokens per second recorded at different intervals.",
     )
@@ -78,7 +85,7 @@ class BenchmarkMetrics(BaseModel):
         default=[],
         description="List of end-to-end latency measurements in milliseconds.",
     )
-    decode_times_ms: List[float] = Field(
+    decode_times_history_ms: List[float] = Field(
         default=[], description="List of decode times in milliseconds."
     )
 
@@ -110,8 +117,56 @@ class BenchmarkMetrics(BaseModel):
             raise ValueError("Value must be non-negative.")
         return value
 
+    @classmethod
+    def from_hegemonikon(
+        cls, cpp_obj: HegemonikonBenchmarkMetrics
+    ) -> "BenchmarkMetrics":
+        data = {
+            "load_time_ms": cpp_obj.load_time_ms,
+            "generation_time_ms": cpp_obj.generation_time_ms,
+            "total_time_ms": cpp_obj.total_time_ms,
+            "tokens_generated": cpp_obj.tokens_generated,
+            "token_per_second": cpp_obj.tokens_per_second,
+            "error_message": cpp_obj.errorMessage,
+            "memory_usage_mb": cpp_obj.memory_usage_mb,
+            "success": cpp_obj.success,
+            "generation_time_history_ms": cpp_obj.generation_time_history_ms,
+            "tokens_per_second_history": cpp_obj.tokens_per_second_history,
+            "ttft_history_ms": cpp_obj.ttft_history_ms,
+            "end_to_end_latency_history_ms": cpp_obj.end_to_end_latency_history_ms,
+            "decode_times_history_ms": cpp_obj.decode_times_history_ms,
+            "avg_ttft_ms": cpp_obj.avg_ttft_ms,
+            "avg_decode_time_ms": cpp_obj.avg_decode_time_ms,
+            "avg_end_to_end_time_latency_ms": cpp_obj.avg_end_to_end_time_latency_ms,
+            "p50_latency_ms": cpp_obj.p50_latency_ms,
+            "p95_latency_ms": cpp_obj.p95_latency_ms,
+            "p99_latency_ms": cpp_obj.p99_latency_ms,
+        }
+        return cls(**data)
+
     def to_hegemonikon(self) -> HegemonikonBenchmarkMetrics:
-        return HegemonikonBenchmarkMetrics.from_dict(self.model_dump()) # type: ignore
+        # cpp_obj: HegemonikonBenchmarkMetrics = HegemonikonBenchmarkMetrics()  # type: ignore
+        # cpp_obj.load_time_ms = self.load_time_ms
+        # cpp_obj.generation_time_ms = self.generation_time_ms
+        # cpp_obj.total_time_ms = self.total_time_ms
+        # cpp_obj.tokens_generated = self.tokens_generated
+        # cpp_obj.tokens_per_second = self.token_per_second
+        # cpp_obj.memory_usage_mb = self.memory_usage_mb
+        # cpp_obj.success = self.success
+        # cpp_obj.errorMessage = self.error_message or ""
+        # cpp_obj.generation_time_history_ms = self.generation_time_history_ms
+        # cpp_obj.tokens_per_second_history = self.tokens_per_second_history
+        # cpp_obj.ttft_history_ms = self.ttft_history_ms
+        # cpp_obj.end_to_end_latency_history_ms = self.end_to_end_latency_history_ms
+        # cpp_obj.decode_times_history_ms = self.decode_times_history_ms
+        # cpp_obj.avg_ttft_ms = self.avg_ttft_ms
+        # cpp_obj.avg_decode_time_ms = self.avg_decode_time_ms
+        # cpp_obj.avg_end_to_end_time_latency_ms = self.avg_end_to_end_time_latency_ms
+        # cpp_obj.p50_latency_ms = self.p50_latency_ms
+        # cpp_obj.p95_latency_ms = self.p95_latency_ms
+        # cpp_obj.p99_latency_ms = self.p99_latency_ms
+        # return cpp_obj  # type: ignore
+        return HegemonikonBenchmarkMetrics.from_dict(self.model_dump())  # type: ignore
 
     @classmethod
     def from_dict(cls, data: Dict) -> "BenchmarkMetrics":
@@ -135,7 +190,13 @@ class BenchmarkParams(BaseModel):
         return value
 
     def to_hegemonikon(self) -> HegemonikonBenchmarkParams:
-        return HegemonikonBenchmarkParams.from_dict(self.model_dump()) # type: ignore
+        # cpp_obj: HegemonikonBenchmarkParams = HegemonikonBenchmarkParams()  # type: ignore
+        # cpp_obj.n_gpu_layers = self.n_gpu_layers
+        # cpp_obj.repetitions = self.repetitions
+        # cpp_obj.warmup = self.warmup
+        # cpp_obj.generation_params = self.generation_params.to_hegemonikon() # type: ignore
+        # return cpp_obj  # type: ignore
+        return HegemonikonBenchmarkParams.from_dict(self.model_dump())  # type: ignore
 
 
 class BenchmarkResult(BaseModel):
@@ -143,6 +204,15 @@ class BenchmarkResult(BaseModel):
     metrics: BenchmarkMetrics = Field(
         ..., description="Benchmark metrics for the model."
     )
+
+    @classmethod
+    def from_hegemonikon(
+        cls, cpp_obj: HegemonikonBenchmarkMetrics
+    ) -> "BenchmarkResult":
+        return cls(
+            model_id=cpp_obj.model_id,  # type: ignore
+            metrics=BenchmarkMetrics.from_hegemonikon(cpp_obj.metrics),  # type: ignore
+        )
 
     @field_validator("model_id")
     def validate_model_id(cls, value: str) -> str:

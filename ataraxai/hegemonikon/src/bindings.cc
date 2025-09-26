@@ -260,34 +260,38 @@ PYBIND11_MODULE(hegemonikon_py, m)
                      {
      HegemonikonBenchmarkMetrics metrics;
      metrics.load_time_ms = d.attr("get")("load_time_ms", 0).cast<int64_t>();
-     metrics.generation_time = d.attr("get")("generation_time", 0.0).cast<float>();
-     metrics.total_time = d.attr("get")("total_time", 0.0).cast<float>();
+     metrics.generation_time_ms = d.attr("get")("generation_time_ms", 0.0).cast<float>();
+     metrics.total_time_ms = d.attr("get")("total_time_ms", 0.0).cast<float>();
      metrics.tokens_generated = d.attr("get")("tokens_generated", 0).cast<int64_t>();
      metrics.tokens_per_second = d.attr("get")("tokens_per_second", 0.0).cast<float>();
-     metrics.memory_usage = d.attr("get")("memory_usage", 0.0).cast<float>();
+     metrics.memory_usage_mb = d.attr("get")("memory_usage_mb", 0.0).cast<float>();
      metrics.success = d.attr("get")("success", false).cast<bool>();
      metrics.errorMessage = d.attr("get")("errorMessage", "").cast<std::string>();
-     metrics.generation_times = d.attr("get")("generation_times", std::vector<float>{}).cast<std::vector<float>>();
+     metrics.generation_time_history_ms = d.attr("get")("generation_time_history_ms", std::vector<float>{}).cast<std::vector<float>>();
      metrics.tokens_per_second_history = d.attr("get")("tokens_per_second_history", std::vector<float>{}).cast<std::vector<float>>();
      metrics.avg_ttft_ms = d.attr("get")("avg_ttft_ms", 0.0).cast<float>();
-     metrics.avg_decode_tps = d.attr("get")("avg_decode_tps", 0.0).cast<float>();
-     metrics.avg_end_to_end_latency_ms = d.attr("get")("avg_end_to_end_latency_ms", 0.0).cast<float>();
+     metrics.avg_decode_time_ms = d.attr("get")("avg_decode_time_ms", 0.0).cast<float>();
+     metrics.avg_end_to_end_time_latency_ms = d.attr("get")("avg_end_to_end_time_latency_ms", 0.0).cast<float>();
      return metrics; })
          .def_readwrite("load_time_ms", &HegemonikonBenchmarkMetrics::load_time_ms, "Time taken to load the model in milliseconds.")
-         .def_readwrite("generation_time", &HegemonikonBenchmarkMetrics::generation_time, "Time taken for text generation in seconds.")
-         .def_readwrite("total_time", &HegemonikonBenchmarkMetrics::total_time, "Total time for the benchmark in seconds.")
+         .def_readwrite("generation_time_ms", &HegemonikonBenchmarkMetrics::generation_time_ms, "Time taken for text generation in seconds.")
+         .def_readwrite("total_time_ms", &HegemonikonBenchmarkMetrics::total_time_ms, "Total time for the benchmark in seconds.")
          .def_readwrite("tokens_generated", &HegemonikonBenchmarkMetrics::tokens_generated, "Number of tokens generated during the benchmark.")
          .def_readwrite("tokens_per_second", &HegemonikonBenchmarkMetrics::tokens_per_second, "Average tokens generated per second.")
-         .def_readwrite("memory_usage", &HegemonikonBenchmarkMetrics::memory_usage, "Memory usage during the benchmark in MB.")
+         .def_readwrite("memory_usage_mb", &HegemonikonBenchmarkMetrics::memory_usage_mb, "Memory usage during the benchmark in MB.")
          .def_readwrite("success", &HegemonikonBenchmarkMetrics::success, "Whether the benchmark was successful.")
          .def_readwrite("errorMessage", &HegemonikonBenchmarkMetrics::errorMessage, "Error message if the benchmark failed.")
-         .def_readwrite("generation_times", &HegemonikonBenchmarkMetrics::generation_times, "List of generation times for each run in seconds.")
+         .def_readwrite("generation_time_history_ms", &HegemonikonBenchmarkMetrics::generation_time_history_ms, "List of generation times for each run in seconds.")
          .def_readwrite("tokens_per_second_history", &HegemonikonBenchmarkMetrics::tokens_per_second_history, "List of tokens per second for each run.")
          .def_readwrite("avg_ttft_ms", &HegemonikonBenchmarkMetrics::avg_ttft_ms, "Average time to first token in milliseconds.")
-         .def_readwrite("avg_decode_tps", &HegemonikonBenchmarkMetrics::avg_decode_tps, "Average decode tokens per second.")
-         .def_readwrite("avg_end_to_end_latency_ms", &HegemonikonBenchmarkMetrics::avg_end_to_end_latency_ms, "Average end-to-end latency in milliseconds.")
-         .def_readwrite("ttft_history", &HegemonikonBenchmarkMetrics::ttft_history, "List of time to first token for each run in milliseconds.")
-         .def_readwrite("end_to_end_latency_history", &HegemonikonBenchmarkMetrics::end_to_end_latency_history, "List of end-to-end latencies for each run in milliseconds.");
+         .def_readwrite("avg_decode_time_ms", &HegemonikonBenchmarkMetrics::avg_decode_time_ms, "Average decode time in milliseconds.")
+         .def_readwrite("avg_end_to_end_time_latency_ms", &HegemonikonBenchmarkMetrics::avg_end_to_end_time_latency_ms, "Average end-to-end latency in milliseconds.")
+         .def_readwrite("ttft_history_ms", &HegemonikonBenchmarkMetrics::ttft_history_ms, "List of time to first token for each run in milliseconds.")
+         .def_readwrite("end_to_end_latency_history_ms", &HegemonikonBenchmarkMetrics::end_to_end_latency_history_ms, "List of end-to-end latencies for each run in milliseconds.")
+         .def_readwrite("decode_times_history_ms", &HegemonikonBenchmarkMetrics::decode_times_history_ms, "List of decode times for each run in milliseconds.")
+         .def_readwrite("p50_latency_ms", &HegemonikonBenchmarkMetrics::p50_latency_ms, "50th percentile latency in milliseconds.")
+         .def_readwrite("p95_latency_ms", &HegemonikonBenchmarkMetrics::p95_latency_ms, "95th percentile latency in milliseconds.")
+         .def_readwrite("p99_latency_ms", &HegemonikonBenchmarkMetrics::p99_latency_ms, "99th percentile latency in milliseconds.");
 
      py::class_<HegemonikonBenchmarkResult>(m, "HegemonikonBenchmarkResult", "Result of a model benchmark.")
          .def(py::init<const std::string &>(), "Constructor with model ID")

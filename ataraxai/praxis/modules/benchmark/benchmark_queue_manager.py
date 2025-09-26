@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import threading
+import traceback
 import uuid
 from dataclasses import asdict
 from datetime import datetime
@@ -11,11 +12,12 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from ataraxai.hegemonikon_py import ( # type: ignore
-    HegemonikonBenchmarkResult, # type: ignore
-    HegemonikonLlamaBenchmarker, # type: ignore
+from ataraxai.hegemonikon_py import HegemonikonBenchmarkResult  # type: ignore
+from ataraxai.hegemonikon_py import (
+    HegemonikonLlamaBenchmarker,  # type: ignore; type: ignore
 )
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
 from ataraxai.praxis.utils.configs.config_schemas.benchmarker_config_schema import (
     BenchmarkParams,
     BenchmarkResult,
@@ -43,7 +45,7 @@ class BenchmarkJob(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.now().isoformat())
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
-    result: Optional[BenchmarkResult] = None
+    benchmark_result: Optional[BenchmarkResult] = None
     error_message: Optional[str] = None
 
     class Config:
@@ -53,6 +55,7 @@ class BenchmarkJob(BaseModel):
 class BenchmarkQueueManager:
     def __init__(
         self,
+        background_tasks_manager : BackgroundTaskManager, 
         logger: Optional[logging.Logger] = None,
         max_concurrent: int = 1,
         persistence_file: Optional[Path] = None,
@@ -77,6 +80,7 @@ class BenchmarkQueueManager:
             _shutdown_event (asyncio.Event): Event to signal shutdown.
             _job_added_event (asyncio.Event): Event to signal a new job has been added.
         """
+        self.background_tasks_manager = background_tasks_manager
         self.logger = logger or AtaraxAILogger("BenchmarkQueueManager").get_logger()
         self.max_concurrent = max(1, max_concurrent)
         self.persistence_file = persistence_file
@@ -128,7 +132,7 @@ class BenchmarkQueueManager:
             job_id (str): The unique identifier of the benchmark job.
 
         Returns:
-            Optional[BenchmarkJob]: The BenchmarkJob instance if found in running, completed, or queued jobs; 
+            Optional[BenchmarkJob]: The BenchmarkJob instance if found in running, completed, or queued jobs;
             otherwise, returns None.
         """
         with self._lock:
@@ -274,7 +278,7 @@ class BenchmarkQueueManager:
         Returns:
             None
         """
-        runner = HegemonikonLlamaBenchmarker() # type: ignore
+        runner = HegemonikonLlamaBenchmarker()  # type: ignore
         while not self._shutdown_event.is_set():
             job = self._get_next_job()
             if not job:
@@ -286,7 +290,7 @@ class BenchmarkQueueManager:
                     continue
 
             self._move_job_to_running(job)
-            await self._process_job(job, runner) # type: ignore
+            await self._process_job(job, runner)  # type: ignore
 
         self.logger.info("Worker loop has gracefully shut down.")
 
@@ -344,17 +348,16 @@ class BenchmarkQueueManager:
             - Catches and logs any exceptions raised during benchmarking.
         """
         try:
-            result_cpp: HegemonikonBenchmarkResult = await asyncio.to_thread( # type: ignore
-                runner.benchmark_single_model, # type: ignore
-                job.model_info.model_dump(
-                    by_alias=True
-                ),
-                job.benchmark_params.model_dump(),
-                job.llama_model_params.model_dump(),
+            benchmark_metric_cpp: HegemonikonBenchmarkResult = await asyncio.to_thread(  # type: ignore
+                runner.benchmark_single_model,  # type: ignore
+                job.model_info.to_hegemonikon(),  # type: ignore
+                job.benchmark_params.to_hegemonikon(),  # type: ignore
+                job.llama_model_params.to_hegemonikon(),  # type: ignore
             )
 
             with self._lock:
-                job.result = BenchmarkResult.model_validate(asdict(result_cpp))
+                benchmark_metric = BenchmarkResult.from_hegemonikon(benchmark_metric_cpp)  # type: ignore
+                job.benchmark_result = benchmark_metric
                 job.status = BenchmarkJobStatus.COMPLETED
                 self.logger.info(f"Completed job {job.id} successfully.")
 
@@ -393,8 +396,11 @@ class BenchmarkQueueManager:
                     "running": [job.model_dump() for job in self._running.values()],
                     "completed": [job.model_dump() for job in self._completed.values()],
                 }
-            self.persistence_file.write_text(json.dumps(data, indent=2))
+            # self.logger.debug(f"Persisting jobs to {json.dumps(data, indent=4)}")
+            with self.persistence_file.open("w") as f:
+                json.dump(data, f, indent=4)
         except Exception as e:
+            self.logger.debug(traceback.format_exc())
             self.logger.error(f"Failed to persist jobs: {e}")
 
     def _load_persisted_jobs(self):
