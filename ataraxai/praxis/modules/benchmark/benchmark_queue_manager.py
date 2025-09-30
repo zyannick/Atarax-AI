@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from ataraxai.hegemonikon_py import HegemonikonBenchmarkResult  # type: ignore
-from ataraxai.hegemonikon_py import (
+from ataraxai.hegemonikon_py import ( # type: ignore
     HegemonikonLlamaBenchmarker,  # type: ignore; type: ignore
 )
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
@@ -55,8 +55,7 @@ class BenchmarkJob(BaseModel):
 class BenchmarkQueueManager:
     def __init__(
         self,
-        background_tasks_manager : BackgroundTaskManager, 
-        logger: Optional[logging.Logger] = None,
+        logger: logging.Logger,
         max_concurrent: int = 1,
         persistence_file: Optional[Path] = None,
     ):
@@ -64,7 +63,7 @@ class BenchmarkQueueManager:
         Initialize a BenchmarkQueueManager instance.
 
         Args:
-            logger (Optional[logging.Logger]): Logger instance to use. If None, a default logger is created.
+            logger (logging.Logger): Logger instance to use.
             max_concurrent (int): Maximum number of concurrent benchmark jobs. Defaults to 1.
             persistence_file (Optional[Path]): Path to the file used for persisting job state. If None, persistence is disabled.
 
@@ -80,8 +79,7 @@ class BenchmarkQueueManager:
             _shutdown_event (asyncio.Event): Event to signal shutdown.
             _job_added_event (asyncio.Event): Event to signal a new job has been added.
         """
-        self.background_tasks_manager = background_tasks_manager
-        self.logger = logger or AtaraxAILogger("BenchmarkQueueManager").get_logger()
+        self.logger = logger
         self.max_concurrent = max(1, max_concurrent)
         self.persistence_file = persistence_file
         self._queue: List[BenchmarkJob] = []
@@ -162,8 +160,10 @@ class BenchmarkQueueManager:
             - Persists the updated job states.
             - Logs the cancellation event.
         """
+        self.logger.info(f"Attempting to cancel job {job_id}")
         with self._lock:
             for i, job in enumerate(self._queue):
+                self.logger.debug(f"Checking job {asdict(job)} against ID {job_id}")
                 if job.id == job_id:
                     job.status = BenchmarkJobStatus.CANCELLED
                     job.completed_at = datetime.now().isoformat()
@@ -396,7 +396,6 @@ class BenchmarkQueueManager:
                     "running": [job.model_dump() for job in self._running.values()],
                     "completed": [job.model_dump() for job in self._completed.values()],
                 }
-            # self.logger.debug(f"Persisting jobs to {json.dumps(data, indent=4)}")
             with self.persistence_file.open("w") as f:
                 json.dump(data, f, indent=4)
         except Exception as e:

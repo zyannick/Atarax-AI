@@ -146,6 +146,8 @@ async def test_clear_empty_completed_jobs(
     assert data["message"] == "Cleared 0 completed jobs from the queue."
 
 
+
+
 @pytest.mark.asyncio
 async def test_benchmark_workflow(
     module_unlocked_client_with_filled_manifest: TestClient,
@@ -229,3 +231,95 @@ async def test_benchmark_workflow(
     assert data["status"] == Status.SUCCESS.value
     assert data["message"] == "Benchmarker job info retrieved successfully."
     assert data["data"]["job_info"]["id"] == job_id
+
+    max_wait_time = 60
+    poll_interval = 5
+    elapsed_time = 0
+    job_completed = False
+
+    while elapsed_time < max_wait_time:
+        response = module_unlocked_client_with_filled_manifest.get(
+        f"/api/v1/benchmark/job/{job_id}"
+        )
+        assert (
+            response.status_code == status.HTTP_200_OK
+        ), f"Response: {response.text}"
+        data = response.json()
+        job_info = data["data"]["job_info"]
+        if job_info["status"] == "COMPLETED":
+            job_completed = True
+            benchmark_result = job_info.get("benchmark_result") 
+            assert benchmark_result is not None, "Benchmark result should not be None."
+            assert benchmark_result.get("model_id") == selected_model.repo_id
+            benchmark_metrics = benchmark_result.get("metrics")
+            assert benchmark_metrics is not None, "Benchmark metrics should not be None."
+            assert benchmark_metrics.get("load_time_ms") > 0
+            break
+        time.sleep(poll_interval)
+        elapsed_time += poll_interval
+
+    assert job_completed, "Benchmark job did not complete in time."
+
+    response = module_unlocked_client_with_filled_manifest.post(
+        "/api/v1/benchmark/jobs/clear_completed"
+    )
+    assert response.status_code == status.HTTP_200_OK, f"Response: {response.text}"
+    data = response.json()
+    assert data["status"] == Status.SUCCESS.value
+
+    benchmark_job: BenchmarkJobAPI = BenchmarkJobAPI(
+        id=str(uuid4()),
+        model_info=QuantizedModelInfoAPI(
+            model_id=selected_model.repo_id,
+            local_path=selected_model.local_path,
+            quantisation_type=selected_model.quantization,
+            last_modified=str(datetime.now().isoformat()),
+            size_bytes=selected_model.file_size,
+        ),
+        benchmark_params=BenchmarkParamsAPI(
+            n_gpu_layers=20,
+            repetitions=1,
+            warmup=True,
+            generation_params=LlamaCPPGenerationParamsAPI(
+                temperature=0.7,
+                top_p=0.9,
+            ),
+        ),
+        llama_model_params=LlamaCPPConfigAPI(model_info=selected_model),
+    )
+
+    response = module_unlocked_client_with_filled_manifest.post(
+        "/api/v1/benchmark/jobs/enqueue",
+        json=benchmark_job.model_dump(mode="json"),
+    )
+    assert (
+        response.status_code == status.HTTP_200_OK
+    ), f"Expected 200 OK, got {response.text}"
+    data = response.json()
+    assert data["status"] == Status.SUCCESS.value
+    assert data["message"] == "Benchmark job enqueued successfully."
+    job_id = data["data"]["job_id"] 
+
+    response = module_unlocked_client_with_filled_manifest.post(
+        f"/api/v1/benchmark/job/{job_id}/cancel"
+    )
+    assert (
+        response.status_code == status.HTTP_200_OK
+    ), f"Expected 200 OK, got {response.text}"
+    data = response.json()
+    assert data["status"] == Status.SUCCESS.value
+    assert data["message"] == f"Request to cancel job {job_id} sent."
+
+    # time.sleep(2)
+
+    # response = module_unlocked_client_with_filled_manifest.get(
+    #     f"/api/v1/benchmark/job/{job_id}"
+    # )
+    # assert (
+    #     response.status_code == status.HTTP_200_OK
+    # ), f"Expected 200 OK, got {response.text}"
+    # data = response.json()
+    # assert data["status"] == Status.SUCCESS.value
+    # assert data["data"]["job_info"]["id"] == job_id
+    # assert data["data"]["job_info"]["status"] in ["CANCELLED", "COMPLETED"]
+

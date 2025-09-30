@@ -287,21 +287,21 @@ def test_cleanup_old_tasks_removes_old(tmp_path: Path):
             status=ModelDownloadStatus.COMPLETED,
             repo_id="repo",
             filename="file.gguf",
-            created_at=old_time,
+            created_at=old_time.isoformat(),
         ),
         "t2": ModelDownloadInfo(
             task_id="t2",
             status=ModelDownloadStatus.FAILED,
             repo_id="repo",
             filename="file2.gguf",
-            created_at=old_time,
+            created_at=old_time.isoformat(),
         ),
         "t3": ModelDownloadInfo(
             task_id="t3",
             status=ModelDownloadStatus.DOWNLOADING,
             repo_id="repo",
             filename="file3.gguf",
-            created_at=datetime.now(),
+            created_at=datetime.now().isoformat(),
         ),
     }
     manager.cleanup_old_tasks(max_age_hours=1)
@@ -571,23 +571,23 @@ def test_cleanup_old_tasks_removes_old_cancelled_tasks(tmp_path: Path):
             status=ModelDownloadStatus.CANCELLED,
             repo_id="repo",
             filename="file.gguf",
-            created_at=old_time,
-            cancelled_at=old_time,
+            created_at=old_time.isoformat(),
+            cancelled_at=old_time.isoformat(),
         ),
         "new_cancelled": ModelDownloadInfo(
             task_id="new_cancelled",
             status=ModelDownloadStatus.CANCELLED,
             repo_id="repo",
             filename="file2.gguf",
-            created_at=datetime.now(),
-            cancelled_at=datetime.now(),
+            created_at=datetime.now().isoformat(),
+            cancelled_at=datetime.now().isoformat(),
         ),
         "downloading": ModelDownloadInfo(
             task_id="downloading",
             status=ModelDownloadStatus.DOWNLOADING,
             repo_id="repo",
             filename="file3.gguf",
-            created_at=datetime.now(),
+            created_at=datetime.now().isoformat(),
         ),
     }
 
@@ -621,14 +621,14 @@ def test_cleanup_old_tasks_removes_old_tasks(tmp_path: Path):
             status=ModelDownloadStatus.COMPLETED,
             repo_id="repo",
             filename="file.gguf",
-            created_at=old_time,
+            created_at=old_time.isoformat(),
         ),
         "new": ModelDownloadInfo(
             task_id="new",
             status=ModelDownloadStatus.DOWNLOADING,
             repo_id="repo",
             filename="file2.gguf",
-            created_at=datetime.now(),
+            created_at=datetime.now().isoformat(),
         ),
     }
     manager.cleanup_old_tasks(max_age_hours=1)

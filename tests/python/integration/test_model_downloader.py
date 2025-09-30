@@ -29,7 +29,6 @@ async def test_search_models(module_unlocked_client: TestClient):
         query="llama", limit=10, filters_tags=["llama"]
     )
 
-    # client = await module_unlocked_client
     response = module_unlocked_client.post(
         "/api/v1/models_manager/search_models",
         json=search_model_request.model_dump(mode="json"),
@@ -181,14 +180,6 @@ def test_get_model_info_manifest_partial(
     )
 
 
-# def test_get_model_info_manifest(
-#     module_unlocked_client_with_filled_manifest: TestClient,
-# ):
-#     _test_manifest_search(
-#         module_unlocked_client_with_filled_manifest, repo_id="llama", filename="llama"
-#     )
-
-
 def test_get_model_info_manifest_case_insensitive(
     module_unlocked_client_with_filled_manifest: TestClient,
 ):
@@ -239,7 +230,6 @@ async def test_cancel_download(module_unlocked_client: TestClient):
     state = await orchestrator.get_state()  # type: ignore
     assert state == AppState.UNLOCKED, "Orchestrator should be in UNLOCKED state."
 
-    # Start download
     response = module_unlocked_client.post(
         "/api/v1/models_manager/download_model",
         json=download_request.model_dump(mode="json"),
@@ -251,7 +241,6 @@ async def test_cancel_download(module_unlocked_client: TestClient):
     download_data = response.json()
     task_id = download_data["task_id"]
 
-    # Cancel download
     cancel_response = module_unlocked_client.post(
         f"/api/v1/models_manager/cancel_download/{task_id}"
     )
