@@ -340,12 +340,11 @@ PYBIND11_MODULE(hegemonikon_py, m)
 
      py::class_<HegemonikonLlamaBenchmarker>(m, "HegemonikonLlamaBenchmarker", "Benchmarks LLM models for performance and metrics.")
          .def(py::init<>(), "Default constructor")
-     //     .def(py::init<std::vector<HegemonikonQuantizedModelInfo>, std::vector<std::string>>(), "Constructor with model and prompt lists",
-     //          py::arg("models"), py::arg("prompts"))
          .def("benchmark_single_model", &HegemonikonLlamaBenchmarker::benchmarkSingleModel, "Benchmark a single LLM model",
               py::arg("quantized_model_info"), py::arg("benchmark_params"), py::arg("llama_model_params"), 
               "Runs a benchmark for a single model.",
-              py::call_guard<py::gil_scoped_release>());
+              py::call_guard<py::gil_scoped_release>())
+          .def("request_cancellation", &HegemonikonLlamaBenchmarker::requestCancellation, "Request cancellation of an ongoing benchmark.");
 
      py::class_<SecureKey>(m, "SecureKey", "A C++ class to hold sensitive data (like encryption keys) in locked memory.")
          .def("data", [](const SecureKey &self)

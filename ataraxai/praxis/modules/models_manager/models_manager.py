@@ -130,9 +130,12 @@ def get_file_size(repo_id: str, filename: str) -> int:
 
     total_size = int(response.headers.get("content-length", 0))
 
-    # print(f"Downloading {filename} from {url} ({total_size / (1024 * 1024):.2f} MB)")
-
     return total_size
+
+
+class Manifests(BaseModel):
+    models: List[Dict[str, Any]] = Field(default_factory=list)
+    last_updated: Optional[str] = None
 
 
 class ModelsManager:
@@ -250,12 +253,12 @@ class ModelsManager:
         try:
             if self.manifest_path.exists():
                 with open(self.manifest_path, "r") as f:
-                    self.manifest: List[Dict[str, Any]] = json.load(f)
+                    self.manifest: Manifests = Manifests(**json.load(f))
             else:
-                self.manifest = {"models": [], "last_updated": None}  # type: ignore
+                self.manifest = Manifests()
         except Exception as e:
             self.logger.error(f"Failed to load manifest: {e}")
-            self.manifest = {"models": [], "last_updated": None}  # type: ignore
+            self.manifest = Manifests()
 
     def _save_manifest(self):
         """
@@ -269,9 +272,9 @@ class ModelsManager:
             Logs any exceptions encountered during the save process.
         """
         try:
-            self.manifest["last_updated"] = datetime.now().isoformat()  # type: ignore
+            self.manifest.last_updated = datetime.now().isoformat()
             with open(self.manifest_path, "w") as f:
-                json.dump(self.manifest, f, indent=2)
+                json.dump(self.manifest.model_dump(), f, indent=2)
         except Exception as e:
             self.logger.error(f"Failed to save manifest: {e}")
 
@@ -291,7 +294,7 @@ class ModelsManager:
         """
 
         self.logger.debug(f"Searching models with criteria: {search_infos}")
-        self.logger.debug(f"Current manifest: {len(self.manifest['models'])}")  # type: ignore
+        self.logger.debug(f"Current manifest: {len(self.manifest.models)}")
 
         results = []
 
@@ -311,7 +314,7 @@ class ModelsManager:
             else None
         )
 
-        for model in self.manifest.get("models", []):  # type: ignore
+        for model in self.manifest.models:
 
             if (
                 search_repo_id
@@ -717,13 +720,13 @@ class ModelsManager:
         )
         model_info.downloaded_at = datetime.now().isoformat()
 
-        for i, existing in enumerate(self.manifest["models"]):  # type: ignore
+        for i, existing in enumerate(self.manifest.models):
             if existing["repo_id"] == repo_id and existing["filename"] == filename:
-                self.manifest["models"][i] = model_info.model_dump(mode="json")  # type: ignore
+                self.manifest.models[i] = model_info.model_dump(mode="json")
                 self._save_manifest()
                 return
 
-        self.manifest["models"].append(model_info.model_dump(mode="json"))  # type: ignore
+        self.manifest.models.append(model_info.model_dump(mode="json"))
         self._save_manifest()
 
     def get_download_status(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -772,7 +775,7 @@ class ModelsManager:
         Returns:
             List[Dict]: A list of dictionaries, each representing a downloaded model.
         """
-        return self.manifest.get("models", [])  # type: ignore
+        return self.manifest.models
 
     async def remove_all_models(self) -> bool:
         """
@@ -789,11 +792,11 @@ class ModelsManager:
         try:
 
             def _blocking_remove():
-                for model in self.manifest["models"]:  # type: ignore
-                    if model.get("local_path") and Path(model["local_path"]).exists():  # type: ignore
+                for model in self.manifest.models:
+                    if model.get("local_path") and Path(model["local_path"]).exists():
                         Path(model["local_path"]).unlink()
 
-                self.manifest["models"] = []  # type: ignore
+                self.manifest.models = []
                 self._save_manifest()
                 self.logger.info("Removed all models from manifest and local storage.")
                 return True
@@ -823,15 +826,15 @@ class ModelsManager:
         try:
 
             def _blocking_remove():
-                for i, model in enumerate(self.manifest["models"]):  # type: ignore
+                for i, model in enumerate(self.manifest.models):
                     if model["repo_id"] == repo_id and model["filename"] == filename:
                         if (
-                            model.get("local_path")  # type: ignore
+                            model.get("local_path")
                             and Path(model["local_path"]).exists()
                         ):
                             Path(model["local_path"]).unlink()
 
-                        del self.manifest["models"][i]  # type: ignore
+                        del self.manifest.models[i]
                         self._save_manifest()
                         self.logger.info(f"Removed model: {repo_id}/{filename}")
                         return True

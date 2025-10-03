@@ -186,6 +186,7 @@ class HegemonikonLlamaBenchmarker
 private:
     std::vector<HegemonikonQuantizedModelInfo> quantized_models;
     std::vector<std::string> benchmark_prompts;
+    std::atomic<bool> cancellation_requested{false};
 
 public:
     HegemonikonLlamaBenchmarker()
@@ -211,11 +212,23 @@ public:
         };
     }
 
+    void requestCancellation()
+    {
+        cancellation_requested.store(true);
+    }
+
+    void resetCancellation()
+    {
+        cancellation_requested.store(false);
+    }
+
     HegemonikonBenchmarkResult benchmarkSingleModel(const HegemonikonQuantizedModelInfo &quantized_model_info, const HegemonikonBenchmarkParams &benchmark_params, HegemonikonLlamaModelParams llama_model_params)
     {
         HegemonikonBenchmarkResult result(quantized_model_info.model_id);
         // result.benchmark_params = benchmark_params;
         // result.llama_model_params = llama_model_params;
+
+        cancellation_requested.store(false);
 
         try
         {
@@ -242,6 +255,14 @@ public:
 
             HegemonikonGenerationParams gen_params = benchmark_params.generation_params;
 
+            if (cancellation_requested.load())
+            {
+                result.metrics.success = false;
+                result.metrics.errorMessage = "Benchmark cancelled by user.";
+                interface.unload_model();
+                return result;
+            }
+
             if (benchmark_params.warmup)
             {
                 double ttft_ms = 0.0;
@@ -249,10 +270,26 @@ public:
                 int32_t tokens_generated = 0;
                 std::cout << "  Running warmup..." << std::endl;
                 interface.generate_completion("Hello", gen_params, ttft_ms, decode_duration_ms, tokens_generated);
+                if (cancellation_requested.load())
+                {
+                    result.metrics.success = false;
+                    result.metrics.errorMessage = "Benchmark cancelled by user.";
+                    interface.unload_model();
+                    return result;
+                }
             }
 
             for (int i = 0; i < benchmark_params.repetitions; ++i)
             {
+
+                if (cancellation_requested.load())
+                {
+                    result.metrics.success = false;
+                    result.metrics.errorMessage = "Benchmark cancelled by user.";
+                    interface.unload_model();
+                    return result;
+                }
+
                 auto e2e_start = high_resolution_clock::now();
                 const std::string &prompt = benchmark_prompts[i % benchmark_prompts.size()];
                 if (i == 0)

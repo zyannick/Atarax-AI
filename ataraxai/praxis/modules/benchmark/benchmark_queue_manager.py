@@ -93,6 +93,8 @@ class BenchmarkQueueManager:
 
         self._load_persisted_jobs()
 
+        self._runners: Dict[str, HegemonikonLlamaBenchmarker] = {}
+
     def enqueue_job(
         self,
         model_info: QuantizedModelInfo,
@@ -163,15 +165,28 @@ class BenchmarkQueueManager:
         self.logger.info(f"Attempting to cancel job {job_id}")
         with self._lock:
             for i, job in enumerate(self._queue):
-                self.logger.debug(f"Checking job {asdict(job)} against ID {job_id}")
                 if job.id == job_id:
                     job.status = BenchmarkJobStatus.CANCELLED
                     job.completed_at = datetime.now().isoformat()
                     cancelled_job = self._queue.pop(i)
                     self._completed[job_id] = cancelled_job
-                    self.logger.info(f"Cancelled job {job_id}")
+                    self.logger.info(f"Cancelled queued job {job_id}")
                     self._persist_jobs()
                     return True
+            
+            if job_id in self._running:
+                if job_id in self._runners:
+                    self._runners[job_id].request_cancellation()
+                    self.logger.info(
+                        f"Requested cancellation for running job {job_id}. "
+                        "Will stop at next checkpoint."
+                    )
+                    return True
+                else:
+                    self.logger.warning(
+                        f"Job {job_id} is running but runner not found"
+                    )
+                    return False
         return False
 
     def get_queue_status(self) -> Dict[str, Any]:
@@ -278,7 +293,6 @@ class BenchmarkQueueManager:
         Returns:
             None
         """
-        runner = HegemonikonLlamaBenchmarker()  # type: ignore
         while not self._shutdown_event.is_set():
             job = self._get_next_job()
             if not job:
@@ -290,7 +304,7 @@ class BenchmarkQueueManager:
                     continue
 
             self._move_job_to_running(job)
-            await self._process_job(job, runner)  # type: ignore
+            await self._process_job(job)  # type: ignore
 
         self.logger.info("Worker loop has gracefully shut down.")
 
@@ -326,7 +340,7 @@ class BenchmarkQueueManager:
             self._persist_jobs()
 
     async def _process_job(
-        self, job: BenchmarkJob, runner: "HegemonikonLlamaBenchmarker"
+        self, job: BenchmarkJob
     ):
         """
         Asynchronously processes a benchmark job using the provided runner.
@@ -347,19 +361,29 @@ class BenchmarkQueueManager:
         Exceptions:
             - Catches and logs any exceptions raised during benchmarking.
         """
+        runner = HegemonikonLlamaBenchmarker()
+        with self._lock:
+            self._runners[job.id] = runner
+
         try:
-            benchmark_metric_cpp: HegemonikonBenchmarkResult = await asyncio.to_thread(  # type: ignore
-                runner.benchmark_single_model,  # type: ignore
-                job.model_info.to_hegemonikon(),  # type: ignore
-                job.benchmark_params.to_hegemonikon(),  # type: ignore
-                job.llama_model_params.to_hegemonikon(),  # type: ignore
+            benchmark_metric_cpp: HegemonikonBenchmarkResult = await asyncio.to_thread(
+                runner.benchmark_single_model,
+                job.model_info.to_hegemonikon(),
+                job.benchmark_params.to_hegemonikon(),
+                job.llama_model_params.to_hegemonikon(),
             )
 
             with self._lock:
-                benchmark_metric = BenchmarkResult.from_hegemonikon(benchmark_metric_cpp)  # type: ignore
+                benchmark_metric = BenchmarkResult.from_hegemonikon(benchmark_metric_cpp)
                 job.benchmark_result = benchmark_metric
-                job.status = BenchmarkJobStatus.COMPLETED
-                self.logger.info(f"Completed job {job.id} successfully.")
+                
+                if not benchmark_metric_cpp.metrics.success and \
+                   "cancelled" in benchmark_metric_cpp.metrics.errorMessage.lower():
+                    job.status = BenchmarkJobStatus.CANCELLED
+                    self.logger.info(f"Job {job.id} was cancelled during execution.")
+                else:
+                    job.status = BenchmarkJobStatus.COMPLETED
+                    self.logger.info(f"Completed job {job.id} successfully.")
 
         except Exception as e:
             self.logger.error(f"Job {job.id} failed: {e}", exc_info=True)
