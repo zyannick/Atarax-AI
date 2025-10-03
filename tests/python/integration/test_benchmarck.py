@@ -310,16 +310,16 @@ async def test_benchmark_workflow(
     assert data["status"] == Status.SUCCESS.value
     assert data["message"] == f"Request to cancel job {job_id} sent."
 
-    # time.sleep(2)
+    time.sleep(2)
 
-    # response = module_unlocked_client_with_filled_manifest.get(
-    #     f"/api/v1/benchmark/job/{job_id}"
-    # )
-    # assert (
-    #     response.status_code == status.HTTP_200_OK
-    # ), f"Expected 200 OK, got {response.text}"
-    # data = response.json()
-    # assert data["status"] == Status.SUCCESS.value
-    # assert data["data"]["job_info"]["id"] == job_id
-    # assert data["data"]["job_info"]["status"] in ["CANCELLED", "COMPLETED"]
+    response = module_unlocked_client_with_filled_manifest.get(
+        f"/api/v1/benchmark/job/{job_id}"
+    )
+    assert (
+        response.status_code == status.HTTP_200_OK
+    ), f"Expected 200 OK, got {response.text}"
+    data = response.json()
+    assert data["status"] == Status.SUCCESS.value
+    assert data["data"]["job_info"]["id"] == job_id
+    assert data["data"]["job_info"]["status"] in ["CANCELLED", "COMPLETED"]
 
