@@ -22,6 +22,7 @@ def mock_services_dependencies():
         "models_manager": MagicMock(),
         "core_ai_service_manager": MagicMock(),
         "background_task_manager": MagicMock(),
+        "benchmark_queue_manager": MagicMock(),
     }
 
 

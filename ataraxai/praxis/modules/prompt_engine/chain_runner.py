@@ -64,8 +64,6 @@ class ChainRunner:
         step_outputs: Dict[str, Any] = {}
         final_result = None
 
-        # assert 1 == 2 , "ChainRunner run_chain should be called"
-
         self.logger.error(f"Starting chain execution for query: '{initial_user_query}'")
 
         for i, step in enumerate(chain_definition):

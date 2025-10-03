@@ -10,7 +10,7 @@ using whisper_new_segment_callback_t = std::function<void(const std::string &, i
 
 using whisper_progress_callback_t = std::function<void(int)>;
 
-struct WhisperGenerationParams
+struct HegemonikonWhisperGenerationParams
 {
     int32_t step_ms = 3000;
     int32_t length_ms = 10000;
@@ -40,12 +40,12 @@ struct WhisperGenerationParams
     bool save_audio = false;
     std::string fname_out;
 
-    WhisperGenerationParams() = default;
+    HegemonikonWhisperGenerationParams() = default;
 
 
 
     /**
-     * @brief Constructs a WhisperGenerationParams object with the specified parameters.
+     * @brief Constructs a HegemonikonWhisperGenerationParams object with the specified parameters.
      *
      * @param step_ms        Step size in milliseconds for processing.
      * @param length_ms      Total length in milliseconds for the generation window.
@@ -64,7 +64,7 @@ struct WhisperGenerationParams
      * @param save_audio     If true, saves the processed audio to a file.
      * @param fname_out      Output filename for saving audio (if enabled).
      */
-    WhisperGenerationParams(int32_t step_ms_, int32_t length_ms_, int32_t keep_ms_,
+    HegemonikonWhisperGenerationParams(int32_t step_ms_, int32_t length_ms_, int32_t keep_ms_,
                             int32_t capture_id_, float vad_thold_, float freq_thold_,
                             bool translate_, bool tinydiarize_, bool no_fallback_,
                             bool no_context_, int32_t max_tokens_, int32_t beam_size_,
@@ -78,15 +78,15 @@ struct WhisperGenerationParams
           save_audio(save_audio_), fname_out(fname_out_) {}
 
     /**
-     * @brief Equality operator for WhisperGenerationParams.
+     * @brief Equality operator for HegemonikonWhisperGenerationParams.
      *
      * Compares all member variables of this instance with another
-     * WhisperGenerationParams instance to determine if they are equal.
+     * HegemonikonWhisperGenerationParams instance to determine if they are equal.
      *
-     * @param other The WhisperGenerationParams instance to compare with.
+     * @param other The HegemonikonWhisperGenerationParams instance to compare with.
      * @return true if all member variables are equal, false otherwise.
      */
-    bool operator==(const WhisperGenerationParams &other) const
+    bool operator==(const HegemonikonWhisperGenerationParams &other) const
     {
         return step_ms == other.step_ms &&
                length_ms == other.length_ms &&
@@ -107,15 +107,15 @@ struct WhisperGenerationParams
     }
 
     /**
-     * @brief Inequality operator for WhisperGenerationParams.
+     * @brief Inequality operator for HegemonikonWhisperGenerationParams.
      *
-     * Compares this instance with another WhisperGenerationParams object for inequality.
+     * Compares this instance with another HegemonikonWhisperGenerationParams object for inequality.
      * Returns true if the two objects are not equal, as determined by the equality operator.
      *
-     * @param other The WhisperGenerationParams instance to compare against.
+     * @param other The HegemonikonWhisperGenerationParams instance to compare against.
      * @return true if the objects are not equal, false otherwise.
      */
-    bool operator!=(const WhisperGenerationParams &other) const
+    bool operator!=(const HegemonikonWhisperGenerationParams &other) const
     {
         return !(*this == other);
     }
@@ -182,9 +182,9 @@ struct WhisperGenerationParams
      * @brief Sets the step size in milliseconds for the Whisper generation process.
      *
      * @param step_ms_ The desired step size in milliseconds.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_step_ms(int32_t step_ms_)
+    HegemonikonWhisperGenerationParams &set_step_ms(int32_t step_ms_)
     {
         step_ms = step_ms_;
         return *this;
@@ -194,9 +194,9 @@ struct WhisperGenerationParams
      * @brief Sets the desired length in milliseconds for the generation process.
      *
      * @param length_ms_ The length in milliseconds to set.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_length_ms(int32_t length_ms_)
+    HegemonikonWhisperGenerationParams &set_length_ms(int32_t length_ms_)
     {
         length_ms = length_ms_;
         return *this;
@@ -209,23 +209,23 @@ struct WhisperGenerationParams
      * of audio or data should be retained during the whisper generation process.
      *
      * @param keep_ms_ The number of milliseconds to keep.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_keep_ms(int32_t keep_ms_)
+    HegemonikonWhisperGenerationParams &set_keep_ms(int32_t keep_ms_)
     {
         keep_ms = keep_ms_;
         return *this;
     }
 
     /**
-     * @brief Sets the capture ID for the WhisperGenerationParams object.
+     * @brief Sets the capture ID for the HegemonikonWhisperGenerationParams object.
      *
      * This method assigns the provided capture ID to the internal member variable.
      *
      * @param capture_id_ The capture ID to set.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_capture_id(int32_t capture_id_)
+    HegemonikonWhisperGenerationParams &set_capture_id(int32_t capture_id_)
     {
         capture_id = capture_id_;
         return *this;
@@ -239,9 +239,9 @@ struct WhisperGenerationParams
      * increases sensitivity.
      *
      * @param vad_thold_ The new VAD threshold value to set.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_vad_thold(float vad_thold_)
+    HegemonikonWhisperGenerationParams &set_vad_thold(float vad_thold_)
     {
         vad_thold = vad_thold_;
         return *this;
@@ -253,9 +253,9 @@ struct WhisperGenerationParams
      * This method updates the frequency threshold value used in the generation process.
      *
      * @param freq_thold_ The new frequency threshold value to set.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_freq_thold(float freq_thold_)
+    HegemonikonWhisperGenerationParams &set_freq_thold(float freq_thold_)
     {
         freq_thold = freq_thold_;
         return *this;
@@ -265,24 +265,24 @@ struct WhisperGenerationParams
      * @brief Sets the translation mode for Whisper generation.
      *
      * @param translate_ If true, enables translation of the generated output.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_translate(bool translate_)
+    HegemonikonWhisperGenerationParams &set_translate(bool translate_)
     {
         translate = translate_;
         return *this;
     }
 
     /**
-     * @brief Sets the TinyDiarize option for the WhisperGenerationParams.
+     * @brief Sets the TinyDiarize option for the HegemonikonWhisperGenerationParams.
      *
      * This method enables or disables the TinyDiarize feature, which may control
      * whether speaker diarization is performed using a lightweight approach.
      *
      * @param tinydiarize_ Boolean value to enable (true) or disable (false) TinyDiarize.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_tinydiarize(bool tinydiarize_)
+    HegemonikonWhisperGenerationParams &set_tinydiarize(bool tinydiarize_)
     {
         tinydiarize = tinydiarize_;
         return *this;
@@ -295,9 +295,9 @@ struct WhisperGenerationParams
      * the whisper generation process.
      *
      * @param no_fallback_ If true, disables fallback; if false, enables fallback.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_no_fallback(bool no_fallback_)
+    HegemonikonWhisperGenerationParams &set_no_fallback(bool no_fallback_)
     {
         no_fallback = no_fallback_;
         return *this;
@@ -307,9 +307,9 @@ struct WhisperGenerationParams
      * @brief Sets whether to disable context during generation.
      *
      * @param no_context_ If true, context will be disabled; otherwise, context will be used.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_no_context(bool no_context_)
+    HegemonikonWhisperGenerationParams &set_no_context(bool no_context_)
     {
         no_context = no_context_;
         return *this;
@@ -321,9 +321,9 @@ struct WhisperGenerationParams
      * This method updates the maximum token limit for the generation process.
      *
      * @param max_tokens_ The new maximum number of tokens.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_max_tokens(int32_t max_tokens_)
+    HegemonikonWhisperGenerationParams &set_max_tokens(int32_t max_tokens_)
     {
         max_tokens = max_tokens_;
         return *this;
@@ -336,9 +336,9 @@ struct WhisperGenerationParams
      * to the current object to allow for method chaining.
      *
      * @param beam_size_ The desired beam size value.
-     * @return Reference to the current WhisperGenerationParams object.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object.
      */
-    WhisperGenerationParams &set_beam_size(int32_t beam_size_)
+    HegemonikonWhisperGenerationParams &set_beam_size(int32_t beam_size_)
     {
         beam_size = beam_size_;
         return *this;
@@ -348,9 +348,9 @@ struct WhisperGenerationParams
      * @brief Sets whether special tokens should be printed during generation.
      *
      * @param print_special_ Boolean flag indicating if special tokens should be printed.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_print_special(bool print_special_)
+    HegemonikonWhisperGenerationParams &set_print_special(bool print_special_)
     {
         print_special = print_special_;
         return *this;
@@ -360,9 +360,9 @@ struct WhisperGenerationParams
      * @brief Sets whether to disable timestamps in the generation parameters.
      *
      * @param no_timestamps_ If true, disables timestamps; otherwise, enables them.
-     * @return Reference to this WhisperGenerationParams object for method chaining.
+     * @return Reference to this HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_no_timestamps(bool no_timestamps_)
+    HegemonikonWhisperGenerationParams &set_no_timestamps(bool no_timestamps_)
     {
         no_timestamps = no_timestamps_;
         return *this;
@@ -374,9 +374,9 @@ struct WhisperGenerationParams
      * This method updates the internal state to specify if the generated audio should be saved.
      *
      * @param save_audio_ Boolean value indicating whether to save audio (true) or not (false).
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_save_audio(bool save_audio_)
+    HegemonikonWhisperGenerationParams &set_save_audio(bool save_audio_)
     {
         save_audio = save_audio_;
         return *this;
@@ -390,9 +390,9 @@ struct WhisperGenerationParams
      * current object to allow for method chaining.
      *
      * @param fname_out_ The name of the output file.
-     * @return Reference to the current WhisperGenerationParams object.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object.
      */
-    WhisperGenerationParams &set_fname_out(const std::string &fname_out_)
+    HegemonikonWhisperGenerationParams &set_fname_out(const std::string &fname_out_)
     {
         fname_out = fname_out_;
         return *this;
@@ -406,9 +406,9 @@ struct WhisperGenerationParams
      * make it more deterministic.
      *
      * @param temperature_ The new temperature value to set.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_temperature(float temperature_)
+    HegemonikonWhisperGenerationParams &set_temperature(float temperature_)
     {
         temperature = temperature_;
         return *this;
@@ -421,9 +421,9 @@ struct WhisperGenerationParams
      * The temperature increment can influence the randomness or creativity of the generated output.
      *
      * @param temperature_inc_ The new temperature increment value to set.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_temperature_inc(float temperature_inc_)
+    HegemonikonWhisperGenerationParams &set_temperature_inc(float temperature_inc_)
     {
         temperature_inc = temperature_inc_;
         return *this;
@@ -436,9 +436,9 @@ struct WhisperGenerationParams
      * The word threshold may be used to filter or control the output based on word-level confidence or probability.
      *
      * @param word_thold_ The new word threshold value to set.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_word_thold(float word_thold_)
+    HegemonikonWhisperGenerationParams &set_word_thold(float word_thold_)
     {
         word_thold = word_thold_;
         return *this;
@@ -452,9 +452,9 @@ struct WhisperGenerationParams
      * can make the generation more deterministic.
      *
      * @param entropy_thold_ The new entropy threshold value to set.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_entropy_thold(float entropy_thold_)
+    HegemonikonWhisperGenerationParams &set_entropy_thold(float entropy_thold_)
     {
         entropy_thold = entropy_thold_;
         return *this;
@@ -467,9 +467,9 @@ struct WhisperGenerationParams
      * the minimum log probability required for a token to be considered during generation.
      *
      * @param logprob_thold_ The new log probability threshold value.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_logprob_thold(float logprob_thold_)
+    HegemonikonWhisperGenerationParams &set_logprob_thold(float logprob_thold_)
     {
         logprob_thold = logprob_thold_;
         return *this;
@@ -483,9 +483,9 @@ struct WhisperGenerationParams
      * consider that there is no speech present in the input.
      *
      * @param no_speech_thold_ The new threshold value for no speech detection.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_no_speech_thold(float no_speech_thold_)
+    HegemonikonWhisperGenerationParams &set_no_speech_thold(float no_speech_thold_)
     {
         no_speech_thold = no_speech_thold_;
         return *this;
@@ -496,12 +496,12 @@ struct WhisperGenerationParams
      *
      * This method assigns the provided audio context value to the internal
      * audio_ctx member variable. It enables method chaining by returning
-     * a reference to the current WhisperGenerationParams instance.
+     * a reference to the current HegemonikonWhisperGenerationParams instance.
      *
      * @param audio_ctx_ The audio context value to set.
-     * @return Reference to the current WhisperGenerationParams object.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object.
      */
-    WhisperGenerationParams &set_audio_ctx(int32_t audio_ctx_)
+    HegemonikonWhisperGenerationParams &set_audio_ctx(int32_t audio_ctx_)
     {
         audio_ctx = audio_ctx_;
         return *this;
@@ -514,9 +514,9 @@ struct WhisperGenerationParams
      * candidate sequences are generated and considered before selecting the best one.
      *
      * @param best_of_ The number of best candidates to consider.
-     * @return Reference to the current WhisperGenerationParams object for method chaining.
+     * @return Reference to the current HegemonikonWhisperGenerationParams object for method chaining.
      */
-    WhisperGenerationParams &set_best_of(int32_t best_of_)
+    HegemonikonWhisperGenerationParams &set_best_of(int32_t best_of_)
     {
         best_of = best_of_;
         return *this;

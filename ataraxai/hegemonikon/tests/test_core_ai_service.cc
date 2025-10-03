@@ -18,7 +18,7 @@ public:
     
     bool should_fail_load = false;
 
-    bool load_model(const LlamaModelParams&) override { 
+    bool load_model(const HegemonikonLlamaModelParams&) override { 
         load_model_called = true;
         return !should_fail_load;
     }
@@ -27,12 +27,15 @@ public:
         unload_model_called = true;
     }
 
-    std::string generate_completion(const std::string& prompt, const GenerationParams&) override {
+    std::string generate_completion(const std::string& prompt, const HegemonikonGenerationParams&,  double &ttft_ms, double &decode_duration_ms, int32_t &tokens_generated) override {
         generate_completion_called = true;
+        ttft_ms = 10.0;
+        decode_duration_ms = 5.0;
+        tokens_generated = 42;
         return "mocked completion: " + prompt;
     }
 
-    bool generate_completion_streaming(const std::string&, const GenerationParams&, llama_token_callback cb) override {
+    bool generate_completion_streaming(const std::string&, const HegemonikonGenerationParams&, llama_token_callback cb) override {
         generate_streaming_called = true;
         if (cb) {
             cb("streamed");
@@ -47,12 +50,12 @@ class MockWhisperInterface : public WhisperInterface {
 public:
     mutable bool load_model_called = false;
 
-    bool load_model(const WhisperModelParams&) override { 
+    bool load_model(const HegemonikonWhisperModelParams&) override { 
         load_model_called = true;
         return true; 
     }
     void unload_model() override {}
-    std::string transcribe_pcm(const std::vector<float>&, const WhisperGenerationParams&) override {
+    std::string transcribe_pcm(const std::vector<float>&, const HegemonikonWhisperGenerationParams&) override {
         return "mocked transcription";
     }
 };
@@ -74,7 +77,7 @@ TEST_CASE("CoreAIService with Mock Dependencies", "[service][unit]") {
         REQUIRE_FALSE(service.is_llama_model_loaded());
         REQUIRE_FALSE(llama_ptr->load_model_called);
 
-        LlamaModelParams llama_params;
+        HegemonikonLlamaModelParams llama_params;
         REQUIRE(service.initialize_llama_model(llama_params) == true);
 
         REQUIRE(service.is_llama_model_loaded() == true);
@@ -89,7 +92,7 @@ TEST_CASE("CoreAIService with Mock Dependencies", "[service][unit]") {
     SECTION("Handles Llama model load failure correctly") {
         llama_ptr->should_fail_load = true;
 
-        LlamaModelParams llama_params;
+        HegemonikonLlamaModelParams llama_params;
         
         REQUIRE(service.initialize_llama_model(llama_params) == false);
         REQUIRE(service.is_llama_model_loaded() == false);
@@ -99,7 +102,7 @@ TEST_CASE("CoreAIService with Mock Dependencies", "[service][unit]") {
         service.initialize_llama_model({}); 
         REQUIRE(service.is_llama_model_loaded());
 
-        GenerationParams gen_params;
+        HegemonikonGenerationParams gen_params;
         std::string result = service.process_prompt("hello", gen_params);
 
         REQUIRE(llama_ptr->generate_completion_called == true);
@@ -126,7 +129,7 @@ TEST_CASE("CoreAIService with Null Dependencies (Uninitialized State)", "[servic
     CoreAIService service;
 
     SECTION("Returns correct errors when no models are loaded") {
-        GenerationParams gen_params;
+        HegemonikonGenerationParams gen_params;
         REQUIRE(service.process_prompt("test", gen_params) == "[Error: Llama model not loaded]");
         
         std::string error_message;
@@ -137,7 +140,7 @@ TEST_CASE("CoreAIService with Null Dependencies (Uninitialized State)", "[servic
         REQUIRE(success == false);
         REQUIRE(error_message == "[Error: Llama model not loaded]");
 
-        WhisperGenerationParams whisper_params;
+        HegemonikonWhisperGenerationParams whisper_params;
         REQUIRE(service.transcribe_audio_pcm({}, whisper_params) == "[Error: Whisper model not loaded]");
     }
     

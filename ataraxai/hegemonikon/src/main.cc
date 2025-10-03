@@ -40,7 +40,7 @@ int main(int argc, char **argv)
 
     std::cout << "Full path: " << model_jsons_path << std::endl;
 
-    LlamaBenchmarker benchmarker(model_jsons_path);
+    HegemonikonLlamaBenchmarker benchmarker(model_jsons_path);
 
     BenchmarkParams params;
     params.n_gpu_layers = 32;

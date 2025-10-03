@@ -8,6 +8,9 @@ from typing import Any, Dict, List, Optional, Type
 
 from ataraxai import __version__  # type: ignore
 from ataraxai.hegemonikon_py import SecureString  # type: ignore
+from ataraxai.praxis.modules.benchmark.benchmark_queue_manager import (
+    BenchmarkQueueManager,
+)
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
@@ -108,7 +111,7 @@ class AtaraxAIOrchestrator:
 
             self._state = await self._determine_initial_state()
 
-            self.logger.info(f"directories created {self.services.directories}")
+            self.logger.info(f"directories created {self.services.directories}")  # type: ignore
 
             if await self.state_machine.get_state() == AppState.FIRST_LAUNCH:
                 await self._initialize_base_components()
@@ -323,7 +326,6 @@ class AtaraxAIOrchestrator:
     async def run_task_chain(
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
-        # assert 1 == 2 , "Orchestrator run_task_chain should be called"
         current_state = await self.get_state()
         if current_state != AppState.UNLOCKED:
             raise AtaraxAILockError(
@@ -360,8 +362,8 @@ class AtaraxAIOrchestrator:
         except Exception as e:
             self.logger.error(f"Error during shutdown: {e}", exc_info=True)
         finally:
-            self.services = None # type: ignore
-            self.setup_manager = None # type: ignore
+            self.services = None  # type: ignore
+            self.setup_manager = None  # type: ignore
 
     def _ensure_initialized(self) -> None:
         if not self._initialized:
@@ -447,6 +449,12 @@ class AtaraxAIOrchestrator:
                 raise RuntimeError("App directories are not initialized.")
             return self.services.directories
 
+    async def get_benchmark_queue_manager(self) -> BenchmarkQueueManager:
+        async with self.state_machine._lock:
+            if self.services is None or self.services.benchmark_queue_manager is None:
+                raise RuntimeError("Benchmark queue manager is not initialized.")
+            return self.services.benchmark_queue_manager
+
     async def get_user_preferences_manager(self) -> UserPreferencesManager:
         async with self.state_machine._lock:
             if self.services is None or self.services.config_manager is None:
@@ -503,6 +511,12 @@ class AtaraxAIOrchestratorFactory:
                 background_task_manager=background_task_manager,
             )
 
+            benchmark_queue_manager = BenchmarkQueueManager(
+                logger=logger,
+                max_concurrent=1,
+                persistence_file=directories.data / "benchmark_jobs.json",
+            )
+
             services = Services(
                 directories=directories,
                 logger=logger,
@@ -515,6 +529,7 @@ class AtaraxAIOrchestratorFactory:
                 models_manager=models_manager,
                 core_ai_service_manager=core_ai_manager,
                 background_task_manager=background_task_manager,
+                benchmark_queue_manager=benchmark_queue_manager,
             )
 
             orchestrator = AtaraxAIOrchestrator(

@@ -38,7 +38,7 @@ Atarax-AI is a full-featured AI assistant that runs entirely offline using llama
 
 <img src="docs/architecture/AtaraxAI-ArchUpdate.drawio.png" alt="Architecture Diagram" width="800"/>
 
-## 🎯 Project Vision
+## Project Vision
 
 Create a production-ready AI assistant that:
 - **100% Offline Operation** - No internet connection required after setup
@@ -47,27 +47,27 @@ Create a production-ready AI assistant that:
 - **Multi-Modal Interaction** - Text, voice, and document processing capabilities
 - **Seamless Integration** - Works with your existing workflow and applications
 
-## ✨ Key Features
+## Key Features
 
-### 🧠 Core Capabilities
+### Core Capabilities
 - **Intelligent Text Assistant** - Context-aware responses with advanced reasoning
 - **Voice Interaction** - Whisper.cpp integration for natural speech processing
 - **Document Processing** - Local file analysis and knowledge base creation
 - **Persistent Memory** - Semantic search with long-term context retention
 - **System Integration** - Calendar, file management, and task automation
 
-### ⚡ Technical Excellence
+### Technical Excellence
 - **Adaptive Context Management** - Sliding window techniques for optimal performance
 - **Modular Architecture** - Flexible prompt engineering framework
 - **Real-Time Monitoring** - Performance optimization and comprehensive logging
 - **Cross-Platform Support** - Linux, macOS, and Windows compatibility
 
-### 🔒 Security & Privacy
+### Security & Privacy
 - **Local Key Management** - Password-derived keys, never stored on disk
 - **Secure Data Deletion** - Cryptographic erasure of sensitive information
 - **Zero Telemetry** - No data collection or external transmissions
 
-## 🚀 Quick Start
+## Quick Start
 
 We will provide soon packages for Linux/Windows/Mac. For now, you can build the docker locally. Optionnaly you can pull it from docker hub (https://hub.docker.com/repositories/ataraxai).
 
@@ -121,7 +121,7 @@ docker run --gpus all -it --rm -p 8000:8000 ataraxai:gpu
 uvicorn api:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## 📊 Monitoring & Observability
+## Monitoring & Observability
 
 Launch the monitoring stack to track performance and resource usage:
 
@@ -141,12 +141,12 @@ docker compose -f docker/docker-compose.monitoring.base.yml up -d
 - **Node Exporter**: http://localhost:9100
 - **Grafana Dashboard**: http://localhost:3000
 
-## 📚 Documentation
+## Documentation
 
 ### API Reference
 Access the interactive API documentation at http://localhost:8000/docs once the server is running.
 
-## 🛡️ Privacy Commitment
+## Privacy Commitment
 
 Atarax-AI is designed with privacy as a fundamental principle:
 
@@ -156,7 +156,7 @@ Atarax-AI is designed with privacy as a fundamental principle:
 - **Open Source Transparency** - Full source code inspection and auditing
 - **User Control** - Complete ownership of your data and interactions
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on:
 - Code style and standards
@@ -164,20 +164,21 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - Pull request process
 - Issue reporting
 
-## 📋 Roadmap
+## Roadmap
 
 - [ ] Desktop application with Tauri frontend
+- [ ] Optimization
 - [ ] Mobile application support
 - [ ] Plugin system for custom integrations
 - [ ] Advanced document understanding
 - [ ] Multi-language support
 - [ ] Voice synthesis capabilities
 
-## ⚖️ License
+## License
 
 This project is licensed under the [GNU GPLv3 License](LICENSE). You are free to use, modify, and distribute this software under the terms of the GPL.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 Built with these amazing open-source projects:
 - [llama.cpp](https://github.com/ggerganov/llama.cpp) - High-performance LLM inference
