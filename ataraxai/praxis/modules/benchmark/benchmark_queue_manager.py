@@ -4,7 +4,6 @@ import logging
 import threading
 import traceback
 import uuid
-from dataclasses import asdict
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
@@ -14,10 +13,8 @@ from pydantic import BaseModel, Field
 
 from ataraxai.hegemonikon_py import HegemonikonBenchmarkResult  # type: ignore
 from ataraxai.hegemonikon_py import ( # type: ignore
-    HegemonikonLlamaBenchmarker,  # type: ignore; type: ignore
+    HegemonikonLlamaBenchmarker,  # type: ignore
 )
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
 from ataraxai.praxis.utils.configs.config_schemas.benchmarker_config_schema import (
     BenchmarkParams,
     BenchmarkResult,

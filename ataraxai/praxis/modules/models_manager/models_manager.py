@@ -16,7 +16,7 @@ import requests
 import tqdm
 from huggingface_hub import HfApi, hf_hub_url
 from huggingface_hub.errors import HfHubHTTPError
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 from ataraxai.praxis.utils.app_directories import AppDirectories
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger

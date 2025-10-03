@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field, field_validator
 
 from ataraxai.hegemonikon_py import HegemonikonBenchmarkMetrics  # type: ignore
 from ataraxai.hegemonikon_py import HegemonikonBenchmarkParams  # type: ignore
-from ataraxai.hegemonikon_py import (
-    HegemonikonQuantizedModelInfo,  # type: ignore; type: ignore
+from ataraxai.hegemonikon_py import ( # type: ignore
+    HegemonikonQuantizedModelInfo,  # type: ignore
 )
 from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
     GenerationParams,
@@ -37,13 +37,13 @@ class QuantizedModelInfo(BaseModel):
         return value
 
     def to_hegemonikon(self) -> HegemonikonQuantizedModelInfo:
-        # cpp_obj: HegemonikonQuantizedModelInfo = HegemonikonQuantizedModelInfo()  # type: ignore
+        # cpp_obj: HegemonikonQuantizedModelInfo = HegemonikonQuantizedModelInfo() 
         # cpp_obj.model_id = self.model_id
         # cpp_obj.local_path = self.local_path
         # cpp_obj.last_modified = self.last_modified or ""
         # cpp_obj.quantization = self.quantisation_type
         # cpp_obj.fileSize = self.size_bytes
-        # return cpp_obj  # type: ignore
+        # return cpp_obj
         return HegemonikonQuantizedModelInfo.from_dict(self.model_dump())  # type: ignore
 
 
