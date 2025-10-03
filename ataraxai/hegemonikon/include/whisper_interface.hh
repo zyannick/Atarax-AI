@@ -15,21 +15,21 @@ public:
     WhisperInterface();
     ~WhisperInterface();
 
-    virtual bool load_model(const WhisperModelParams &params);
+    virtual bool load_model(const HegemonikonWhisperModelParams &params);
 
     virtual void unload_model();
 
     bool is_model_loaded() const;
 
     virtual std::string transcribe_pcm(const std::vector<float> &pcm_f32_data,
-                               const WhisperGenerationParams &params);
+                               const HegemonikonWhisperGenerationParams &params);
 
     static void init_backend();
     static void free_backend();
 
 private:
     whisper_context *ctx_ = nullptr;
-    WhisperModelParams current_model_params_;
+    HegemonikonWhisperModelParams current_model_params_;
 
     static void static_new_segment_callback(struct whisper_context *ctx, struct whisper_state *state, int n_new, void *user_data);
     static void static_progress_callback(struct whisper_context *ctx, struct whisper_state *state, int progress, void *user_data);

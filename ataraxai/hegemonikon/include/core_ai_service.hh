@@ -11,37 +11,37 @@ class CoreAIService
 {
 public:
     CoreAIService();
-    CoreAIService(const LlamaModelParams &llama_model_params_, const WhisperModelParams &whisper_model_params_);
+    CoreAIService(const HegemonikonLlamaModelParams &llama_model_params_, const HegemonikonWhisperModelParams &whisper_model_params_);
     CoreAIService(std::unique_ptr<LlamaInterface> llama_interface_,
                   std::unique_ptr<WhisperInterface> whisper_interface_);
     ~CoreAIService();
 
-    virtual bool initialize_llama_model(const LlamaModelParams &llama_model_params_);
+    virtual bool initialize_llama_model(const HegemonikonLlamaModelParams &llama_model_params_);
 
     virtual void unload_llama_model();
 
     virtual bool is_llama_model_loaded() const;
 
-    std::string process_prompt(const std::string &prompt_text, const GenerationParams &llama_generation_params_);
+    std::string process_prompt(const std::string &prompt_text, const HegemonikonGenerationParams &llama_generation_params_);
 
     std::vector<int32_t> tokenization(const std::string &text);
     std::string detokenization(const std::vector<int32_t> &tokens) const;
 
     bool stream_prompt(const std::string &prompt_text,
-                       const GenerationParams &llama_generation_params,
+                       const HegemonikonGenerationParams &llama_generation_params,
                        llama_token_callback callback);
 
-    bool initialize_whisper_model(const WhisperModelParams &whisper_model_params_);
+    bool initialize_whisper_model(const HegemonikonWhisperModelParams &whisper_model_params_);
 
     void unload_whisper_model();
 
     bool is_whisper_model_loaded() const;
 
     std::string transcribe_audio_pcm(const std::vector<float> &pcm_f32_data,
-                                     const WhisperGenerationParams &whisper_transcription_params);
+                                     const HegemonikonWhisperGenerationParams &whisper_transcription_params);
 
     std::string transcribe_audio_file(const std::string &audio_file_path,
-                                      const WhisperGenerationParams &whisper_transcription_params);
+                                      const HegemonikonWhisperGenerationParams &whisper_transcription_params);
 
     static void initialize_global_backends();
 
@@ -80,8 +80,8 @@ private:
     bool llama_model_loaded_ = false;
     bool whisper_model_loaded_ = false;
 
-    LlamaModelParams llama_model_params;
-    WhisperModelParams whisper_model_params;
+    HegemonikonLlamaModelParams llama_model_params;
+    HegemonikonWhisperModelParams whisper_model_params;
 
     std::vector<float> convert_audio_file_to_pcm_f32(const std::string &audio_file_path);
 };

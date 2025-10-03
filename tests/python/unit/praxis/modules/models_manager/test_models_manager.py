@@ -14,6 +14,7 @@ from huggingface_hub.errors import HfHubHTTPError
 
 from ataraxai.praxis.modules.models_manager.models_manager import (
     LlamaCPPModelInfo,
+    Manifests,
     ModelDownloadInfo,
     ModelDownloadStatus,
     ModelsManager,
@@ -79,8 +80,8 @@ def test_models_manager_load_and_save_manifest(tmp_path: Path):
     directories.data = tmp_path
     background_task_manager = mock.Mock()
     manager = ModelsManager(directories, logger, background_task_manager)
-    assert manager.manifest["models"][0]["repo_id"] == "repo"
-    manager.manifest["models"].append({"repo_id": "repo2", "filename": "file2.gguf"})
+    assert manager.manifest.models[0]["repo_id"] == "repo"
+    manager.manifest.models.append({"repo_id": "repo2", "filename": "file2.gguf"})
     manager._save_manifest()
     with open(manager.manifest_path) as f:
         saved = json.load(f)
@@ -93,13 +94,13 @@ def test_get_list_of_models_from_manifest_filters_correctly():
     directories.data = Path(tempfile.mkdtemp())
     background_task_manager = mock.Mock()
     manager = ModelsManager(directories, logger, background_task_manager)
-    manager.manifest = {
-        "models": [
+    manager.manifest = Manifests(
+        models=[
             {"repo_id": "repo1", "filename": "file1.gguf", "organization": "org1"},
             {"repo_id": "repo2", "filename": "file2.gguf", "organization": "org2"},
         ],
-        "last_updated": None,
-    }
+        last_updated=None,
+    )
     results = manager.get_list_of_models_from_manifest({"repo_id": "repo1"})
     assert len(results) == 1
     assert results[0]["repo_id"] == "repo1"
@@ -240,7 +241,7 @@ def test_add_to_manifest_and_list_downloaded_models(tmp_path: Path):
         downloads=1,
         likes=1,
     )
-    manager.manifest = {"models": [], "last_updated": None}
+    manager.manifest = Manifests(models=[], last_updated=None)
     manager._add_to_manifest(
         "repo", "file.gguf", str(tmp_path / "file.gguf"), model_info
     )
@@ -265,6 +266,7 @@ def test_get_download_status_and_cancel_download(tmp_path: Path):
     )
     manager._download_tasks[task_id] = info
     status = manager.get_download_status(task_id)
+    assert status is not None
     assert status["task_id"] == task_id
     manager._download_tasks[task_id].status = ModelDownloadStatus.COMPLETED
     assert manager.cancel_download(task_id) is True
@@ -287,21 +289,21 @@ def test_cleanup_old_tasks_removes_old(tmp_path: Path):
             status=ModelDownloadStatus.COMPLETED,
             repo_id="repo",
             filename="file.gguf",
-            created_at=old_time,
+            created_at=old_time.isoformat(),
         ),
         "t2": ModelDownloadInfo(
             task_id="t2",
             status=ModelDownloadStatus.FAILED,
             repo_id="repo",
             filename="file2.gguf",
-            created_at=old_time,
+            created_at=old_time.isoformat(),
         ),
         "t3": ModelDownloadInfo(
             task_id="t3",
             status=ModelDownloadStatus.DOWNLOADING,
             repo_id="repo",
             filename="file3.gguf",
-            created_at=datetime.now(),
+            created_at=datetime.now().isoformat(),
         ),
     }
     manager.cleanup_old_tasks(max_age_hours=1)
@@ -320,15 +322,15 @@ async def test_remove_all_models(tmp_path: Path):
     file_path = tmp_path / "models" / "file.gguf"
     file_path.parent.mkdir(exist_ok=True)
     file_path.write_bytes(b"abc")
-    manager.manifest = {
-        "models": [
+    manager.manifest = Manifests(
+        models=[
             {"repo_id": "repo", "filename": "file.gguf", "local_path": str(file_path)}
         ],
-        "last_updated": None,
-    }
+        last_updated=None,
+    )
     result = await manager.remove_all_models()
     assert result is True
-    assert manager.manifest["models"] == []
+    assert manager.manifest.models == []
     assert not file_path.exists()
 
 
@@ -342,16 +344,16 @@ async def test_remove_model(tmp_path: Path):
     file_path = tmp_path / "models" / "file.gguf"
     file_path.parent.mkdir(exist_ok=True)
     file_path.write_bytes(b"abc")
-    manager.manifest = {
-        "models": [
+    manager.manifest = Manifests(
+        models=[
             {"repo_id": "repo", "filename": "file.gguf", "local_path": str(file_path)},
             {"repo_id": "repo2", "filename": "file2.gguf", "local_path": "not_exist"},
         ],
-        "last_updated": None,
-    }
+        last_updated=None,
+    )
     result = await manager.remove_model("repo", "file.gguf")
     assert result is True
-    assert all(m["repo_id"] != "repo" for m in manager.manifest["models"])
+    assert all(m["repo_id"] != "repo" for m in manager.manifest.models)
     assert not file_path.exists()
 
 
@@ -442,7 +444,7 @@ def test_add_to_manifest_adds_model(tmp_path: Path):
     directories.data = tmp_path
     background_task_manager = mock.Mock()
     manager = ModelsManager(directories, logger, background_task_manager)
-    manager.manifest = {"models": [], "last_updated": None}
+    manager.manifest = Manifests(models=[], last_updated=None)
     model_info = LlamaCPPModelInfo(
         organization="org",
         repo_id="repo",
@@ -457,7 +459,7 @@ def test_add_to_manifest_adds_model(tmp_path: Path):
     )
     assert any(
         m["repo_id"] == "repo" and m["filename"] == "file.gguf"
-        for m in manager.manifest["models"]
+        for m in manager.manifest.models
     )
 
 
@@ -467,13 +469,13 @@ def test_list_downloaded_models_returns_models(tmp_path: Path):
     directories.data = tmp_path
     background_task_manager = mock.Mock()
     manager = ModelsManager(directories, logger, background_task_manager)
-    manager.manifest = {
-        "models": [
+    manager.manifest = Manifests(
+        models=[
             {"repo_id": "repo", "filename": "file.gguf", "organization": "org"},
             {"repo_id": "repo2", "filename": "file2.gguf", "organization": "org2"},
         ],
-        "last_updated": None,
-    }
+        last_updated=None,
+    )
     models = manager.list_downloaded_models()
     assert len(models) == 2
     assert models[0]["repo_id"] == "repo"
@@ -495,6 +497,7 @@ def test_get_download_status_returns_status(tmp_path: Path):
     )
     manager._download_tasks[task_id] = info
     status = manager.get_download_status(task_id)
+    assert status is not None
     assert status["task_id"] == task_id
     assert status["status"] == ModelDownloadStatus.STARTING.value
 
@@ -532,7 +535,6 @@ def test_cancel_download_removes_task(tmp_path: Path):
 
 
 def test_cancel_download_marks_task_as_cancelled(tmp_path: Path):
-    """Test that cancel_download marks task as cancelled rather than removing it."""
     logger = mock.Mock()
     directories = mock.Mock()
     directories.data = tmp_path
@@ -549,13 +551,11 @@ def test_cancel_download_marks_task_as_cancelled(tmp_path: Path):
     result = manager.cancel_download(task_id)
     assert result is True
 
-    # Task should remain in _download_tasks but be marked as cancelled
     assert task_id in manager._download_tasks
     assert manager._download_tasks[task_id].status == ModelDownloadStatus.CANCELLED
     assert manager._download_tasks[task_id].cancelled_at is not None
 
 
-# Additional test to verify the cleanup behavior still works for cancelled tasks
 def test_cleanup_old_tasks_removes_old_cancelled_tasks(tmp_path: Path):
     """Test that cleanup removes old cancelled tasks."""
     logger = mock.Mock()
@@ -571,23 +571,23 @@ def test_cleanup_old_tasks_removes_old_cancelled_tasks(tmp_path: Path):
             status=ModelDownloadStatus.CANCELLED,
             repo_id="repo",
             filename="file.gguf",
-            created_at=old_time,
-            cancelled_at=old_time,
+            created_at=old_time.isoformat(),
+            cancelled_at=old_time.isoformat(),
         ),
         "new_cancelled": ModelDownloadInfo(
             task_id="new_cancelled",
             status=ModelDownloadStatus.CANCELLED,
             repo_id="repo",
             filename="file2.gguf",
-            created_at=datetime.now(),
-            cancelled_at=datetime.now(),
+            created_at=datetime.now().isoformat(),
+            cancelled_at=datetime.now().isoformat(),
         ),
         "downloading": ModelDownloadInfo(
             task_id="downloading",
             status=ModelDownloadStatus.DOWNLOADING,
             repo_id="repo",
             filename="file3.gguf",
-            created_at=datetime.now(),
+            created_at=datetime.now().isoformat(),
         ),
     }
 
@@ -621,14 +621,14 @@ def test_cleanup_old_tasks_removes_old_tasks(tmp_path: Path):
             status=ModelDownloadStatus.COMPLETED,
             repo_id="repo",
             filename="file.gguf",
-            created_at=old_time,
+            created_at=old_time.isoformat(),
         ),
         "new": ModelDownloadInfo(
             task_id="new",
             status=ModelDownloadStatus.DOWNLOADING,
             repo_id="repo",
             filename="file2.gguf",
-            created_at=datetime.now(),
+            created_at=datetime.now().isoformat(),
         ),
     }
     manager.cleanup_old_tasks(max_age_hours=1)
@@ -646,16 +646,16 @@ async def test_remove_model_removes_file_and_manifest(tmp_path: Path):
     file_path = tmp_path / "models" / "file.gguf"
     file_path.parent.mkdir(exist_ok=True)
     file_path.write_bytes(b"abc")
-    manager.manifest = {
-        "models": [
+    manager.manifest = Manifests(
+        models=[
             {"repo_id": "repo", "filename": "file.gguf", "local_path": str(file_path)},
             {"repo_id": "repo2", "filename": "file2.gguf", "local_path": "not_exist"},
         ],
-        "last_updated": None,
-    }
+        last_updated=None,
+    )
     result = await manager.remove_model("repo", "file.gguf")
     assert result is True
-    assert all(m["repo_id"] != "repo" for m in manager.manifest["models"])
+    assert all(m["repo_id"] != "repo" for m in manager.manifest.models)
     assert not file_path.exists()
 
 
@@ -671,8 +671,8 @@ async def test_remove_all_models_removes_all_files(tmp_path: Path):
     file_path1.parent.mkdir(exist_ok=True)
     file_path1.write_bytes(b"abc")
     file_path2.write_bytes(b"def")
-    manager.manifest = {
-        "models": [
+    manager.manifest = Manifests(
+        models=[
             {
                 "repo_id": "repo1",
                 "filename": "file1.gguf",
@@ -684,10 +684,10 @@ async def test_remove_all_models_removes_all_files(tmp_path: Path):
                 "local_path": str(file_path2),
             },
         ],
-        "last_updated": None,
-    }
+        last_updated=None,
+    )
     result = await manager.remove_all_models()
     assert result is True
-    assert manager.manifest["models"] == []
+    assert manager.manifest.models == []
     assert not file_path1.exists()
     assert not file_path2.exists()

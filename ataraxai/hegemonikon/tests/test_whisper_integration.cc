@@ -18,7 +18,7 @@ TEST_CASE("WhisperInterface can load and use a real GGUF model", "[integration][
     }
 
     WhisperInterface whisper_service;
-    WhisperModelParams params;
+    HegemonikonWhisperModelParams params;
     params.model = REAL_WHISPER_MODEL_PATH;
 
     REQUIRE(whisper_service.load_model(params) == true);
@@ -29,7 +29,7 @@ TEST_CASE("WhisperInterface can load and use a real GGUF model", "[integration][
         dummy_pcm[i] = 0.5f * sin(2.0f * 3.14159f * 440.0f * i / 16000.0f);
     }
 
-    WhisperGenerationParams gen_params;
+    HegemonikonWhisperGenerationParams gen_params;
     std::string result = whisper_service.transcribe_pcm(dummy_pcm, gen_params);
 
     REQUIRE(!result.empty());

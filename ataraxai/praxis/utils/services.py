@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List
 
+from ataraxai.praxis.modules.benchmark.benchmark_queue_manager import BenchmarkQueueManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.models_manager.models_manager import ModelsManager
@@ -39,6 +40,7 @@ class Services:
         models_manager: ModelsManager,
         core_ai_service_manager: CoreAIServiceManager,
         background_task_manager: BackgroundTaskManager,
+        benchmark_queue_manager: BenchmarkQueueManager,
     ):
         """
         Initializes the service with required managers, configuration, and logging utilities.
@@ -64,6 +66,7 @@ class Services:
         self.core_ai_service_manager = core_ai_service_manager
         self.vault_manager = vault_manager
         self.background_task_manager = background_task_manager
+        self.benchmark_queue_manager = benchmark_queue_manager
 
     async def initialize(self) -> None:
         """
@@ -186,7 +189,6 @@ class Services:
         self, chain_definition: List[Dict[str, Any]], initial_user_query: str
     ) -> Any:
 
-        # assert 1 == 2, "service run_task_chain should be called"
         InputValidator.validate_string(initial_user_query, "Initial user query")
 
         if not chain_definition:

@@ -62,7 +62,7 @@ void WhisperInterface::free_backend()
  * @param params The parameters to use for loading the Whisper model.
  * @return true if the model was loaded successfully, false otherwise.
  */
-bool WhisperInterface::load_model(const WhisperModelParams &params)
+bool WhisperInterface::load_model(const HegemonikonWhisperModelParams &params)
 {
     if (ctx_)
     {
@@ -169,7 +169,7 @@ void WhisperInterface::static_progress_callback(struct whisper_context * /*w_ctx
  * @note The function requires that a Whisper model is loaded before being called.
  * @note If callback functions are provided in the parameters, they will be invoked during transcription.
  */
-std::string WhisperInterface::transcribe_pcm(const std::vector<float> &pcm_f32_data, const WhisperGenerationParams &transcription_params)
+std::string WhisperInterface::transcribe_pcm(const std::vector<float> &pcm_f32_data, const HegemonikonWhisperGenerationParams &transcription_params)
 {
     if (!is_model_loaded())
     {

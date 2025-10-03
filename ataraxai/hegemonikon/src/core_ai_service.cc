@@ -65,7 +65,7 @@ CoreAIService::~CoreAIService()
  * @param params The parameters required to load the Llama model.
  * @return true if the model was loaded successfully; false otherwise.
  */
-bool CoreAIService::initialize_llama_model(const LlamaModelParams &params)
+bool CoreAIService::initialize_llama_model(const HegemonikonLlamaModelParams &params)
 {
     if (!llama_interface_)
     {
@@ -85,7 +85,7 @@ bool CoreAIService::initialize_llama_model(const LlamaModelParams &params)
  * @param params The parameters required to load the Whisper model.
  * @return true if the Whisper model was successfully loaded; false otherwise.
  */
-bool CoreAIService::initialize_whisper_model(const WhisperModelParams &params)
+bool CoreAIService::initialize_whisper_model(const HegemonikonWhisperModelParams &params)
 {
     if (!whisper_interface_)
     {
@@ -134,11 +134,14 @@ bool CoreAIService::is_llama_model_loaded() const
  * @param llama_generation_params_ The parameters to control the generation behavior of the Llama model.
  * @return std::string The generated completion from the Llama model, or an error message if the model is not loaded.
  */
-std::string CoreAIService::process_prompt(const std::string &prompt_text, const GenerationParams &llama_generation_params_)
+std::string CoreAIService::process_prompt(const std::string &prompt_text, const HegemonikonGenerationParams &llama_generation_params_)
 {
     if (is_llama_model_loaded())
     {
-        return llama_interface_->generate_completion(prompt_text, llama_generation_params_);
+        double ttft_ms = 0.0;
+        double decode_duration_ms = 0.0;
+        int32_t tokens_generated = 0;
+        return llama_interface_->generate_completion(prompt_text, llama_generation_params_, ttft_ms, decode_duration_ms, tokens_generated);
     }
     else
     {
@@ -183,7 +186,7 @@ std::string CoreAIService::detokenization(const std::vector<int32_t> &tokens) co
  * @return true if the streaming started successfully, false otherwise.
  */
 bool CoreAIService::stream_prompt(const std::string &prompt_text,
-                                  const GenerationParams &llama_generation_params,
+                                  const HegemonikonGenerationParams &llama_generation_params,
                                   llama_token_callback callback)
 {
     if (is_llama_model_loaded())
@@ -244,7 +247,7 @@ void CoreAIService::unload_whisper_model()
  * @param whisper_model_params_ Parameters to configure the Whisper model's transcription behavior.
  * @return std::string The transcribed text if successful, or an error message if the model is not loaded.
  */
-std::string CoreAIService::transcribe_audio_pcm(const std::vector<float> &pcm_f32_data, const WhisperGenerationParams &whisper_model_params_)
+std::string CoreAIService::transcribe_audio_pcm(const std::vector<float> &pcm_f32_data, const HegemonikonWhisperGenerationParams &whisper_model_params_)
 {
     if (is_whisper_model_loaded())
     {
@@ -326,7 +329,7 @@ std::vector<float> CoreAIService::convert_audio_file_to_pcm_f32(const std::strin
  * @param whisper_model_params_ The parameters to configure the Whisper model for transcription.
  * @return The transcribed text as a std::string. Returns an error message if the audio file could not be loaded.
  */
-std::string CoreAIService::transcribe_audio_file(const std::string &audio_file_path, const WhisperGenerationParams &whisper_model_params_)
+std::string CoreAIService::transcribe_audio_file(const std::string &audio_file_path, const HegemonikonWhisperGenerationParams &whisper_model_params_)
 {
     std::vector<float> pcm_f32_data;
     pcm_f32_data = convert_audio_file_to_pcm_f32(audio_file_path);

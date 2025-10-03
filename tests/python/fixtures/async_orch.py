@@ -4,6 +4,7 @@ from pathlib import Path
 from ataraxai.praxis.ataraxai_orchestrator import (
     AtaraxAIOrchestrator,
 )
+from ataraxai.praxis.modules.benchmark.benchmark_queue_manager import BenchmarkQueueManager
 from ataraxai.praxis.modules.chat.chat_context_manager import ChatContextManager
 from ataraxai.praxis.modules.chat.chat_database_manager import ChatDatabaseManager
 from ataraxai.praxis.modules.models_manager.models_manager import (
@@ -59,6 +60,12 @@ async def setup_async_orchestrator(temp_dir_path: Path) -> AtaraxAIOrchestrator:
         background_task_manager=background_task_manager,
     )
 
+    benchmark_queue_manager = BenchmarkQueueManager(
+        logger=logger,
+        max_concurrent=1,
+        persistence_file=directories.data / "benchmark_jobs.json"
+    )
+
     services = Services(
         directories=directories,
         logger=logger,
@@ -71,6 +78,7 @@ async def setup_async_orchestrator(temp_dir_path: Path) -> AtaraxAIOrchestrator:
         models_manager=models_manager,
         core_ai_service_manager=core_ai_manager,
         background_task_manager=background_task_manager,
+        benchmark_queue_manager=benchmark_queue_manager,
     )
 
     orchestrator = AtaraxAIOrchestrator(

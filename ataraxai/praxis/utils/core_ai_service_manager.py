@@ -1,17 +1,13 @@
 import asyncio
 import logging
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from ataraxai import hegemonikon_py  # type: ignore
-# from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
-from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import LlamaModelParams
-from ataraxai.praxis.utils.configs.config_schemas.whisper_config_schema import (
-    WhisperModelParams,
-)
+
 from ataraxai.praxis.utils.configuration_manager import ConfigurationManager
 from ataraxai.praxis.utils.exceptions import ServiceInitializationError, ValidationError
 from ataraxai.praxis.utils.service_status import ServiceStatus
-from typing import Any, Dict, List, Optional, Tuple
-from pathlib import Path
-
 
 
 class CoreAIServiceManager:
@@ -32,9 +28,8 @@ class CoreAIServiceManager:
         self.logger = logger
         self.core_ai_service: Optional[Any] = None
         self.llama_cpp_status = ServiceStatus.NOT_INITIALIZED
-        self.llama_cpp_params_cc = None
-        self.llama_cpp_generation_params_cc = None
-
+        # self.llama_cpp_params_cc = None
+        # self.llama_cpp_generation_params_cc = None
 
     def get_service(self) -> Any:
         """
@@ -59,11 +54,8 @@ class CoreAIServiceManager:
             )
 
         return self.core_ai_service
-    
 
-    async def process_prompt(
-        self, prompt: str
-    ) -> str:
+    async def process_prompt(self, prompt: str) -> str:
         """
         Processes a prompt using the core AI service.
 
@@ -77,16 +69,15 @@ class CoreAIServiceManager:
         if not self.core_ai_service:
             raise ServiceInitializationError("Core AI service is not initialized")
         
+        llama_generation_params = self.config_manager.llama_config_manager.get_generation_params()
 
         response = await asyncio.to_thread(
             self.core_ai_service.process_prompt,
             prompt.encode("utf-8"),
-            self.llama_cpp_generation_params_cc
+            llama_generation_params.to_hegemonikon() # type: ignore
         )
-        
-        return response
 
-    
+        return response
 
     def get_llama_cpp_model_context_size(self) -> int:
         """
@@ -133,7 +124,6 @@ class CoreAIServiceManager:
             raise ServiceInitializationError(
                 f"Core AI service initialization failed: {e}"
             )
-        
 
     def is_configured(self) -> bool:
         """
@@ -175,16 +165,22 @@ class CoreAIServiceManager:
         }
 
         try:
-            llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
+            llama_params = (
+                self.config_manager.llama_config_manager.get_llama_cpp_params()
+            )
             status["llama_model_path"] = llama_params.model_path
             status["llama_configured"] = bool(llama_params.model_path)
             if len(str(llama_params.model_path)) > 0:
-                status["llama_path_exists"] = Path(str(llama_params.model_path)).exists()
+                status["llama_path_exists"] = Path(
+                    str(llama_params.model_path)
+                ).exists()
         except Exception as e:
             self.logger.warning(f"Could not get Llama configuration: {e}")
 
         try:
-            whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
+            whisper_params = (
+                self.config_manager.whisper_config_manager.get_whisper_params()
+            )
             status["whisper_model_path"] = whisper_params.model
             status["whisper_configured"] = bool(whisper_params.model)
             if whisper_params.model:
@@ -234,63 +230,16 @@ class CoreAIServiceManager:
             None
         """
         llama_params = self.config_manager.llama_config_manager.get_llama_cpp_params()
-        whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
+        # whisper_params = self.config_manager.whisper_config_manager.get_whisper_params()
 
-
-        self.llama_cpp_params_cc, self.llama_cpp_generation_params_cc  = self._convert_params(llama_params, whisper_params)
+        # self.llama_cpp_params_cc, self.llama_cpp_generation_params_cc = (
+        #     self._convert_params(llama_params, whisper_params)
+        # )
 
         self.core_ai_service = self._create_core_ai_service(
-            self.llama_cpp_params_cc, None
+            llama_params.to_hegemonikon(), None # type: ignore
         )
 
-    def _convert_params(
-        self, llama_params: LlamaModelParams, whisper_params: WhisperModelParams
-    ) -> Tuple[Any, Any]:
-        """
-        Converts Llama and Whisper model parameter objects into their corresponding hegemonikon_py representations.
-
-        Args:
-            llama_params (LlamaModelParams): The Llama model parameters to convert.
-            whisper_params (WhisperModelParams): The Whisper model parameters to convert.
-
-        Returns:
-            Tuple[Any, Any, Any, Any]: A tuple containing:
-                - Converted Llama model parameters (hegemonikon_py.LlamaModelParams)
-                - Converted Llama generation parameters (hegemonikon_py.GenerationParams)
-                - Converted Whisper model parameters (hegemonikon_py.WhisperModelParams)
-                - Converted Whisper transcription parameters (hegemonikon_py.WhisperGenerationParams)
-        """
-        llama_model_params_cc: Any = hegemonikon_py.LlamaModelParams.from_dict(  # type: ignore
-            {
-                "model_path": str(llama_params.model_info.local_path), # type: ignore
-                "n_ctx": llama_params.n_ctx,
-                "n_gpu_layers": llama_params.n_gpu_layers,
-                "main_gpu": llama_params.main_gpu,
-                "tensor_split": llama_params.tensor_split,
-                "vocab_only": llama_params.vocab_only,
-                "use_map": llama_params.use_map,
-                "use_mlock": llama_params.use_mlock,
-            }
-        )
-
-        llama_generation_params_cc: Any = hegemonikon_py.GenerationParams.from_dict(  # type: ignore
-            self.config_manager.llama_config_manager.get_generation_params().model_dump()
-        )
-
-        # whisper_model_params_cc: Any = hegemonikon_py.WhisperModelParams.from_dict(  # type: ignore
-        #     whisper_params.model_dump()
-        # )
-
-        # whisper_transcription_params_cc: Any = hegemonikon_py.WhisperGenerationParams.from_dict(  # type: ignore
-        #     self.config_manager.whisper_config_manager.get_transcription_params().model_dump()
-        # )
-
-        return (
-            llama_model_params_cc,
-            llama_generation_params_cc,
-            # whisper_model_params_cc,
-            # whisper_transcription_params_cc,
-        )  # type: ignore
 
     def _create_core_ai_service(self, llama_params: Any, whisper_params: Any) -> Any:
         """
@@ -310,13 +259,13 @@ class CoreAIServiceManager:
         # except Exception as e:
         #     self.logger.error(f"Error initializing Whisper model: {e}")
         return service  # type: ignore
-    
+
     def tokenize(self, text: str) -> List[int]:
         if not self.core_ai_service:
             raise ServiceInitializationError("Core AI service is not initialized")
 
-        return  self.core_ai_service.tokenization(text.encode("utf-8"))
-    
+        return self.core_ai_service.tokenization(text.encode("utf-8"))
+
     def decode(self, tokens: List[int]) -> str:
         """
         Decodes a list of tokens into a string using the core AI service.
