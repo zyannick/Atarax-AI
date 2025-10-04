@@ -22,10 +22,15 @@ import {
   ChevronLeft,
   Edit,
   Trash2,
-  BarChart3
+  BarChart3,
+  Lock
 } from 'lucide-react';
 
-export function LeftSidebar() {
+interface LeftSidebarProps {
+  onLockVault?: () => void;
+}
+
+export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
   const {
     projects,
     sessions,
@@ -214,6 +219,21 @@ export function LeftSidebar() {
             Benchmark
           </Button>
         </div>
+        
+        {/* Vault Controls */}
+        {onLockVault && (
+          <div className="px-4 pb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onLockVault}
+              className="w-full border-border hover:bg-accent"
+            >
+              <Lock size={16} className="mr-2" />
+              Lock Vault
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Projects and Sessions */}
