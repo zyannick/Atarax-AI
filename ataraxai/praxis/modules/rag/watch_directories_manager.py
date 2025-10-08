@@ -1,5 +1,5 @@
 import asyncio
-from typing import Set, Dict, Any
+from typing import List, Set, Dict, Any
 from ataraxai.praxis.modules.rag.rag_manifest import RAGManifest
 
 import os
@@ -72,3 +72,6 @@ class WatchedDirectoriesManager:
 
         self.logger.info(f"Removed directories from watch: {directories_to_remove}")
         return True
+
+    async def list_directories(self) -> List[str]:
+        return list(self.rag_config_manager.config.rag_watched_directories or [])

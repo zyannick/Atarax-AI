@@ -1,45 +1,74 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
-interface AtaraxLogoProps {
-  size?: number;
-  className?: string;
-}
+// Mock AtaraxLogo component
+export const AtaraxLogo = ({ className }: { className?: string }) => (
+  <div className={`flex items-center justify-center ${className}`}>
+    <div className="w-full h-full bg-gradient-to-br from-amber-800 to-amber-600 rounded-lg" />
+  </div>
+);
 
-export function AtaraxLogo({ size = 24, className = '' }: AtaraxLogoProps) {
+export default function LoadingScreen() {
+  const [dots, setDots] = useState('');
+  const [elapsed, setElapsed] = useState(0);
+  const [status, setStatus] = useState('Initializing backend');
+
+  useEffect(() => {
+    // Animate dots
+    const dotsInterval = setInterval(() => {
+      setDots(prev => prev.length >= 3 ? '' : prev + '.');
+    }, 500);
+
+    return () => clearInterval(dotsInterval);
+  }, []);
+
+  useEffect(() => {
+    // Track elapsed time and update status messages
+    const timeInterval = setInterval(() => {
+      setElapsed(prev => {
+        const next = prev + 1;
+        
+        if (next === 5) setStatus('Starting Python backend');
+        else if (next === 10) setStatus('Loading AI models');
+        else if (next === 20) setStatus('Establishing connection');
+        else if (next === 30) setStatus('This is taking longer than expected');
+        
+        return next;
+      });
+    }, 1000);
+
+    return () => clearInterval(timeInterval);
+  }, []);
+
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      className={className}
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      {/* Minimalist geometric owl design */}
-      <path
-        d="M12 2C8 2 5 5 5 9v6c0 2 1 3 2 4l1 1v1c0 1 1 2 2 2h4c1 0 2-1 2-2v-1l1-1c1-1 2-2 2-4V9c0-4-3-7-7-7z"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {/* Eyes */}
-      <circle cx="9" cy="11" r="1.5" fill="currentColor" />
-      <circle cx="15" cy="11" r="1.5" fill="currentColor" />
-      {/* Beak */}
-      <path
-        d="M12 13v2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      {/* Ear tufts */}
-      <path
-        d="M8.5 4.5l-1-2M15.5 4.5l1-2"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
+    <div className="flex flex-col items-center justify-center h-screen bg-gradient-to-br from-amber-50 to-stone-100">
+      <AtaraxLogo className="h-20 w-20 animate-pulse" />
+      
+      <div className="mt-6 text-center">
+        <p className="text-lg text-amber-900 font-medium">
+          {status}{dots}
+        </p>
+        
+        <div className="mt-4 flex items-center gap-2">
+          <div className="w-48 h-1 bg-amber-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-amber-600 transition-all duration-1000 ease-out"
+              style={{ 
+                width: `${Math.min((elapsed / 30) * 100, 100)}%` 
+              }}
+            />
+          </div>
+          <span className="text-sm text-amber-700 w-12 text-right">
+            {elapsed}s
+          </span>
+        </div>
+        
+        {elapsed > 30 && (
+          <p className="mt-4 text-xs text-amber-700 max-w-md">
+            The backend is taking longer than usual to start. This can happen on first launch
+            or if the system is under heavy load. Please wait...
+          </p>
+        )}
+      </div>
+    </div>
   );
 }

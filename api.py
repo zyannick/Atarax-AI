@@ -3,6 +3,7 @@ import json
 import os
 import secrets
 from contextlib import asynccontextmanager
+from typing import Dict
 
 import uvicorn
 from fastapi import Depends, FastAPI
@@ -19,6 +20,7 @@ from ataraxai.praxis.ataraxai_orchestrator import (
 )
 from ataraxai.praxis.katalepsis import Katalepsis
 from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
+from ataraxai.routes.benchmark_route.benchmarker import router_benchmark
 from ataraxai.routes.chain_runner_route.chain_runner import router_chain_runner
 from ataraxai.routes.chat_route.chat import router_chat
 from ataraxai.routes.configs_routes.llama_cpp_config_route.llama_cpp_config import (
@@ -131,7 +133,7 @@ all_routers = [
     router_rag_config,
     router_core_ai_service_config,
     router_chain_runner,
-    router_benchmark
+    router_benchmark,
 ]
 
 for router in all_routers:
@@ -139,7 +141,11 @@ for router in all_routers:
 
 
 def print_connection_info(port: int, token: str | None):
-    connection_info = {"port": port, "token": token, "status": "ready"}
+    connection_info: Dict[str, int | str | None] = {
+        "port": port,
+        "token": token,
+        "status": "ready",
+    }
     print(json.dumps(connection_info), flush=True)
 
 
@@ -166,12 +172,12 @@ async def main():
 
     original_startup = server.startup
 
-    async def custom_startup(**kwargs):
+    async def custom_startup(**kwargs):  # type: ignore
         await original_startup()
         token = app.state.secret_token
         print_connection_info(port, token)
 
-    server.startup = custom_startup
+    server.startup = custom_startup  # type: ignore
 
     await server.serve()
 
