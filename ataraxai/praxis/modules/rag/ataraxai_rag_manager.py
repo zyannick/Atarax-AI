@@ -146,6 +146,9 @@ class AtaraxAIRAGManager:
     async def remove_watch_directories(self, directories: List[str]) -> bool:
         return await self.directory_manager.remove_directories(set(directories))
 
+    async def list_watch_directories(self) -> List[str]:
+        return await self.directory_manager.list_directories()
+
     async def query_knowledge(
         self, query_text: str, filter_metadata: Optional[Dict] = None
     ) -> List[str]:

@@ -12,17 +12,17 @@ from dataclasses import dataclass
 
 
 class VaultUnlockStatus(Enum):
-    SUCCESS = auto()
-    INVALID_PASSWORD = auto()
-    ALREADY_UNLOCKED = auto()
-    INCORRECT_PASSWORD = auto()
-    UNINITIALIZED = auto()
-    ERROR = auto()
+    SUCCESS = "success"
+    INVALID_PASSWORD = "invalid_password"
+    ALREADY_UNLOCKED = "already_unlocked"
+    INCORRECT_PASSWORD = "incorrect_password"
+    UNINITIALIZED = "uninitialized"
+    ERROR = "error"
 
 class VaultInitializationStatus(Enum):
-    SUCCESS = auto()
-    ALREADY_INITIALIZED = auto()
-    FAILED = auto()
+    SUCCESS = "success"
+    ALREADY_INITIALIZED = "already_initialized"
+    FAILED = "failed"
 
 @dataclass
 class UnlockResult:

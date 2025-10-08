@@ -2,7 +2,7 @@ from enum import Enum, auto
 
 
 class ServiceStatus(Enum):
-    NOT_INITIALIZED = auto()
-    INITIALIZING = auto()
-    INITIALIZED = auto()
-    FAILED = auto()
+    NOT_INITIALIZED = "not_initialized"
+    INITIALIZING = "initializing"
+    INITIALIZED = "initialized"
+    FAILED = "failed"

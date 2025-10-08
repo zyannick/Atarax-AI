@@ -3,9 +3,9 @@ from typing import Dict
 from enum import Enum, auto
 
 class AppTheme(str, Enum):
-    SYSTEM_DEFAULT = auto()
-    LIGHT = auto()
-    DARK = auto()
+    SYSTEM_DEFAULT = "system_default"
+    LIGHT = "light"
+    DARK = "dark"
 
 class UserPreferences(BaseModel):
     config_version: str = Field("1.0", description="Version of the user preferences configuration.")

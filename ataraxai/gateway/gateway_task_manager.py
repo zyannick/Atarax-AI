@@ -5,10 +5,10 @@ from typing import Any, Dict, Optional
 
 
 class TaskStatus(Enum):
-    PENDING = auto()
-    SUCCESS = auto()
-    FAILED = auto()
-    ERROR = auto()
+    PENDING = "pending"
+    SUCCESS = "success"
+    FAILED = "failed"
+    ERROR = "error"
 
 
 class Task:

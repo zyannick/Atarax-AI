@@ -41,9 +41,9 @@ async def monitor_download_progress(modified_client: TestClient, task_id: str, t
                 message = websocket.receive_json()
                 final_status = message
                 
-                if int(message.get("status")) in [
-                    int(DownloadTaskStatus.COMPLETED.value),
-                    int(DownloadTaskStatus.FAILED.value)
+                if message.get("status") in [
+                    DownloadTaskStatus.COMPLETED.value,
+                    DownloadTaskStatus.FAILED.value
                 ]:
                     break
                     
