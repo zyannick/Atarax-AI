@@ -35,6 +35,7 @@ from ataraxai.routes.configs_routes.user_preferences_route.user_preferences impo
 from ataraxai.routes.core_ai_service.core_ai_service import (
     router_core_ai_service_config,
 )
+from ataraxai.routes.benchmark_route.benchmarker import router_benchmark
 from ataraxai.routes.dependency_api import (
     get_orchestrator,
     verify_token,

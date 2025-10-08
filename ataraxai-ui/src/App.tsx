@@ -248,6 +248,7 @@ function AppContent() {
     );
   }
 
+  // Main app UI (unlocked state)
   const renderMainContent = () => {
     switch (currentView) {
       case "chat":
