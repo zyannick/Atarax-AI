@@ -93,6 +93,39 @@ pyinstaller --noconfirm \
             --exclude-module ruff \
             api.py
 
+# ARTIFACT_PATH="$DIST_DIR/api"
+# strip "$ARTIFACT_PATH"
+# mkdir -p "$TAURI_RESOURCE_DIR"
+# cp "$ARTIFACT_PATH" "$TAURI_RESOURCE_DIR"/
+
+# pyinstaller --noconfirm \
+#   --onefile \
+#   --name "api" \
+#   --distpath "$DIST_DIR" \
+#   --add-binary "$CPP_EXTENSION_PATH:ataraxai" \
+#   --hidden-import "ataraxai.hegemonikon_py" \
+#   --collect-submodules ataraxai \
+#   --collect-submodules uvicorn \
+#   --collect-submodules fastapi \
+#   --exclude-module pytest \
+#   --exclude-module mypy \
+#   --exclude-module ruff \
+#   --exclude-module tensorboard \
+#   --exclude-module scipy \
+#   --exclude-module pandas \
+#   --exclude-module sklearn \
+#   --exclude-module transformers \
+#   --exclude-module matplotlib \
+#   --exclude-module IPython \
+#   --upx-dir=/usr/bin \
+#   api.py
+
+# Remove unnecessary files from the dist folder
+# cd "$DIST_DIR/api"
+# rm -rf tcl tk share/doc share/man
+# find . -name "*.pyc" -delete
+# find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
+
 ARTIFACT_PATH="$DIST_DIR/api"
 strip "$ARTIFACT_PATH"
 mkdir -p "$TAURI_RESOURCE_DIR"

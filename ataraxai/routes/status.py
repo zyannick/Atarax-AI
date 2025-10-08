@@ -4,12 +4,6 @@ from pydantic import BaseModel, Field
 from ataraxai.gateway.gateway_task_manager import TaskStatus
 
 
-# class Status(str, Enum):
-#     SUCCESS = auto()
-#     FAILURE = auto()
-#     PENDING = auto()
-#     ERROR = auto()
-
 Status = TaskStatus
 
 

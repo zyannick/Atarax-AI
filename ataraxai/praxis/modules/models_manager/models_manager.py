@@ -25,13 +25,13 @@ from ataraxai.praxis.utils.background_task_manager import BackgroundTaskManager
 
 
 class ModelDownloadStatus(Enum):
-    STARTING = auto()
-    DOWNLOADING = auto()
-    COMPLETED = auto()
-    FAILED = auto()
-    CANCELLED = auto()
-    PAUSED = auto()
-    NOT_FOUND = auto()
+    STARTING = "starting"
+    DOWNLOADING = "downloading"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    PAUSED = "paused"
+    NOT_FOUND = "not_found"
 
 
 class LlamaCPPModelInfo(BaseModel):

@@ -255,3 +255,18 @@ async def remove_directory(
         message="Directories started to be removed from indexing.",
         result=task_id,
     )
+
+
+@router_rag.get("/list_directories", response_model=DirectoriesAdditionResponse)
+@katalepsis_monitor.instrument_api("POST")  # type: ignore
+@handle_api_errors("Remove Directories", logger=logger)
+async def list_directories(
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+):
+    rag_manager = await orch.get_rag_manager()
+    directories = await rag_manager.list_watch_directories()
+    return DirectoriesAdditionResponse(
+        status=Status.SUCCESS,
+        message="List of watched directories retrieved successfully.",
+        result=directories,
+    )

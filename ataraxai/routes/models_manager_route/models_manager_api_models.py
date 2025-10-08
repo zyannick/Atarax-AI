@@ -91,12 +91,12 @@ class DownloadModelRequest(BaseModel):
     
 
 class DownloadTaskStatus(str, Enum):
-    PENDING = auto()
-    RUNNING = auto()
-    COMPLETED = auto()
-    FAILED = auto()
-    CANCELLED = auto()
-    
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
 class DownloadModelResponse(BaseModel):
     status: DownloadTaskStatus = Field(
         ...,
