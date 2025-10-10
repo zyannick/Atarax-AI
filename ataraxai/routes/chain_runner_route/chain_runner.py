@@ -7,7 +7,6 @@ from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
 from ataraxai.gateway.request_manager import RequestManager, RequestPriority
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.katalepsis import katalepsis_monitor
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.chain_runner_route.chain_runner_api_models import (
     AvailableTasksResponse,
@@ -22,7 +21,6 @@ from ataraxai.routes.dependency_api import (
 )
 from ataraxai.routes.status import Status
 
-logger = AtaraxAILogger("ataraxai.praxis.chain_runner").get_logger()
 
 
 router_chain_runner = APIRouter(prefix="/api/v1/chain_runner", tags=["Chain Runner"])
@@ -30,7 +28,7 @@ router_chain_runner = APIRouter(prefix="/api/v1/chain_runner", tags=["Chain Runn
 
 @router_chain_runner.get("/available_tasks", response_model=AvailableTasksResponse)
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
-@handle_api_errors("List Available Tasks", logger=logger)
+@handle_api_errors("List Available Tasks")
 async def list_available_tasks(
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
 ) -> AvailableTasksResponse:

@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from enum import Enum, auto
+from enum import Enum
 from typing import Any, Dict, Optional
 
 

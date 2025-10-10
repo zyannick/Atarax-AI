@@ -123,7 +123,7 @@ class AtaraxAIOrchestrator:
 
         except Exception as e:
             self.logger.error(f"Failed to initialize orchestrator: {e}", exc_info=True)
-            await self._set_state(AppState.ERROR)
+            # await self._set_state(AppState.ERROR)
             raise
 
     async def get_state(self) -> AppState:
@@ -148,7 +148,7 @@ class AtaraxAIOrchestrator:
                 await self.state_machine.transition_to(AppState.FIRST_LAUNCH)
         except Exception as e:
             self.logger.error(f"Error determining initial state: {e}", exc_info=True)
-            await self.state_machine.transition_to(AppState.ERROR)
+            # await self.state_machine.transition_to(AppState.ERROR)
 
     async def _initialize_base_components(self) -> None:
         try:
@@ -165,7 +165,7 @@ class AtaraxAIOrchestrator:
                 raise RuntimeError("Setup manager is not initialized")
         except Exception as e:
             self.logger.error(f"Failed during base initialization: {e}", exc_info=True)
-            self._state = AppState.ERROR
+            # self._state = AppState.ERROR
             raise
 
     async def initialize_new_vault(
@@ -193,7 +193,7 @@ class AtaraxAIOrchestrator:
 
         except Exception as e:
             self.logger.error(f"Failed to initialize new vault: {e}", exc_info=True)
-            await self._set_state(AppState.ERROR)
+            # await self._set_state(AppState.ERROR)
             return VaultInitializationStatus.FAILED
 
     async def reinitialize_vault(self, confirmation_phrase: str) -> bool:
@@ -235,7 +235,7 @@ class AtaraxAIOrchestrator:
             self.logger.critical(
                 f"Failed during vault re-initialization: {e}", exc_info=True
             )
-            await self._set_state(AppState.ERROR)
+            # await self._set_state(AppState.ERROR)
             return False
 
     async def _reinitialize_vault_manager(self) -> None:
@@ -265,7 +265,7 @@ class AtaraxAIOrchestrator:
             self.logger.error(
                 f"Failed to initialize unlocked services: {e}", exc_info=True
             )
-            await self._set_state(AppState.ERROR)
+            # await self._set_state(AppState.ERROR)
             await self.lock()
             raise
 
@@ -320,7 +320,7 @@ class AtaraxAIOrchestrator:
             return True
         except Exception as e:
             self.logger.error(f"Failed to lock vault: {e}", exc_info=True)
-            await self._set_state(AppState.ERROR)
+            # await self._set_state(AppState.ERROR)
             return False
 
     async def run_task_chain(

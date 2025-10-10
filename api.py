@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import os
 import secrets
 from contextlib import asynccontextmanager
@@ -50,8 +51,6 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-logger = AtaraxAILogger("ataraxai.praxis.api").get_logger()
-
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -60,12 +59,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 async def lifespan(app: FastAPI):
     app.state.secret_token = secrets.token_hex(16)
     app.state.orchestrator = await AtaraxAIOrchestratorFactory.create_orchestrator()
+    app.state.logger = app.state.orchestrator.logger
     app.state.katalepsis_monitor = Katalepsis()
-    app.state.request_manager = RequestManager()
+    app.state.request_manager = RequestManager(logger=app.state.logger)
     app.state.gateway_task_manager = GatewayTaskManager()
     await app.state.request_manager.start()
     yield
-    logger.info("API is shutting down. Closing orchestrator resources.")
+    app.state.logger.info("API is shutting down. Closing orchestrator resources.")
     await app.state.orchestrator.shutdown()
     await app.state.request_manager.stop()
     app.state.secret_token = None

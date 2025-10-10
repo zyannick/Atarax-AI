@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 from fastapi import APIRouter
 from fastapi import Depends
@@ -6,13 +7,11 @@ from ataraxai.praxis.utils.configs.rag_config_manager import RAGConfigManager
 from ataraxai.routes.configs_routes.rag_config_route.rag_config_api_models import RagConfigAPI, RagConfigResponse
 from ataraxai.routes.status import Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator
+from ataraxai.routes.dependency_api import get_logger, get_unlocked_orchestrator
 
 
 
-logger = AtaraxAILogger("ataraxai.praxis.rag_config").get_logger()
 
 router_rag_config = APIRouter(
     prefix="/api/v1/rag_config", tags=["RAG Config"]
@@ -25,9 +24,10 @@ async def get_rag_config_manager(
     return config_manager.rag_config_manager
 
 @router_rag_config.get("/get_rag_config", response_model=RagConfigResponse)
-@handle_api_errors("Get RAG Config", logger=logger)
+@handle_api_errors("Get RAG Config")
 async def get_rag_config(
-    rag_config_manager: Annotated[RAGConfigManager, Depends(get_rag_config_manager)]
+    rag_config_manager: Annotated[RAGConfigManager, Depends(get_rag_config_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> RagConfigResponse:
     """
     Endpoint to retrieve the current RAG configuration.
@@ -53,10 +53,11 @@ async def get_rag_config(
     
     
 @router_rag_config.put("/update_rag_config", response_model=RagConfigResponse)
-@handle_api_errors("Update RAG Config", logger=logger)
+@handle_api_errors("Update RAG Config")
 async def update_rag_config(
     config: RagConfigAPI,
     rag_config_manager: Annotated[RAGConfigManager, Depends(get_rag_config_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> RagConfigResponse:
     """
     Endpoint to update the RAG configuration.

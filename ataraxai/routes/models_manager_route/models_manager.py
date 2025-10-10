@@ -4,12 +4,12 @@ from typing import Annotated, Any, Dict, Optional
 import ulid
 from fastapi import (
     APIRouter,
+    Depends,
     HTTPException,
     WebSocket,
     WebSocketDisconnect,
     status,
 )
-from fastapi import Depends
 from prometheus_client import Enum
 
 from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
@@ -39,8 +39,7 @@ from ataraxai.routes.models_manager_route.models_manager_api_models import (
 )
 from ataraxai.routes.status import Status, StatusResponse
 
-logger = AtaraxAILogger("ataraxai.praxis.models_manager").get_logger()
-
+logger = AtaraxAILogger("models_manager_route").get_logger()
 
 router_models_manager = APIRouter(
     prefix="/api/v1/models_manager", tags=["Models Manager"]
@@ -51,7 +50,7 @@ router_models_manager = APIRouter(
     "/search_models", response_model=SearchModelsResponsePaginated
 )
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Search Models", logger=logger)
+@handle_api_errors("Search Models")
 async def search_models(
     request: SearchModelsRequest,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
@@ -151,7 +150,6 @@ async def get_download_status(
 ) -> DownloadModelResponse:
     models_manager = await orch.get_models_manager()
     progress = models_manager.get_download_status(task_id)
-    print(progress)
     if progress is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -195,7 +193,7 @@ async def cancel_download(
     response_model=DownloadModelResponse,
     status_code=status.HTTP_202_ACCEPTED,
 )
-@handle_api_errors("Download Models", logger=logger)
+@handle_api_errors("Download Models")
 async def download_model(
     request: DownloadModelRequest,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
@@ -210,9 +208,7 @@ async def download_model(
         priority=RequestPriority.MEDIUM,
     )
 
-    print(
-        f"Future created for download task: {future}"
-    )
+    print(f"Future created for download task: {future}")
 
     task_id = await future
 
@@ -231,7 +227,7 @@ async def download_model(
 #     response_model=DownloadModelResponse,
 #     status_code=status.HTTP_202_ACCEPTED,
 # )
-# @handle_api_errors("Download Models", logger=logger)
+# @handle_api_errors("Download Models")
 # async def download_model(
 #     background_tasks: BackgroundTasks,
 #     request: DownloadModelRequest,
@@ -265,7 +261,7 @@ async def download_model(
 @router_models_manager.post(
     "/get_model_info_manifest", response_model=ModelInfoResponsePaginated
 )
-@handle_api_errors("Get Model Info", logger=logger)
+@handle_api_errors("Get Model Info")
 async def get_model_info(
     request: SearchModelsManifestRequest,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
@@ -293,7 +289,7 @@ async def get_model_info(
 
 
 @router_models_manager.post("/remove_all_models", response_model=StatusResponse)
-@handle_api_errors("Remove All Models", logger=logger)
+@handle_api_errors("Remove All Models")
 async def remove_all_models(
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],

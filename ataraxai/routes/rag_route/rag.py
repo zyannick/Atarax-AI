@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, status
@@ -7,10 +8,10 @@ from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
 from ataraxai.gateway.request_manager import RequestManager, RequestPriority
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.katalepsis import katalepsis_monitor
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.dependency_api import (
     get_gatewaye_task_manager,
+    get_logger,
     get_request_manager,
     get_unlocked_orchestrator,
 )
@@ -25,19 +26,18 @@ from ataraxai.routes.rag_route.rag_api_models import (
 from ataraxai.routes.status import StatusResponse
 from ataraxai.routes.status import TaskStatus as Status
 
-logger = AtaraxAILogger("ataraxai.praxis.rag").get_logger()
-
 
 router_rag = APIRouter(prefix="/api/v1/rag", tags=["RAG"])
 
 
 @router_rag.post("/rebuild_index", response_model=RebuildIndexResponse)
 @katalepsis_monitor.instrument_api("POST")
-@handle_api_errors("Rebuild Index", logger=logger)
+@handle_api_errors("Rebuild Index")
 async def rebuild_index(
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> RebuildIndexResponse:
     """
     Endpoint to rebuild the RAG (Retrieval-Augmented Generation) index.
@@ -75,6 +75,7 @@ async def get_rebuild_index_result(
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> RebuildIndexResponse:
     """
     Endpoint to retrieve the result of a previously initiated index rebuild operation.
@@ -108,6 +109,7 @@ async def cancel_rebuild_index(
     task_id: str,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> RebuildIndexResponse:
     """
     Endpoint to cancel a previously initiated index rebuild operation.
@@ -135,6 +137,7 @@ async def cancel_rebuild_index(
 @router_rag.get("/check_manifest", response_model=CheckManifestResponse)
 async def check_manifest(
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     rag_manager = await orch.get_rag_manager()
     is_valid = await rag_manager.check_manifest_validity()
@@ -151,9 +154,11 @@ async def check_manifest(
 @router_rag.get("/health_check", response_model=StatusResponse)
 async def health_check(
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     rag_manager = await orch.get_rag_manager()
     is_healthy = await rag_manager.health_check()
+    logger.info(f"Health check status: {'healthy' if is_healthy else 'unhealthy'}")
     return StatusResponse(
         status=Status.SUCCESS if is_healthy else Status.ERROR,
         message=(
@@ -164,12 +169,13 @@ async def health_check(
 
 @router_rag.post("/add_directories", response_model=DirectoriesAdditionResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Add Directories", logger=logger)
+@handle_api_errors("Add Directories")
 async def add_directory(
     request: DirectoriesToAddRequest,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> DirectoriesAdditionResponse:
     """
     Endpoint to add directories for RAG (Retrieval-Augmented Generation) indexing.
@@ -212,12 +218,13 @@ async def add_directory(
 
 @router_rag.post("/remove_directories", response_model=DirectoriesRemovalResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Remove Directories", logger=logger)
+@handle_api_errors("Remove Directories")
 async def remove_directory(
     request: DirectoriesToRemoveRequest,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> DirectoriesRemovalResponse:
     """
     Endpoint to remove directories from RAG (Retrieval-Augmented Generation) indexing.
@@ -259,12 +266,14 @@ async def remove_directory(
 
 @router_rag.get("/list_directories", response_model=DirectoriesAdditionResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Remove Directories", logger=logger)
+@handle_api_errors("Remove Directories")
 async def list_directories(
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     rag_manager = await orch.get_rag_manager()
     directories = await rag_manager.list_watch_directories()
+    logger.info(f"List of watched directories retrieved: {directories}")
     return DirectoriesAdditionResponse(
         status=Status.SUCCESS,
         message="List of watched directories retrieved successfully.",

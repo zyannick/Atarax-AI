@@ -7,7 +7,7 @@ from cryptography.exceptions import InvalidTag
 
 
 from ataraxai.hegemonikon_py import SecureKey, SecureString, derive_and_protect_key  # type: ignore
-from enum import Enum, auto
+from enum import Enum
 from dataclasses import dataclass
 
 

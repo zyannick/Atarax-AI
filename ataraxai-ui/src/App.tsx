@@ -12,7 +12,7 @@ import { VaultReinit } from "./components/VaultReinit";
 import { getAppStatus, initializeVault, unlockVault, API_STATUS } from './lib/api';
 import { AtaraxLogo } from "./components/AtaraxLogo";
 
-type BackendState = "FIRST_LAUNCH" | "LOCKED" | "UNLOCKED" | "READY";
+type BackendState = "FIRST_LAUNCH" | "LOCKED" | "UNLOCKED" | "READY" | "ERROR";
 
 type AppStatus = "loading" | "ready" | "error";
 type VaultState = "uninitialized" | "locked" | "unlocked" | "reinit";
@@ -65,6 +65,7 @@ function AppContent() {
 
             switch (backendStateString) {
               case "FIRST_LAUNCH":
+              case "ERROR":
                 setVaultState("uninitialized");
                 break;
               case "LOCKED":
@@ -137,7 +138,7 @@ function AppContent() {
   const handleUnlockVault = async (password: string): Promise<boolean> => {
     try {
       const response = await unlockVault(password);
-      if (response.status === "SUCCESS") {
+      if (response.status === API_STATUS.SUCCESS) {
         setVaultState("unlocked");
         return true;
       }

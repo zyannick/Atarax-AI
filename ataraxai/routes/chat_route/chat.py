@@ -1,3 +1,4 @@
+import logging
 import uuid
 from typing import Annotated, List
 
@@ -8,7 +9,6 @@ from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
 from ataraxai.gateway.request_manager import RequestManager, RequestPriority
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.katalepsis import katalepsis_monitor
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.routes.chat_route.chat_api_models import (
     CreateProjectRequestAPI,
@@ -19,13 +19,12 @@ from ataraxai.routes.chat_route.chat_api_models import (
 )
 from ataraxai.routes.dependency_api import (
     get_gatewaye_task_manager,
+    get_logger,
     get_request_manager,
     get_unlocked_orchestrator,
 )
 from ataraxai.routes.status import StatusResponse
 from ataraxai.routes.status import TaskStatus as Status
-
-logger = AtaraxAILogger("ataraxai.praxis.chat").get_logger()
 
 
 router_chat = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
@@ -33,12 +32,13 @@ router_chat = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 
 @router_chat.post("/projects", response_model=ProjectResponseAPI)
 @katalepsis_monitor.instrument_api("POST")
-@handle_api_errors("Create Project", logger=logger)
+@handle_api_errors("Create Project")
 async def create_new_project(
     project_data: CreateProjectRequestAPI,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     chat_manager = await orch.get_chat_manager()
     future = await req_manager.submit_request(  # type: ignore
@@ -56,12 +56,13 @@ async def create_new_project(
 
 @router_chat.delete("/projects/{project_id}", response_model=StatusResponse)
 @katalepsis_monitor.instrument_api("DELETE")
-@handle_api_errors("Delete Project", logger=logger)
+@handle_api_errors("Delete Project")
 async def delete_project(
     project_id: uuid.UUID,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     chat_manager = await orch.get_chat_manager()
     project = await chat_manager.get_project(project_id)
@@ -88,11 +89,12 @@ async def delete_project(
 
 @router_chat.get(("/projects/delete/{task_id}"), response_model=StatusResponse)
 @katalepsis_monitor.instrument_api("GET")
-@handle_api_errors("Get Project Deletion Status", logger=logger)
+@handle_api_errors("Get Project Deletion Status")
 async def get_project_deletion_status(
     task_id: str,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     result = task_manager.get_task_status(task_id)
     if result is None:
@@ -110,12 +112,13 @@ async def get_project_deletion_status(
 
 @router_chat.get("/projects/{project_id}", response_model=ProjectResponseAPI)
 @katalepsis_monitor.instrument_api("GET")
-@handle_api_errors("Get Project", logger=logger)
+@handle_api_errors("Get Project")
 async def get_project(
     project_id: uuid.UUID,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     chat_manager = await orch.get_chat_manager()
     future = await req_manager.submit_request(  # type: ignore
@@ -138,11 +141,12 @@ async def get_project(
 
 @router_chat.get("/projects", response_model=List[ProjectResponseAPI])
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
-@handle_api_errors("List Projects", logger=logger)
+@handle_api_errors("List Projects")
 async def list_projects(
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     chat_manager = await orch.get_chat_manager()
     future = await req_manager.submit_request(  # type: ignore
@@ -163,12 +167,13 @@ async def list_projects(
     "/projects/{project_id}/sessions", response_model=List[SessionResponseAPI]
 )
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
-@handle_api_errors("List Sessions", logger=logger)
+@handle_api_errors("List Sessions")
 async def list_sessions(
     project_id: uuid.UUID,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     chat_manager = await orch.get_chat_manager()
     future = await req_manager.submit_request(  # type: ignore
@@ -188,12 +193,13 @@ async def list_sessions(
 
 @router_chat.post("/sessions", response_model=SessionResponseAPI)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Create Session", logger=logger)
+@handle_api_errors("Create Session")
 async def create_session(
     session_data: CreateSessionRequestAPI,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     chat_manager = await orch.get_chat_manager()
     try:
@@ -220,12 +226,13 @@ async def create_session(
 
 @router_chat.delete("/sessions/{session_id}", response_model=StatusResponse)
 @katalepsis_monitor.instrument_api("DELETE")
-@handle_api_errors("Delete Session", logger=logger)
+@handle_api_errors("Delete Session")
 async def delete_session(
     session_id: uuid.UUID,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     chat_manager = await orch.get_chat_manager()
     session = await chat_manager.get_session(session_id)
@@ -252,15 +259,17 @@ async def delete_session(
 
 @router_chat.get("/sessions/delete/{task_id}", response_model=StatusResponse)
 @katalepsis_monitor.instrument_api("GET")
-@handle_api_errors("Delete Session", logger=logger)
+@handle_api_errors("Delete Session")
 async def get_delete_session_status(
     task_id: str,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     result = task_manager.get_task_status(task_id)
     if result is None:
+        logger.error(f"Task with ID {task_id} not found.")
         return StatusResponse(
             status=Status.ERROR,
             message=f"Task with ID {task_id} not found.",
@@ -275,12 +284,13 @@ async def get_delete_session_status(
 
 @router_chat.get("/sessions/{session_id}", response_model=SessionResponseAPI)
 @katalepsis_monitor.instrument_api("GET")
-@handle_api_errors("Get Session", logger=logger)
+@handle_api_errors("Get Session")
 async def get_session(
     session_id: uuid.UUID,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     chat_manager = await orch.get_chat_manager()
     session = await chat_manager.get_session(session_id)
@@ -298,12 +308,13 @@ async def get_session(
     "/sessions/{session_id}/messages", response_model=List[MessageResponseAPI]
 )
 @katalepsis_monitor.instrument_api("GET")
-@handle_api_errors("Get Messages", logger=logger)
+@handle_api_errors("Get Messages")
 async def get_messages(
     session_id: uuid.UUID,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
     chat_manager = await orch.get_chat_manager()
     session = await chat_manager.get_session(session_id)

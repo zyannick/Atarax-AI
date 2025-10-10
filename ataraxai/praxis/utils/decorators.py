@@ -1,4 +1,5 @@
 import functools
+import inspect
 import logging
 import traceback
 from typing import Optional
@@ -8,10 +9,26 @@ from fastapi import HTTPException, status
 from ataraxai.praxis.utils.exceptions import AtaraxAIError
 
 
-def handle_api_errors(operation_name: str, logger: Optional[logging.Logger] = None):
+def handle_api_errors(operation_name: str):
     def decorator(func):
         @functools.wraps(func)  # Preserve the original function's metadata
         async def wrapper(*args, **kwargs):
+            logger: Optional[logging.Logger] = kwargs.get('logger')
+            
+            if logger is None:
+                try:
+                    sig = inspect.signature(func)
+                    param_names = list(sig.parameters.keys())
+                    
+                    if 'logger' in param_names:
+                        logger_index = param_names.index('logger')
+                        if logger_index < len(args):
+                            potential_logger = args[logger_index]
+                            if isinstance(potential_logger, logging.Logger):
+                                logger = potential_logger
+                except Exception:
+                    pass
+                
             try:
                 return await func(*args, **kwargs)
             except HTTPException:

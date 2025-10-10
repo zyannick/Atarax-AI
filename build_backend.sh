@@ -88,9 +88,16 @@ pyinstaller --noconfirm \
             --distpath "$DIST_DIR" \
             --add-binary "$CPP_EXTENSION_PATH:ataraxai" \
             --hidden-import "ataraxai.hegemonikon_py" \
+            --hidden-import "chromadb.telemetry.product.posthog" \
+            --hidden-import "chromadb.api.rust" \
+            --collect-submodules fastapi \
+            --collect-submodules uvicorn \
+            --collect-submodules ataraxai \
             --exclude-module pytest \
             --exclude-module mypy \
             --exclude-module ruff \
+            --exclude-module IPython \
+            --upx-dir=/usr/bin \
             api.py
 
 # ARTIFACT_PATH="$DIST_DIR/api"

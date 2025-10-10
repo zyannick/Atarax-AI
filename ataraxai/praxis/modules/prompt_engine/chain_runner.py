@@ -64,7 +64,7 @@ class ChainRunner:
         step_outputs: Dict[str, Any] = {}
         final_result = None
 
-        self.logger.error(f"Starting chain execution for query: '{initial_user_query}'")
+        # self.logger.error(f"Starting chain execution for query: '{initial_user_query}'")
 
         for i, step in enumerate(chain_definition):
             task_id = step["task_id"]

@@ -1,4 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_submodules
+
+hiddenimports = ['ataraxai.hegemonikon_py', 'chromadb.telemetry.product.posthog', 'chromadb.api.rust']
+hiddenimports += collect_submodules('fastapi')
+hiddenimports += collect_submodules('uvicorn')
+hiddenimports += collect_submodules('ataraxai')
 
 
 a = Analysis(
@@ -6,11 +12,11 @@ a = Analysis(
     pathex=[],
     binaries=[('build/ataraxai/hegemonikon/hegemonikon_py.cpython-312-x86_64-linux-gnu.so', 'ataraxai')],
     datas=[],
-    hiddenimports=['ataraxai.hegemonikon_py'],
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['pytest', 'mypy', 'ruff'],
+    excludes=['pytest', 'mypy', 'ruff', 'IPython'],
     noarchive=False,
     optimize=0,
 )

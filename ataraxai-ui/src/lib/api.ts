@@ -7,14 +7,14 @@ interface ApiInfo {
 }
 
 interface ApiResponse {
-  status: number;
+  status: string;
   message: string;
   data?: any;
 }
 
 export const API_STATUS = {
-    SUCCESS: 2,
-    FAILURE: 1,
+    SUCCESS: "success",
+    FAILURE: "failure",
 };
 
 
@@ -75,6 +75,8 @@ async function apiFetch(
 
   const response = await fetch(url, { ...options, headers });
 
+  console.log(`Received response from ${endpoint}:`, response);
+
   if (!response.ok) {
     let errorDetail = `HTTP error! Status: ${response.status}`;
     try {
@@ -85,7 +87,9 @@ async function apiFetch(
     throw new Error(errorDetail);
   }
 
-  return response.json();
+  const data: ApiResponse = await response.json();
+  console.log(`Received successful parsed response from ${endpoint}:`, data);
+  return data;
 }
 
 /**
@@ -103,7 +107,7 @@ export async function getAppStatus(): Promise<ApiResponse> {
  * @returns The API response.
  */
 export async function initializeVault(password: string): Promise<ApiResponse> {
-  return apiFetch("/api/v1/vault/init", {
+  return apiFetch("/api/v1/vault/initialize", {
     method: "POST",
     body: JSON.stringify({ password }),
   });
