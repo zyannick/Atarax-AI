@@ -1,5 +1,7 @@
+// App.tsx
+
 import React, { useState, useEffect } from "react";
-import { AppProvider, useAppStore } from "./store/AppContext";
+import { AppProvider, useAppStore } from "./store/AppContext"; // --- MODIFIED ---
 import { LeftSidebar } from "./components/LeftSidebar";
 import { RightSidebar } from "./components/RightSidebar";
 import { ChatView } from "./components/ChatView";
@@ -9,7 +11,7 @@ import { BenchmarkView } from "./components/BenchmarkView";
 import { VaultSetup } from "./components/VaultSetup";
 import { VaultUnlock } from "./components/VaultUnlock";
 import { VaultReinit } from "./components/VaultReinit";
-import { getAppStatus, initializeVault, unlockVault, API_STATUS } from './lib/api';
+import { getAppStatus, initializeVault, unlockVault, API_STATUS, lockVault } from './lib/api';
 import { AtaraxLogo } from "./components/AtaraxLogo";
 
 type BackendState = "FIRST_LAUNCH" | "LOCKED" | "UNLOCKED" | "READY" | "ERROR";
@@ -18,7 +20,15 @@ type AppStatus = "loading" | "ready" | "error";
 type VaultState = "uninitialized" | "locked" | "unlocked" | "reinit";
 
 function AppContent() {
-  const { currentView } = useAppStore();
+
+  const { currentView, fetchInitialData } = useAppStore(
+    (state) => ({
+      currentView: state.currentView,
+      fetchInitialData: state.fetchInitialData, 
+    })
+  );
+
+
   const [appStatus, setAppStatus] = useState<AppStatus>("loading");
   const [vaultState, setVaultState] = useState<VaultState>("locked");
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -119,7 +129,22 @@ function AppContent() {
     };
 
     checkBackendStatus();
-  }, []);
+  }, []); // This dependency array should be empty
+
+
+  // --- ADDED: New useEffect to load data after unlock ---
+  useEffect(() => {
+    if (vaultState === "unlocked" && appStatus === "ready") {
+      console.log("Vault is unlocked, fetching initial data...");
+      // We assume fetchInitialData exists in your useAppStore
+      // It will handle API calls and update the store's state
+      fetchInitialData().catch((err) => {
+        console.error("Failed to fetch initial data:", err);
+        // You could set an error state here
+      });
+    }
+  }, [vaultState, appStatus, fetchInitialData]);
+  // --- END ADDED ---
 
 
   const handleInitializeVault = async (password: string): Promise<boolean> => {
@@ -149,6 +174,11 @@ function AppContent() {
   };
 
   const handleLockVault = () => {
+    try {
+      lockVault();
+    } catch (error) {
+      console.error("Error locking vault:", error);
+    }
     setVaultState("locked");
   };
 

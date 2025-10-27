@@ -1,28 +1,27 @@
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { 
+  createContext, 
+  useContext, 
+  useReducer, 
+  ReactNode, 
+  useCallback,
+  useMemo
+} from 'react';
 import { Project, ChatSession, Message, AppView, AppStatus, RagSource, ModelInfo, BenchmarkTest, BenchmarkResult, BenchmarkSession } from './types';
+import { API_STATUS, createProject, listProjects } from '../lib/api'; 
 
 interface AppState {
-  // Project state
   projects: Project[];
   selectedProjectId: string | null;
-  
-  // Session state
   sessions: ChatSession[];
   selectedSessionId: string | null;
-  
-  // Message state
   messages: Message[];
   isTyping: boolean;
-  
-  // UI state
   currentView: AppView;
   appStatus: AppStatus;
   sidebarCollapsed: boolean;
   ragSources: RagSource[];
   models: ModelInfo[];
   searchQuery: string;
-  
-  // Benchmark state
   benchmarkTests: BenchmarkTest[];
   benchmarkSessions: BenchmarkSession[];
   activeBenchmarkId: string | null;
@@ -35,7 +34,7 @@ type AppAction =
   | { type: 'SET_SIDEBAR_COLLAPSED'; payload: boolean }
   | { type: 'SELECT_PROJECT'; payload: string }
   | { type: 'SELECT_SESSION'; payload: string }
-  | { type: 'ADD_PROJECT'; payload: { name: string } }
+  | { type: 'ADD_PROJECT'; payload: Project }
   | { type: 'RENAME_PROJECT'; payload: { id: string; name: string } }
   | { type: 'DELETE_PROJECT'; payload: { id: string } }
   | { type: 'ADD_SESSION'; payload: { projectId: string; title?: string } }
@@ -47,113 +46,25 @@ type AppAction =
   | { type: 'ADD_MODEL'; payload: { name: string; size: string } }
   | { type: 'UPDATE_MODEL_PROGRESS'; payload: { id: string; progress: number } }
   | { type: 'MARK_MODEL_DOWNLOADED'; payload: { id: string } }
-  | { type: 'ADD_BENCHMARK_TEST'; payload: { name: string; description: string; category: string; estimatedDuration: number } }
+  | { type: 'ADD_BENCHMARK_TEST'; payload: { name: string; description: string; category: 'performance' | 'accuracy' | 'reasoning' | 'memory'; estimatedDuration: number } }
   | { type: 'ADD_BENCHMARK_SESSION'; payload: { name: string; modelIds: string[]; testIds: string[] } }
-  | { type: 'SET_ACTIVE_BENCHMARK'; payload: { id: string } };
+  | { type: 'SET_ACTIVE_BENCHMARK'; payload: { id: string } }
+  | { type: 'SET_PROJECTS_AND_SESSIONS'; payload: { projects: Project[]; sessions: ChatSession[] } };
 
 const initialState: AppState = {
-  projects: [
-    {
-      id: '1',
-      name: 'General',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ],
-  selectedProjectId: '1',
-  sessions: [
-    {
-      id: '1',
-      projectId: '1',
-      title: 'New Chat',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    },
-  ],
-  selectedSessionId: '1',
-  messages: [
-    {
-      id: '1',
-      sessionId: '1',
-      content: 'Hello! I\'m Atarax-AI, your local AI assistant. How can I help you today?',
-      role: 'assistant',
-      timestamp: new Date(),
-      type: 'text',
-    },
-  ],
+  projects: [],
+  selectedProjectId: null,
+  sessions: [],
+  selectedSessionId: null,
+  messages: [],
   isTyping: false,
   currentView: 'chat',
-  appStatus: 'unlocked',
+  appStatus: 'unlocked', 
   sidebarCollapsed: false,
-  ragSources: [
-    {
-      id: '1',
-      path: '/Users/developer/Documents/Projects',
-      type: 'directory',
-      addedAt: new Date(),
-    },
-    {
-      id: '2',
-      path: '/Users/developer/Knowledge Base',
-      type: 'directory',
-      addedAt: new Date(),
-    },
-  ],
-  models: [
-    {
-      id: '1',
-      name: 'llama2-7b-chat',
-      size: '3.8 GB',
-      isDownloaded: true,
-      isDownloading: false,
-    },
-    {
-      id: '2',
-      name: 'mistral-7b-instruct',
-      size: '4.1 GB',
-      isDownloaded: false,
-      isDownloading: true,
-      downloadProgress: 68,
-    },
-  ],
+  ragSources: [],
+  models: [],
   searchQuery: '',
-  benchmarkTests: [
-    {
-      id: '1',
-      name: 'Text Generation Speed',
-      description: 'Measures tokens per second for text generation tasks',
-      category: 'performance',
-      estimatedDuration: 60,
-    },
-    {
-      id: '2',
-      name: 'Reasoning Accuracy',
-      description: 'Tests logical reasoning capabilities with standardized questions',
-      category: 'reasoning',
-      estimatedDuration: 180,
-    },
-    {
-      id: '3',
-      name: 'Memory Efficiency',
-      description: 'Evaluates memory usage and optimization during inference',
-      category: 'memory',
-      estimatedDuration: 120,
-    },
-    {
-      id: '4',
-      name: 'Code Generation',
-      description: 'Tests programming task completion and code quality',
-      category: 'accuracy',
-      estimatedDuration: 240,
-    },
-    {
-      id: '5',
-      name: 'Mathematical Problem Solving',
-      description: 'Evaluates mathematical reasoning and calculation accuracy',
-      category: 'reasoning',
-      estimatedDuration: 150,
-    },
-  ],
+  benchmarkTests: [],
   benchmarkSessions: [],
   activeBenchmarkId: null,
 };
@@ -177,17 +88,13 @@ function appReducer(state: AppState, action: AppAction): AppState {
       
     case 'SELECT_SESSION':
       return { ...state, selectedSessionId: action.payload };
-      
+
     case 'ADD_PROJECT': {
-      const newProject: Project = {
-        id: Date.now().toString(),
-        name: action.payload.name,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const newProject = action.payload;
       return {
         ...state,
         projects: [...state.projects, newProject],
+        selectedProjectId: newProject.id, 
       };
     }
     
@@ -205,12 +112,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
     
     case 'DELETE_PROJECT': {
       const filteredProjects = state.projects.filter(project => project.id !== action.payload.id);
-      // If we're deleting the selected project, select the first remaining project
       const newSelectedProjectId = state.selectedProjectId === action.payload.id 
         ? (filteredProjects.length > 0 ? filteredProjects[0].id : null)
         : state.selectedProjectId;
       
-      // Also remove any sessions from the deleted project
       const filteredSessions = state.sessions.filter(session => session.projectId !== action.payload.id);
       const newSelectedSessionId = state.sessions.some(session => session.id === state.selectedSessionId && session.projectId === action.payload.id)
         ? (filteredSessions.length > 0 ? filteredSessions[0].id : null)
@@ -258,6 +163,35 @@ function appReducer(state: AppState, action: AppAction): AppState {
     
     case 'SET_TYPING':
       return { ...state, isTyping: action.payload };
+
+    case 'SET_PROJECTS_AND_SESSIONS': {
+      const { projects, sessions } = action.payload;
+      
+      const newSelectedProjectId = projects.length > 0 ? projects[0].id : null;
+      const newSelectedSessionId = newSelectedProjectId
+        ? (sessions.find(s => s.projectId === newSelectedProjectId) || sessions[0])?.id || null
+        : (sessions[0]?.id || null);
+
+      return {
+        ...state,
+        projects: projects,
+        sessions: sessions,
+        selectedProjectId: newSelectedProjectId,
+        selectedSessionId: newSelectedSessionId,
+        messages: newSelectedSessionId
+          ? [
+              {
+                id: Date.now().toString(),
+                sessionId: newSelectedSessionId,
+                content: 'Welcome back! How can I help you today?',
+                role: 'assistant',
+                timestamp: new Date(),
+                type: 'text',
+              },
+            ]
+          : [],
+      };
+    }
       
     case 'ADD_RAG_SOURCE': {
       const newSource: RagSource = {
@@ -356,14 +290,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
 }
 
 interface AppContextValue extends AppState {
-  // Actions
+  fetchInitialData: () => Promise<void>;
   setCurrentView: (view: AppView) => void;
   setAppStatus: (status: AppStatus) => void;
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   selectProject: (id: string) => void;
   selectSession: (id: string) => void;
-  addProject: (name: string) => void;
+  addProject: (name: string) => Promise<void>;
   renameProject: (id: string, name: string) => void;
   deleteProject: (id: string) => void;
   addSession: (projectId: string, title?: string) => void;
@@ -387,38 +321,223 @@ const AppContext = createContext<AppContextValue | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
-  const contextValue: AppContextValue = {
+  const fetchInitialData = useCallback(async () => {
+    console.log("Store: Fetching initial data...");
+    try {
+      dispatch({ type: 'SET_APP_STATUS', payload: 'loading' });
+      
+      const response = await listProjects();
+      
+      if (response.status === API_STATUS.SUCCESS && Array.isArray(response.data)) {
+        const apiProjects: any[] = response.data; 
+        const allProjects: Project[] = [];
+        const allSessions: ChatSession[] = [];
+        
+        apiProjects.forEach(apiProject => {
+          const project: Project = {
+            id: apiProject.id,
+            name: apiProject.name,
+            createdAt: new Date(apiProject.created_at),
+            updatedAt: new Date(apiProject.updated_at),
+          };
+          allProjects.push(project);
+          
+          if (Array.isArray(apiProject.sessions)) {
+            apiProject.sessions.forEach((apiSession: any) => {
+              allSessions.push({
+                id: apiSession.id,
+                projectId: apiProject.id,
+                title: apiSession.title,
+                createdAt: new Date(apiSession.created_at),
+                updatedAt: new Date(apiSession.updated_at),
+              });
+            });
+          }
+        });
+        
+        console.log(`Store: Fetched ${allProjects.length} projects and ${allSessions.length} sessions.`);
+        
+        dispatch({ 
+          type: 'SET_PROJECTS_AND_SESSIONS', 
+          payload: { projects: allProjects, sessions: allSessions } 
+        });
+        
+        dispatch({ type: 'SET_APP_STATUS', payload: 'unlocked' });
+        
+      } else {
+        throw new Error(response.message || "Failed to fetch projects");
+      }
+    } catch (error) {
+      console.error("Failed to fetch initial data:", error);
+      dispatch({ type: 'SET_APP_STATUS', payload: 'error' as AppStatus });
+    }
+  }, [dispatch]);
+
+  const addProject = useCallback(async (name: string) => {
+    try {
+      const response = await createProject(name);
+      if (response.status === API_STATUS.SUCCESS && response.data) {
+        const apiProject = response.data;
+        const newProject: Project = {
+          id: apiProject.id,
+          name: apiProject.name,
+          createdAt: new Date(apiProject.created_at),
+          updatedAt: new Date(apiProject.updated_at),
+        };
+
+        dispatch({ type: 'ADD_PROJECT', payload: newProject });
+      } else {
+        throw new Error(response.message || "Failed to create project");
+      }
+    } catch (error) {
+      console.error("Failed to add project:", error);
+    }
+  }, [dispatch]);
+
+  const setCurrentView = useCallback((view: AppView) => 
+    dispatch({ type: 'SET_CURRENT_VIEW', payload: view }), 
+  [dispatch]);
+
+  const setAppStatus = useCallback((status: AppStatus) => 
+    dispatch({ type: 'SET_APP_STATUS', payload: status }), 
+  [dispatch]);
+
+  const toggleSidebar = useCallback(() => 
+    dispatch({ type: 'TOGGLE_SIDEBAR' }), 
+  [dispatch]);
+  
+  const setSidebarCollapsed = useCallback((collapsed: boolean) => 
+    dispatch({ type: 'SET_SIDEBAR_COLLAPSED', payload: collapsed }), 
+  [dispatch]);
+
+  const selectProject = useCallback((id: string) => 
+    dispatch({ type: 'SELECT_PROJECT', payload: id }), 
+  [dispatch]);
+
+  const selectSession = useCallback((id: string) => 
+    dispatch({ type: 'SELECT_SESSION', payload: id }), 
+  [dispatch]);
+
+  const renameProject = useCallback((id: string, name: string) => 
+    dispatch({ type: 'RENAME_PROJECT', payload: { id, name } }), 
+  [dispatch]);
+
+  const deleteProject = useCallback((id: string) => 
+    dispatch({ type: 'DELETE_PROJECT', payload: { id } }), 
+  [dispatch]);
+
+  const addSession = useCallback((projectId: string, title?: string) => 
+    dispatch({ type: 'ADD_SESSION', payload: { projectId, title } }), 
+  [dispatch]);
+
+  const addMessage = useCallback((sessionId: string, content: string, role: 'user' | 'assistant', type?: 'text' | 'image' | 'voice' | 'video', metadata?: any) => 
+    dispatch({ type: 'ADD_MESSAGE', payload: { sessionId, content, role, type, metadata } }), 
+  [dispatch]);
+
+  const setTyping = useCallback((typing: boolean) => 
+    dispatch({ type: 'SET_TYPING', payload: typing }), 
+  [dispatch]);
+
+  const addRagSource = useCallback((path: string) => 
+    dispatch({ type: 'ADD_RAG_SOURCE', payload: { path } }), 
+  [dispatch]);
+
+  const removeRagSource = useCallback((id: string) => 
+    dispatch({ type: 'REMOVE_RAG_SOURCE', payload: { id } }), 
+  [dispatch]);
+
+  const setSearchQuery = useCallback((query: string) => 
+    dispatch({ type: 'SET_SEARCH_QUERY', payload: query }), 
+  [dispatch]);
+
+  const addModel = useCallback((name: string, size: string) => 
+    dispatch({ type: 'ADD_MODEL', payload: { name, size } }), 
+  [dispatch]);
+
+  const updateModelProgress = useCallback((id: string, progress: number) => 
+    dispatch({ type: 'UPDATE_MODEL_PROGRESS', payload: { id, progress } }), 
+  [dispatch]);
+
+  const markModelDownloaded = useCallback((id: string) => 
+    dispatch({ type: 'MARK_MODEL_DOWNLOADED', payload: { id } }), 
+  [dispatch]);
+
+  const addBenchmarkTest = useCallback((name: string, description: string, category: 'performance' | 'accuracy' | 'reasoning' | 'memory', estimatedDuration: number) => 
+    dispatch({ type: 'ADD_BENCHMARK_TEST', payload: { name, description, category, estimatedDuration } }), 
+  [dispatch]);
+
+  const addBenchmarkSession = useCallback((name: string, modelIds: string[], testIds: string[]) => 
+    dispatch({ type: 'ADD_BENCHMARK_SESSION', payload: { name, modelIds, testIds } }), 
+  [dispatch]);
+
+  const setActiveBenchmark = useCallback((id: string) => 
+    dispatch({ type: 'SET_ACTIVE_BENCHMARK', payload: { id } }), 
+  [dispatch]);
+
+  const getSessionsByProject = useCallback((projectId: string) => 
+    state.sessions.filter((session: ChatSession) => session.projectId === projectId),
+  [state.sessions]);
+
+  const getMessagesBySession = useCallback((sessionId: string) => 
+    state.messages.filter((message: Message) => message.sessionId === sessionId),
+  [state.messages]);
+
+  
+  
+  const contextValue = useMemo(() => ({
     ...state,
-    
-    setCurrentView: (view: AppView) => dispatch({ type: 'SET_CURRENT_VIEW', payload: view }),
-    setAppStatus: (status: AppStatus) => dispatch({ type: 'SET_APP_STATUS', payload: status }),
-    toggleSidebar: () => dispatch({ type: 'TOGGLE_SIDEBAR' }),
-    setSidebarCollapsed: (collapsed: boolean) => dispatch({ type: 'SET_SIDEBAR_COLLAPSED', payload: collapsed }),
-    selectProject: (id: string) => dispatch({ type: 'SELECT_PROJECT', payload: id }),
-    selectSession: (id: string) => dispatch({ type: 'SELECT_SESSION', payload: id }),
-    addProject: (name: string) => dispatch({ type: 'ADD_PROJECT', payload: { name } }),
-    renameProject: (id: string, name: string) => dispatch({ type: 'RENAME_PROJECT', payload: { id, name } }),
-    deleteProject: (id: string) => dispatch({ type: 'DELETE_PROJECT', payload: { id } }),
-    addSession: (projectId: string, title?: string) => dispatch({ type: 'ADD_SESSION', payload: { projectId, title } }),
-    addMessage: (sessionId: string, content: string, role: 'user' | 'assistant', type?: 'text' | 'image' | 'voice' | 'video', metadata?: any) => 
-      dispatch({ type: 'ADD_MESSAGE', payload: { sessionId, content, role, type, metadata } }),
-    setTyping: (typing: boolean) => dispatch({ type: 'SET_TYPING', payload: typing }),
-    addRagSource: (path: string) => dispatch({ type: 'ADD_RAG_SOURCE', payload: { path } }),
-    removeRagSource: (id: string) => dispatch({ type: 'REMOVE_RAG_SOURCE', payload: { id } }),
-    setSearchQuery: (query: string) => dispatch({ type: 'SET_SEARCH_QUERY', payload: query }),
-    addModel: (name: string, size: string) => dispatch({ type: 'ADD_MODEL', payload: { name, size } }),
-    updateModelProgress: (id: string, progress: number) => dispatch({ type: 'UPDATE_MODEL_PROGRESS', payload: { id, progress } }),
-    markModelDownloaded: (id: string) => dispatch({ type: 'MARK_MODEL_DOWNLOADED', payload: { id } }),
-    
-    addBenchmarkTest: (name: string, description: string, category: 'performance' | 'accuracy' | 'reasoning' | 'memory', estimatedDuration: number) => 
-      dispatch({ type: 'ADD_BENCHMARK_TEST', payload: { name, description, category, estimatedDuration } }),
-    addBenchmarkSession: (name: string, modelIds: string[], testIds: string[]) => 
-      dispatch({ type: 'ADD_BENCHMARK_SESSION', payload: { name, modelIds, testIds } }),
-    setActiveBenchmark: (id: string) => dispatch({ type: 'SET_ACTIVE_BENCHMARK', payload: { id } }),
-    
-    getSessionsByProject: (projectId: string) => state.sessions.filter(session => session.projectId === projectId),
-    getMessagesBySession: (sessionId: string) => state.messages.filter(message => message.sessionId === sessionId),
-  };
+    fetchInitialData,
+    setCurrentView,
+    setAppStatus,
+    toggleSidebar,
+    setSidebarCollapsed,
+    selectProject,
+    selectSession,
+    addProject,
+    renameProject,
+    deleteProject,
+    addSession,
+    addMessage,
+    setTyping,
+    addRagSource,
+    removeRagSource,
+    setSearchQuery,
+    addModel,
+    updateModelProgress,
+    markModelDownloaded,
+    addBenchmarkTest,
+    addBenchmarkSession,
+    setActiveBenchmark,
+    getSessionsByProject,
+    getMessagesBySession,
+  }), [
+    state,
+
+    fetchInitialData,
+    setCurrentView,
+    setAppStatus,
+    toggleSidebar,
+    setSidebarCollapsed,
+    selectProject,
+    selectSession,
+    addProject,
+    renameProject,
+    deleteProject,
+    addSession,
+    addMessage,
+    setTyping,
+    addRagSource,
+    removeRagSource,
+    setSearchQuery,
+    addModel,
+    updateModelProgress,
+    markModelDownloaded,
+    addBenchmarkTest,
+    addBenchmarkSession,
+    setActiveBenchmark,
+    getSessionsByProject,
+    getMessagesBySession,
+  ]);
 
   return (
     <AppContext.Provider value={contextValue}>

@@ -113,6 +113,12 @@ export async function initializeVault(password: string): Promise<ApiResponse> {
   });
 }
 
+export async function lockVault(): Promise<ApiResponse> {
+  return apiFetch("/api/v1/vault/lock", {
+    method: "POST",
+  });
+}
+
 /**
  * Calls the backend to unlock the secure vault with a password.
  * @param password The user's password.
@@ -133,20 +139,20 @@ export async function sendChatMessage(message: string): Promise<ApiResponse> {
 }
 
 export async function createProject(name: string): Promise<ApiResponse> {
-  return apiFetch("/api/v1/projects", {
+  return apiFetch("/api/v1/chat/projects", {
     method: "POST",
     body: JSON.stringify({ project_name: name }),
   });
 }
 
 export async function listProjects(): Promise<ApiResponse> {
-  return apiFetch("/api/v1/projects");
+  return apiFetch("/api/v1/chat/projects");
 }
 
 export async function createChatSession(
   projectId: string,
 ): Promise<ApiResponse> {
-  return apiFetch(`/api/v1/projects/${projectId}/sessions`, {
+  return apiFetch(`/api/v1/chat/projects/${projectId}/sessions`, {
     method: "POST",
   });
 }

@@ -124,7 +124,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
           onClick={toggleSidebar}
           className="mb-4"
         >
-          <AtaraxLogo size={20} />
+          <AtaraxLogo className="w-5 h-5" />
         </Button>
         <div className="flex flex-col gap-2">
           <Button
@@ -166,7 +166,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <AtaraxLogo size={24} className="text-sidebar-primary" />
+            <AtaraxLogo className="w-6 h-6 text-sidebar-primary" />
             <span className="font-medium text-sidebar-foreground">Atarax-AI</span>
           </div>
           <Button
@@ -234,6 +234,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
             </Button>
           </div>
         )}
+        
       </div>
 
       {/* Projects and Sessions */}
@@ -364,7 +365,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
       )}
 
       {/* Rename Project Dialog */}
-      <Dialog open={!!renameProjectId} onOpenChange={(open) => !open && handleRenameCancel()}>
+      <Dialog open={!!renameProjectId} onOpenChange={(open: boolean) => !open && handleRenameCancel()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -404,7 +405,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
       </Dialog>
 
       {/* Delete Project Dialog */}
-      <Dialog open={!!deleteProjectId} onOpenChange={(open) => !open && handleDeleteCancel()}>
+      <Dialog open={!!deleteProjectId} onOpenChange={(open: boolean) => !open && handleDeleteCancel()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
