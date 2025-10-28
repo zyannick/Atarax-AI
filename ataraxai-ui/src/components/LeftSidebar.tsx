@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { 
@@ -16,7 +16,6 @@ import {
   MessageSquare, 
   Plus, 
   MoreHorizontal,
-  Settings,
   Download,
   Database,
   ChevronLeft,
@@ -161,8 +160,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
   }
 
   return (
-    <div className="w-80 bg-sidebar border-r border-sidebar-border flex flex-col">
-      {/* Header */}
+    <div className="w-80 bg-sidebar border-r border-sidebar-border flex flex-col h-screen">
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -179,7 +177,6 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
         </div>
       </div>
 
-      {/* Navigation */}
       <div className="p-4 border-b border-sidebar-border">
         <div className="grid grid-cols-2 gap-1">
           <Button
@@ -220,24 +217,9 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
           </Button>
         </div>
         
-        {/* Vault Controls */}
-        {onLockVault && (
-          <div className="px-4 pb-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onLockVault}
-              className="w-full border-border hover:bg-accent"
-            >
-              <Lock size={16} className="mr-2" />
-              Lock Vault
-            </Button>
-          </div>
-        )}
         
       </div>
 
-      {/* Projects and Sessions */}
       {currentView === 'chat' && (
         <>
           <div className="p-4 border-b border-sidebar-border space-y-2">
@@ -252,7 +234,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
             <ProjectDialog />
           </div>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1"> {/* This takes up remaining space */}
             <div className="p-4 space-y-2">
               {projects.map((project) => {
                 const projectSessions = getSessionsByProject(project.id);
@@ -364,7 +346,25 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
         </>
       )}
 
-      {/* Rename Project Dialog */}
+      {currentView !== 'chat' && (
+        <div className="flex-1">
+        </div>
+      )}
+
+      {onLockVault && (
+        <div className="p-4 border-t border-sidebar-border">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onLockVault}
+            className="w-full border-border hover:bg-accent"
+          >
+            <Lock size={16} className="mr-2" />
+            Lock Vault
+          </Button>
+        </div>
+      )}
+
       <Dialog open={!!renameProjectId} onOpenChange={(open: boolean) => !open && handleRenameCancel()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -404,7 +404,6 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Project Dialog */}
       <Dialog open={!!deleteProjectId} onOpenChange={(open: boolean) => !open && handleDeleteCancel()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -444,3 +443,4 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
     </div>
   );
 }
+

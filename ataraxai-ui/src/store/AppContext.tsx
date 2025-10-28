@@ -297,7 +297,7 @@ interface AppContextValue extends AppState {
   setSidebarCollapsed: (collapsed: boolean) => void;
   selectProject: (id: string) => void;
   selectSession: (id: string) => void;
-  addProject: (name: string) => Promise<void>;
+  addProject: (name: string, description: string) => Promise<void>;
   renameProject: (id: string, name: string) => void;
   deleteProject: (id: string) => void;
   addSession: (projectId: string, title?: string) => void;
@@ -326,17 +326,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     try {
       dispatch({ type: 'SET_APP_STATUS', payload: 'loading' });
       
-      const response = await listProjects();
-      
-      if (response.status === API_STATUS.SUCCESS && Array.isArray(response.data)) {
-        const apiProjects: any[] = response.data; 
+      const response : any = await listProjects();
+
+      console.log("Store: Fetched initial project data:", response);
+      console.log("Store: Processing project data...", response.status, API_STATUS.SUCCESS, Array.isArray(response.projects));
+      console.log("Store: Response data:", response.projects);
+
+      if (response.status === API_STATUS.SUCCESS && Array.isArray(response.projects)) {
+        const apiProjects: any[] = response.projects; 
         const allProjects: Project[] = [];
         const allSessions: ChatSession[] = [];
+
+        console.log(`Store: Retrieved ${apiProjects.length} projects from API.`);
         
         apiProjects.forEach(apiProject => {
           const project: Project = {
             id: apiProject.id,
             name: apiProject.name,
+            description: apiProject.description,
             createdAt: new Date(apiProject.created_at),
             updatedAt: new Date(apiProject.updated_at),
           };
@@ -373,14 +380,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [dispatch]);
 
-  const addProject = useCallback(async (name: string) => {
+  const addProject = useCallback(async (name: string, description: string) => {
     try {
-      const response = await createProject(name);
+      const response = await createProject(name, description);
       if (response.status === API_STATUS.SUCCESS && response.data) {
         const apiProject = response.data;
         const newProject: Project = {
           id: apiProject.id,
           name: apiProject.name,
+          description: apiProject.description,
           createdAt: new Date(apiProject.created_at),
           updatedAt: new Date(apiProject.updated_at),
         };

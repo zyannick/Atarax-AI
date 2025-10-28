@@ -138,10 +138,13 @@ export async function sendChatMessage(message: string): Promise<ApiResponse> {
   });
 }
 
-export async function createProject(name: string): Promise<ApiResponse> {
+export async function createProject(
+  name: string, 
+  description: string
+): Promise<ApiResponse> {
   return apiFetch("/api/v1/chat/projects", {
     method: "POST",
-    body: JSON.stringify({ project_name: name }),
+    body: JSON.stringify({ name, description }),
   });
 }
 

@@ -1,24 +1,24 @@
+import asyncio
+import logging
 import uuid
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
-from contextlib import contextmanager
-import logging
+from typing import Any, Dict, List, Optional, Union
+
 from peewee import (
-    SqliteDatabase,
-    Model,
-    UUIDField,
+    BlobField,
     CharField,
-    TextField,
     DateTimeField,
+    DoesNotExist,
     ForeignKeyField,
     IntegrityError,
-    DoesNotExist,
+    Model,
     Select,
-    BlobField,
+    SqliteDatabase,
+    TextField,
+    UUIDField,
 )
-import asyncio
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -115,7 +115,6 @@ class Message(BaseModel):
     role = CharField()
     content = BlobField()
     date_time = DateTimeField(default=datetime.now)
-
 
     def get_date_time(self) -> datetime:
         return datetime(
@@ -473,12 +472,11 @@ class ChatDatabaseManager:
         try:
             db.init(str(self.db_path))
             db.connect()
-            db.create_tables([Project, ChatSession, Message]) 
+            db.create_tables([Project, ChatSession, Message])
             logger.info(f"Database initialized at {self.db_path}")
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
             raise DatabaseError(f"Failed to initialize database: {e}")
-        
 
     @contextmanager
     def _db_connection(self):

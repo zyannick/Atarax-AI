@@ -2,8 +2,7 @@ import logging
 import uuid
 from typing import Annotated, List
 
-from fastapi import APIRouter, HTTPException, status
-from fastapi import Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from ataraxai.gateway.gateway_task_manager import GatewayTaskManager
 from ataraxai.gateway.request_manager import RequestManager, RequestPriority
@@ -16,6 +15,7 @@ from ataraxai.routes.chat_route.chat_api_models import (
     MessageResponseAPI,
     ProjectResponseAPI,
     SessionResponseAPI,
+    ListProjectsResponseAPI,
 )
 from ataraxai.routes.dependency_api import (
     get_gatewaye_task_manager,
@@ -25,7 +25,6 @@ from ataraxai.routes.dependency_api import (
 )
 from ataraxai.routes.status import StatusResponse
 from ataraxai.routes.status import TaskStatus as Status
-
 
 router_chat = APIRouter(prefix="/api/v1/chat", tags=["Chat"])
 
@@ -40,6 +39,9 @@ async def create_new_project(
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
     logger: Annotated[logging.Logger, Depends(get_logger)],
 ):
+    logger.info(
+        f"Creating new project with name: {project_data.name} and description: {project_data.description}"
+    )
     chat_manager = await orch.get_chat_manager()
     future = await req_manager.submit_request(  # type: ignore
         request_name="Create Project",
@@ -50,7 +52,12 @@ async def create_new_project(
     )
     project = await future
     return ProjectResponseAPI(
-        project_id=project.id, name=project.name, description=project.description
+        status=Status.SUCCESS,
+        project_id=project.id,
+        name=project.name,
+        description=project.description,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
     )
 
 
@@ -135,11 +142,16 @@ async def get_project(
             status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
         )
     return ProjectResponseAPI(
-        project_id=project.id, name=project.name, description=project.description
+        status=Status.SUCCESS,
+        project_id=project.id,
+        name=project.name,
+        description=project.description,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
     )
 
 
-@router_chat.get("/projects", response_model=List[ProjectResponseAPI])
+@router_chat.get("/projects", response_model=ListProjectsResponseAPI)
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("List Projects")
 async def list_projects(
@@ -155,12 +167,23 @@ async def list_projects(
         priority=RequestPriority.HIGH,
     )
     projects = await future
-    return [
-        ProjectResponseAPI(
-            project_id=project.id, name=project.name, description=project.description
-        )
-        for project in projects
-    ]
+
+    logger.info(f"Retrieved {len(projects)} projects.")
+    list_projects : ListProjectsResponseAPI = ListProjectsResponseAPI(
+        status=Status.SUCCESS,
+        projects=[
+            ProjectResponseAPI(
+                status=Status.SUCCESS,
+                project_id=project.id,
+                name=project.name,
+                description=project.description,
+                created_at=project.created_at,
+                updated_at=project.updated_at,
+            )
+            for project in projects
+        ],
+    )
+    return list_projects
 
 
 @router_chat.get(
@@ -185,7 +208,12 @@ async def list_sessions(
     sessions = await future
     return [
         SessionResponseAPI(
-            session_id=session.id, title=session.title, project_id=session.project_id
+            status=Status.SUCCESS,
+            session_id=session.id,
+            title=session.title,
+            project_id=session.project_id,
+            created_at=session.created_at,
+            updated_at=session.updated_at,
         )
         for session in sessions
     ]
@@ -220,7 +248,12 @@ async def create_session(
     session = await future
 
     return SessionResponseAPI(
-        session_id=session.id, title=session.title, project_id=session.project_id
+        status=Status.SUCCESS,
+        session_id=session.id,
+        title=session.title,
+        project_id=session.project_id,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
     )
 
 
@@ -300,7 +333,12 @@ async def get_session(
             status_code=status.HTTP_404_NOT_FOUND, detail="Session not found"
         )
     return SessionResponseAPI(
-        session_id=session.id, title=session.title, project_id=session.project_id
+        status=Status.SUCCESS,
+        session_id=session.id,
+        title=session.title,
+        project_id=session.project_id,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
     )
 
 
