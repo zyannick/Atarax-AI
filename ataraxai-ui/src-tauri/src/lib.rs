@@ -11,6 +11,7 @@ use tauri::{async_runtime, AppHandle, Emitter, Manager, State, WindowEvent};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ApiInfo {
     port: u16,
@@ -18,12 +19,14 @@ struct ApiInfo {
     status: String,
 }
 
+
 #[derive(Debug, Default)]
 struct ApiState(Mutex<Option<ApiInfo>>);
 
 pub struct ApiProcess(Mutex<Option<CommandChild>>);
 
 impl ApiState {
+    // Helper methods for safe, concurrent access to the state
     fn set_info(&self, info: ApiInfo) {
         let mut guard = self.0.lock().unwrap();
         *guard = Some(info);
