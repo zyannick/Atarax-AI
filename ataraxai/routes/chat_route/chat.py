@@ -16,6 +16,8 @@ from ataraxai.routes.chat_route.chat_api_models import (
     ProjectResponseAPI,
     SessionResponseAPI,
     ListProjectsResponseAPI,
+    ListSessionsResponseAPI,
+    UpdateSessionRequestAPI,
 )
 from ataraxai.routes.dependency_api import (
     get_gatewaye_task_manager,
@@ -60,12 +62,12 @@ async def create_new_project(
         updated_at=project.updated_at,
     )
 
-@router_chat.put("/projects/{project_id}", response_model=ProjectResponseAPI) # Use PUT and include project_id
-# @katalepsis_monitor.instrument_api("PUT") # Corrected instrument
-# @handle_api_errors("Update Project")
+@router_chat.put("/projects/{project_id}", response_model=ProjectResponseAPI)
+@katalepsis_monitor.instrument_api("PUT")
+@handle_api_errors("Update Project")
 async def update_project(
-    project_id: uuid.UUID, # Get project_id from path
-    project_data: CreateProjectRequestAPI, # Request body contains name and description
+    project_id: uuid.UUID,
+    project_data: CreateProjectRequestAPI,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
     req_manager: Annotated[RequestManager, Depends(get_request_manager)],
     task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
@@ -226,7 +228,7 @@ async def list_projects(
 
 
 @router_chat.get(
-    "/projects/{project_id}/sessions", response_model=List[SessionResponseAPI]
+    "/projects/{project_id}/sessions", response_model=ListSessionsResponseAPI
 )
 @katalepsis_monitor.instrument_api("GET")  # type: ignore
 @handle_api_errors("List Sessions")
@@ -245,17 +247,21 @@ async def list_sessions(
         priority=RequestPriority.HIGH,
     )
     sessions = await future
-    return [
-        SessionResponseAPI(
-            status=Status.SUCCESS,
-            session_id=session.id,
-            title=session.title,
-            project_id=session.project_id,
-            created_at=session.created_at,
-            updated_at=session.updated_at,
-        )
-        for session in sessions
-    ]
+    list_sessions : ListSessionsResponseAPI = ListSessionsResponseAPI(
+        status=Status.SUCCESS,
+        sessions=[
+            SessionResponseAPI(
+                status=Status.SUCCESS,
+                session_id=session.id,
+                title=session.title,
+                project_id=session.project_id,
+                created_at=session.created_at,
+                updated_at=session.updated_at,
+            )
+            for session in sessions
+        ],
+    )
+    return list_sessions
 
 
 @router_chat.post("/sessions", response_model=SessionResponseAPI)
@@ -281,6 +287,36 @@ async def create_session(
         request_name="Create Session",
         func=chat_manager.create_session,
         project_id=session_data.project_id,
+        title=session_data.title,
+        priority=RequestPriority.HIGH,
+    )
+    session = await future
+
+    return SessionResponseAPI(
+        status=Status.SUCCESS,
+        session_id=session.id,
+        title=session.title,
+        project_id=session.project_id,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+    )
+
+@router_chat.put("/sessions/{session_id}", response_model=SessionResponseAPI)
+@katalepsis_monitor.instrument_api("PUT")
+@handle_api_errors("Update Session")
+async def update_session(
+    session_id: uuid.UUID,
+    session_data: UpdateSessionRequestAPI,
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    req_manager: Annotated[RequestManager, Depends(get_request_manager)],
+    task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
+):
+    chat_manager = await orch.get_chat_manager()
+    future = await req_manager.submit_request(  # type: ignore
+        request_name="Update Session",
+        func=chat_manager.update_session,
+        session_id=session_id,
         title=session_data.title,
         priority=RequestPriority.HIGH,
     )

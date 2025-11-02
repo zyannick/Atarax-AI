@@ -9,6 +9,7 @@ class TaskStatus(Enum):
     SUCCESS = "success"
     FAILED = "failed"
     ERROR = "error"
+    DELETED = "deleted"
 
 
 class Task:

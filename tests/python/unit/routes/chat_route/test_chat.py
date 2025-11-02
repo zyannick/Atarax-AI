@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from unittest import mock
 
@@ -67,6 +68,8 @@ async def test_create_new_project(
     mock_project.id = uuid.uuid4()
     mock_project.name = "Test Project"
     mock_project.description = "Desc"
+    mock_project.created_at = datetime.datetime.now()
+    mock_project.updated_at = datetime.datetime.now()
 
     async def mock_future():
         return mock_project
@@ -76,7 +79,7 @@ async def test_create_new_project(
     response = client.post(
         "/api/v1/chat/projects", json={"name": "Test Project", "description": "Desc"}
     )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_200_OK, f"Unexpected status code: {response.text}"
     data = response.json()
     assert data["name"] == "Test Project"
     assert data["description"] == "Desc"
@@ -146,6 +149,8 @@ async def test_list_projects(
     mock_project.id = uuid.uuid4()
     mock_project.name = "Proj"
     mock_project.description = "Desc"
+    mock_project.created_at = datetime.datetime.now()
+    mock_project.updated_at = datetime.datetime.now()
 
     async def mock_future():
         return [mock_project]
@@ -153,10 +158,11 @@ async def test_list_projects(
     mock_req_manager.submit_request.return_value = mock_future()
 
     response = client.get("/api/v1/chat/projects")
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_200_OK, f"Unexpected status code: {response.text}"
     data = response.json()
-    assert isinstance(data, list)
-    assert data[0]["name"] == "Proj"
+    projects = data["projects"]
+    assert len(projects) == 1
+    assert projects[0]["name"] == "Proj"
 
     app.dependency_overrides = {}
 

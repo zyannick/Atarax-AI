@@ -172,9 +172,10 @@ async def test_many_projects_creation(unlock_client_core_ai_service: TestClient)
         response.status_code == status.HTTP_200_OK
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
-    assert isinstance(data, list), "Expected a list of projects."
-    assert len(data) == nb_of_projects, f"Expected 10 projects, got {data}."
-    for i, project in enumerate(data):
+    projects = data["projects"]
+    assert isinstance(projects, list), "Expected a list of projects."
+    assert len(projects) == nb_of_projects, f"Expected 10 projects, got {projects}."
+    for i, project in enumerate(projects):
         project_num = nb_of_projects - i - 1
         assert (
             project["name"] == f"Test Project {project_num}"
@@ -333,11 +334,12 @@ def test_create_many_sessions(
         response.status_code == status.HTTP_200_OK
     ), f"Expected 200 OK, got {response.text}"
     data = response.json()
-    assert isinstance(data, list), "Expected a list of sessions."
+    sessions = data["sessions"]
+    assert isinstance(sessions, list), "Expected a list of sessions."
     assert (
-        len(data) == nb_of_sessions
-    ), f"Expected {nb_of_sessions} sessions, got {len(data)}."
-    for i, session in enumerate(data):
+        len(sessions) == nb_of_sessions
+    ), f"Expected {nb_of_sessions} sessions, got {len(sessions)}."
+    for i, session in enumerate(sessions):
         session_num = nb_of_sessions - i - 1
         assert (
             session["title"] == f"Test Session {session_num}"

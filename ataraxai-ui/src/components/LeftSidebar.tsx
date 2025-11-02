@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../store/AppContext';
 import { AtaraxLogo } from './AtaraxLogo';
 import { ProjectDialog } from './ProjectDialog';
@@ -62,6 +62,19 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
   const [renameSessionTitle, setRenameSessionTitle] = useState('');
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (selectedProjectId && !expandedProjects.has(selectedProjectId)) {
+      const newExpanded = new Set(expandedProjects);
+      newExpanded.add(selectedProjectId);
+      setExpandedProjects(newExpanded);
+      
+      const projectSessions = getSessionsByProject(selectedProjectId);
+      if (projectSessions.length === 0 && !loadingProjects.has(selectedProjectId)) {
+        fetchSessionsForProject(selectedProjectId);
+      }
+    }
+  }, [selectedProjectId, expandedProjects, getSessionsByProject, loadingProjects, fetchSessionsForProject]);
+
   const toggleProject = async (projectId: string) => {
     const newExpanded = new Set(expandedProjects);
     const wasExpanded = newExpanded.has(projectId);
@@ -116,12 +129,24 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
   };
 
   const handleNewChat = async () => {
-    if (selectedProjectId) {
-      try {
-        await addSession(selectedProjectId);
-      } catch (error) {
-        console.error('Failed to create new chat:', error);
+    if (!selectedProjectId) {
+      console.warn('No project selected, cannot create new chat');
+      return;
+    }
+
+    try {
+      console.log(`Creating new chat for project: ${selectedProjectId}`);
+      await addSession(selectedProjectId);
+      
+      if (!expandedProjects.has(selectedProjectId)) {
+        const newExpanded = new Set(expandedProjects);
+        newExpanded.add(selectedProjectId);
+        setExpandedProjects(newExpanded);
       }
+      
+      console.log('New chat created successfully');
+    } catch (error) {
+      console.error('Failed to create new chat:', error);
     }
   };
 
@@ -159,6 +184,12 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
       try {
         await deleteProject(deleteProjectId);
         setDeleteProjectId(null);
+        
+        if (expandedProjects.has(deleteProjectId)) {
+          const newExpanded = new Set(expandedProjects);
+          newExpanded.delete(deleteProjectId);
+          setExpandedProjects(newExpanded);
+        }
       } catch (error) {
         console.error('Failed to delete project:', error);
       }
@@ -211,7 +242,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
   };
 
   if (sidebarCollapsed) {
-        return (
+    return (
       <div className="w-16 bg-sidebar border-r border-sidebar-border flex flex-col items-center py-4">
         <Button
           variant="ghost"
@@ -336,129 +367,136 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
 
           <ScrollArea className="flex-1">
             <div className="p-4 space-y-2">
-              {projects.map((project) => {
-                const projectSessions = getSessionsByProject(project.id);
-                const isExpanded = expandedProjects.has(project.id);
-                const isSelected = selectedProjectId === project.id;
-                const isLoading = loadingProjects.has(project.id);
+              {projects.length === 0 ? (
+                <div className="text-center text-muted-foreground text-sm py-8">
+                  <p>No projects yet</p>
+                  <p className="text-xs mt-2">Create a project to get started</p>
+                </div>
+              ) : (
+                projects.map((project) => {
+                  const projectSessions = getSessionsByProject(project.id);
+                  const isExpanded = expandedProjects.has(project.id);
+                  const isSelected = selectedProjectId === project.id;
+                  const isLoading = loadingProjects.has(project.id);
 
-                return (
-                  <Collapsible
-                    key={project.id}
-                    open={isExpanded}
-                    onOpenChange={() => toggleProject(project.id)}
-                  >
-                    <div className="group relative">
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className={`w-full justify-start p-2 h-auto ${
-                            isSelected ? 'bg-sidebar-accent' : ''
-                          }`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleProjectSelect(project.id);
-                          }}
-                        >
-                          <div className="flex items-center gap-2 flex-1">
-                            {isLoading ? (
-                              <Loader2 size={16} className="animate-spin" />
-                            ) : isExpanded ? (
-                              <ChevronDown size={16} />
-                            ) : (
-                              <ChevronRight size={16} />
-                            )}
-                            <Folder size={16} />
-                            <span className="truncate">{project.name}</span>
-                          </div>
-                        </Button>
-                      </CollapsibleTrigger>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                  return (
+                    <Collapsible
+                      key={project.id}
+                      open={isExpanded}
+                      onOpenChange={() => toggleProject(project.id)}
+                    >
+                      <div className="group relative">
+                        <CollapsibleTrigger asChild>
                           <Button
                             variant="ghost"
-                            size="sm"
-                            className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreHorizontal size={14} />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem
-                            onClick={() => handleUpdateProject(project.id, project.name, project.description)}
-                          >
-                            <Edit size={14} className="mr-2" />
-                            Update
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => handleDeleteProject(project.id)}
-                          >
-                            <Trash2 size={14} className="mr-2" />
-                            Delete Project
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-
-                    <CollapsibleContent className="ml-4">
-                      {projectSessions.length === 0 && !isLoading && (
-                        <div className="text-xs text-muted-foreground p-2 italic">
-                          No sessions yet
-                        </div>
-                      )}
-                      {projectSessions.map((session) => (
-                        <div key={session.id} className="group relative">
-                          <Button
-                            variant="ghost"
-                            className={`w-full justify-start p-2 h-auto text-sm ${
-                              selectedSessionId === session.id
-                                ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                                : ''
+                            className={`w-full justify-start p-2 h-auto ${
+                              isSelected ? 'bg-sidebar-accent' : ''
                             }`}
-                            onClick={() => handleSessionSelect(session.id)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              handleProjectSelect(project.id);
+                            }}
                           >
                             <div className="flex items-center gap-2 flex-1">
-                              <MessageSquare size={14} />
-                              <span className="truncate">{session.title}</span>
+                              {isLoading ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : isExpanded ? (
+                                <ChevronDown size={16} />
+                              ) : (
+                                <ChevronRight size={16} />
+                              )}
+                              <Folder size={16} />
+                              <span className="truncate">{project.name}</span>
                             </div>
                           </Button>
+                        </CollapsibleTrigger>
 
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontal size={12} />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent>
-                              <DropdownMenuItem
-                                onClick={() => handleRenameSession(session.id, session.title)}
-                              >
-                                <Edit size={12} className="mr-2" />
-                                Rename
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDeleteSession(session.id)}
-                              >
-                                <Trash2 size={12} className="mr-2" />
-                                Delete Session
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      ))}
-                    </CollapsibleContent>
-                  </Collapsible>
-                );
-              })}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <MoreHorizontal size={14} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() => handleUpdateProject(project.id, project.name, project.description)}
+                            >
+                              <Edit size={14} className="mr-2" />
+                              Update
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => handleDeleteProject(project.id)}
+                            >
+                              <Trash2 size={14} className="mr-2" />
+                              Delete Project
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      <CollapsibleContent className="ml-4">
+                        {projectSessions.length === 0 && !isLoading && (
+                          <div className="text-xs text-muted-foreground p-2 italic">
+                            No sessions yet
+                          </div>
+                        )}
+                        {projectSessions.map((session) => (
+                          <div key={session.id} className="group relative">
+                            <Button
+                              variant="ghost"
+                              className={`w-full justify-start p-2 h-auto text-sm ${
+                                selectedSessionId === session.id
+                                  ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                                  : ''
+                              }`}
+                              onClick={() => handleSessionSelect(session.id)}
+                            >
+                              <div className="flex items-center gap-2 flex-1">
+                                <MessageSquare size={14} />
+                                <span className="truncate">{session.title}</span>
+                              </div>
+                            </Button>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <MoreHorizontal size={12} />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent>
+                                <DropdownMenuItem
+                                  onClick={() => handleRenameSession(session.id, session.title)}
+                                >
+                                  <Edit size={12} className="mr-2" />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => handleDeleteSession(session.id)}
+                                >
+                                  <Trash2 size={12} className="mr-2" />
+                                  Delete Session
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        ))}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  );
+                })
+              )}
             </div>
           </ScrollArea>
         </>
@@ -470,7 +508,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
 
       {onLockVault && (
         <div className="p-4 border-t border-sidebar-border">
-           <Button
+          <Button
             variant="outline"
             size="sm"
             onClick={onLockVault}
@@ -650,4 +688,3 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
     </div>
   );
 }
-

@@ -232,6 +232,8 @@ class ProjectService(BaseService):
                     project, "description", description.strip() if description else None
                 )
 
+            setattr(project, "updated_at", datetime.now())
+
             project.save()  # type: ignore
             return project
         except NotFoundError:
@@ -327,6 +329,7 @@ class ChatSessionService(BaseService):
 
             session = self.get_session(session_id)
             setattr(session, "title", title.strip())
+            setattr(session, "updated_at", datetime.now())
             session.save()  # type: ignore
             return session
         except NotFoundError:

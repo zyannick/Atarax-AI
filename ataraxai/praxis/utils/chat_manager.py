@@ -177,6 +177,30 @@ class ChatManager:
             self.logger.error(f"Failed to create session {title}: {e}")
             raise
 
+    async def update_session(self, session_id: uuid.UUID, title: str) -> ChatSessionResponse:
+        """
+        Updates an existing chat session with a new title.
+
+        Args:
+            session_id (uuid.UUID): The unique identifier of the chat session to update.
+            title (str): The new title for the chat session.
+
+        Returns:
+            ChatSessionResponse: The response object containing details of the updated chat session.
+
+        Raises:
+            Exception: If session update fails due to a database or validation error.
+        """
+        self.validator.validate_uuid(session_id, "Session ID")
+        self.validator.validate_string(title, "Session title")
+        try:
+            session = await self.db_manager.update_session(session_id=session_id, title=title)
+            self.logger.info(f"Updated session: {session_id} with new title {title}")
+            return ChatSessionResponse.model_validate(session)
+        except Exception as e:
+            self.logger.error(f"Failed to update session {session_id}: {e}")
+            raise
+
     async def get_session(self, session_id: uuid.UUID) -> ChatSessionResponse:
         """
         Retrieves a chat session by its unique identifier.
