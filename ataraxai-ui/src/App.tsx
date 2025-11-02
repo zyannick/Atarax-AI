@@ -1,7 +1,5 @@
-// App.tsx
-
 import React, { useState, useEffect } from "react";
-import { AppProvider, useAppStore } from "./store/AppContext"; // --- MODIFIED ---
+import { AppProvider, useAppStore } from "./store/AppContext";
 import { LeftSidebar } from "./components/LeftSidebar";
 import { RightSidebar } from "./components/RightSidebar";
 import { ChatView } from "./components/ChatView";
@@ -129,22 +127,18 @@ function AppContent() {
     };
 
     checkBackendStatus();
-  }, []); // This dependency array should be empty
+  }, []);
 
 
-  // --- ADDED: New useEffect to load data after unlock ---
   useEffect(() => {
     if (vaultState === "unlocked" && appStatus === "ready") {
       console.log("Vault is unlocked, fetching initial data...");
-      // We assume fetchInitialData exists in your useAppStore
-      // It will handle API calls and update the store's state
+
       fetchInitialData().catch((err) => {
         console.error("Failed to fetch initial data:", err);
-        // You could set an error state here
       });
     }
   }, [vaultState, appStatus, fetchInitialData]);
-  // --- END ADDED ---
 
 
   const handleInitializeVault = async (password: string): Promise<boolean> => {
@@ -279,7 +273,6 @@ function AppContent() {
     );
   }
 
-  // Main app UI (unlocked state)
   const renderMainContent = () => {
     switch (currentView) {
       case "chat":

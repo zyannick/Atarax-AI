@@ -6,10 +6,11 @@ interface ApiInfo {
   status: string;
 }
 
+// More flexible response type allowing 'data', 'projects', etc.
 interface ApiResponse {
   status: string;
   message: string;
-  data?: any;
+  [key: string]: any; // Allows arbitrary fields like 'data' or 'projects'
 }
 
 export const API_STATUS = {
@@ -31,7 +32,6 @@ class ApiClient {
 
   private async fetchApiInfo(): Promise<ApiInfo | null> {
     try {
-      // This is the one-time call to the Rust backend to get connection details.
       const info = await invoke<ApiInfo>("get_api_info");
       console.log("Successfully fetched API info from Rust:", info);
       return info;
@@ -50,21 +50,21 @@ const apiClient = new ApiClient();
 
 /**
  * A generic helper function for making authenticated fetch requests to the Python backend.
- * @param endpoint The API endpoint to call (e.g., "/api/v1/vault/init")
- * @param options The standard Fetch API options object (method, body, etc.)
- * @returns The JSON response from the API.
+ * @param endpoint The API endpoint to call
+ * @param options The standard Fetch API options object
+ * @returns The JSON response from the API, assumed to be ApiResponse.
  */
 async function apiFetch(
   endpoint: string,
   options: RequestInit = {},
-): Promise<ApiResponse> {
+): Promise<ApiResponse> { // Returns the flexible ApiResponse
   const clientInfo = await apiClient.getClient();
   if (!clientInfo) {
     throw new Error("Backend API connection is not available.");
   }
 
   const { port, token } = clientInfo;
-  console.log(`Making API call to ${endpoint} on port ${port}`);
+  console.log(`Making API call to ${endpoint} on port ${port} with method ${options.method || 'GET'}`);
   const url = `http://127.0.0.1:${port}${endpoint}`;
 
   const headers = {
@@ -75,37 +75,57 @@ async function apiFetch(
 
   const response = await fetch(url, { ...options, headers });
 
-  console.log(`Received response from ${endpoint}:`, response);
+  console.log(`Received response from ${endpoint}:`, response.status, response.statusText);
 
-  if (!response.ok) {
-    let errorDetail = `HTTP error! Status: ${response.status}`;
-    try {
-      const errorJson = await response.json();
-      errorDetail = errorJson.detail || errorDetail;
-    } catch (e) {
-    }
-    throw new Error(errorDetail);
+  // Check if response has content before trying to parse JSON
+  const contentType = response.headers.get("content-type");
+  let data: ApiResponse | null = null;
+  if (contentType && contentType.includes("application/json")) {
+      try {
+        data = await response.json();
+        console.log(`Received successful parsed response from ${endpoint}:`, data);
+      } catch (e) {
+         console.error(`Failed to parse JSON response from ${endpoint}:`, e);
+         // If parsing fails but status is ok (e.g., 204 No Content), create a success response
+         if (response.ok) {
+             data = { status: API_STATUS.SUCCESS, message: response.statusText || "Operation successful" };
+         } else {
+             // If parsing fails and status is not ok, throw error based on status
+             throw new Error(`HTTP error! Status: ${response.status} ${response.statusText}`);
+         }
+      }
+  } else if (!response.ok) {
+      // If no JSON but not ok status, throw error
+      throw new Error(`HTTP error! Status: ${response.status} ${response.statusText}`);
+  } else {
+      // If no JSON but ok status (like 204 No Content), create a success response
+      data = { status: API_STATUS.SUCCESS, message: response.statusText || "Operation successful" };
   }
 
-  const data: ApiResponse = await response.json();
-  console.log(`Received successful parsed response from ${endpoint}:`, data);
+
+  if (!response.ok && data) {
+    // If we parsed data but the status wasn't ok, use detail from data if available
+    const errorDetail = data.detail || `HTTP error! Status: ${response.status}`;
+    throw new Error(errorDetail);
+  } else if (!response.ok) {
+      // Fallback if data parsing failed above or no data existed
+       throw new Error(`HTTP error! Status: ${response.status} ${response.statusText}`);
+  }
+
+  // Ensure data is not null before returning; this should be guaranteed by the logic above
+  if (data === null) {
+      throw new Error("API response processing failed unexpectedly.");
+  }
+
   return data;
 }
 
-/**
- * Fetches the current status of the backend application from the orchestrator.
- * This is used on startup to determine which UI to show (e.g., setup, unlock, or main app).
- * @returns The API response, with the application state (e.g., "FIRST_LAUNCH", "LOCKED") in the `data` field.
- */
+// --- CORE API CALLS ---
+
 export async function getAppStatus(): Promise<ApiResponse> {
   return apiFetch("/v1/status");
 }
 
-/**
- * Calls the backend to initialize the secure vault with a password.
- * @param password The user's chosen password.
- * @returns The API response.
- */
 export async function initializeVault(password: string): Promise<ApiResponse> {
   return apiFetch("/api/v1/vault/initialize", {
     method: "POST",
@@ -119,11 +139,6 @@ export async function lockVault(): Promise<ApiResponse> {
   });
 }
 
-/**
- * Calls the backend to unlock the secure vault with a password.
- * @param password The user's password.
- * @returns The API response.
- */
 export async function unlockVault(password: string): Promise<ApiResponse> {
   return apiFetch("/api/v1/vault/unlock", {
     method: "POST",
@@ -131,17 +146,18 @@ export async function unlockVault(password: string): Promise<ApiResponse> {
   });
 }
 
+// --- CHAT / PROJECT / SESSION API CALLS ---
+
 export async function sendChatMessage(message: string): Promise<ApiResponse> {
-  return apiFetch("/api/v1/chat/message", {
+  // Assuming a different endpoint or modify as needed
+  return apiFetch("/api/v1/chat/message", { // Example endpoint
     method: "POST",
-    body: JSON.stringify({ text: message }),
+    body: JSON.stringify({ text: message }), // Example body
   });
 }
 
-export async function createProject(
-  name: string, 
-  description: string
-): Promise<ApiResponse> {
+export async function createProject(name: string, description: string): Promise<ApiResponse> {
+  // Assuming the correct endpoint based on your Python router
   return apiFetch("/api/v1/chat/projects", {
     method: "POST",
     body: JSON.stringify({ name, description }),
@@ -149,16 +165,64 @@ export async function createProject(
 }
 
 export async function listProjects(): Promise<ApiResponse> {
+  // Returns { status: "...", projects: [...] }
   return apiFetch("/api/v1/chat/projects");
 }
 
-export async function createChatSession(
-  projectId: string,
-): Promise<ApiResponse> {
-  return apiFetch(`/api/v1/chat/projects/${projectId}/sessions`, {
-    method: "POST",
+// --- ADDED: Function to update a project ---
+export async function updateProjectApi(id: string, name: string, description: string): Promise<ApiResponse> {
+  // Assuming a PUT or PATCH endpoint like /api/v1/chat/projects/{project_id}
+  return apiFetch(`/api/v1/chat/projects/${id}`, {
+    method: "PUT", // or "PATCH"
+    body: JSON.stringify({ name, description }),
   });
 }
+
+// --- ADDED: Function to delete a project ---
+export async function deleteProjectApi(id: string): Promise<ApiResponse> {
+  // Assuming a DELETE endpoint like /api/v1/chat/projects/{project_id}
+  return apiFetch(`/api/v1/chat/projects/${id}`, {
+    method: "DELETE",
+  });
+}
+
+
+export async function createChatSession(
+  projectId: string,
+  title?: string,
+): Promise<ApiResponse> {
+  const body = title ? { project_id: projectId, title } : { project_id: projectId };
+  // --- CORRECTED Endpoint based on chat.py ---
+  return apiFetch(`/api/v1/chat/sessions`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function listSessions(projectId: string): Promise<ApiResponse> {
+  // Returns { status: "...", data: [...] } based on chat.py
+  return apiFetch(`/api/v1/chat/projects/${projectId}/sessions`);
+}
+
+// --- ADDED: Function to rename a session ---
+export async function renameSessionApi(id: string, title: string): Promise<ApiResponse> {
+  // Assuming a PUT or PATCH endpoint like /api/v1/chat/sessions/{session_id}
+  return apiFetch(`/api/v1/chat/sessions/${id}`, {
+    method: "PUT", // or "PATCH"
+    body: JSON.stringify({ title }),
+  });
+}
+
+// --- ADDED: Function to delete a session ---
+export async function deleteSessionApi(id: string): Promise<ApiResponse> {
+  // Assuming a DELETE endpoint like /api/v1/chat/sessions/{session_id}
+  return apiFetch(`/api/v1/chat/sessions/${id}`, {
+    method: "DELETE",
+  });
+}
+
+
+// --- RAG API CALLS ---
 
 export async function addRagDirectories(paths: string[]): Promise<ApiResponse> {
   return apiFetch("/api/v1/rag/add_directories", {
@@ -177,10 +241,12 @@ export async function removeRagDirectories(
 }
 
 export async function listRagDirectories(): Promise<ApiResponse> {
+  // Assuming this returns { status, data }
   return apiFetch("/api/v1/rag/list_directories");
 }
 
 export async function getRagStatus(): Promise<ApiResponse> {
+  // Assuming this returns { status, data } or { status, message }
   return apiFetch("/api/v1/rag/health");
 }
 
@@ -189,14 +255,19 @@ export async function rebuildRagIndex(): Promise<ApiResponse> {
 }
 
 export async function checkRagManifest(): Promise<ApiResponse> {
+  // Assuming this returns { status, data } or { status, message }
   return apiFetch("/api/v1/rag/check_manifest");
 }
 
 export async function ragHealthCheck(): Promise<ApiResponse> {
+  // Assuming this returns { status, data } or { status, message }
   return apiFetch("/api/v1/rag/health_check");
 }
 
+// --- MODELS MANAGER API CALLS ---
+
 export async function listLocalModels(): Promise<ApiResponse> {
+  // Assuming this returns { status, data }
   return apiFetch("/api/v1/models_manager/models");
 }
 
@@ -213,6 +284,8 @@ export async function downloadModel(
 export async function getDownloadStatus(taskId: string): Promise<ApiResponse> {
   return apiFetch(`/api/v1/models_manager/download/status/${taskId}`);
 }
+
+// --- BENCHMARK API CALLS ---
 
 export interface QuantizedModelInfo {
   modelID: string;
@@ -263,8 +336,10 @@ export async function getBenchmarkQueueStatus(): Promise<ApiResponse> {
   return apiFetch("/api/v1/benchmarker/status");
 }
 
+// --- USER PREFERENCES API CALLS ---
 
 export async function getUserPreferences(): Promise<ApiResponse> {
+  // Assuming this returns { status, data }
   return apiFetch("/api/v1/user-preferences");
 }
 
@@ -276,3 +351,4 @@ export async function updateUserPreferences(
     body: JSON.stringify(preferences),
   });
 }
+

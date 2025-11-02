@@ -6,15 +6,16 @@ import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { 
-  ChevronDown, 
-  ChevronRight, 
-  Folder, 
-  MessageSquare, 
-  Plus, 
+import { Textarea } from './ui/textarea';
+import {
+  ChevronDown,
+  ChevronRight,
+  Folder,
+  MessageSquare,
+  Plus,
   MoreHorizontal,
   Download,
   Database,
@@ -22,7 +23,8 @@ import {
   Edit,
   Trash2,
   BarChart3,
-  Lock
+  Lock,
+  Loader2
 } from 'lucide-react';
 
 interface LeftSidebarProps {
@@ -40,33 +42,71 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
     selectProject,
     selectSession,
     addSession,
+    fetchSessionsForProject,
     getSessionsByProject,
     setCurrentView,
     toggleSidebar,
-    renameProject,
+    updateProject,
     deleteProject,
+    renameSession,
+    deleteSession,
   } = useAppStore();
 
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set(['1']));
-  const [renameProjectId, setRenameProjectId] = useState<string | null>(null);
-  const [renameProjectName, setRenameProjectName] = useState('');
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [loadingProjects, setLoadingProjects] = useState<Set<string>>(new Set());
+  const [updateProjectId, setUpdateProjectId] = useState<string | null>(null);
+  const [updateProjectName, setUpdateProjectName] = useState('');
+  const [updateProjectDescription, setUpdateProjectDescription] = useState('');
   const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
+  const [renameSessionId, setRenameSessionId] = useState<string | null>(null);
+  const [renameSessionTitle, setRenameSessionTitle] = useState('');
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
 
-  const toggleProject = (projectId: string) => {
+  const toggleProject = async (projectId: string) => {
     const newExpanded = new Set(expandedProjects);
-    if (newExpanded.has(projectId)) {
+    const wasExpanded = newExpanded.has(projectId);
+
+    if (wasExpanded) {
       newExpanded.delete(projectId);
+      setExpandedProjects(newExpanded);
     } else {
       newExpanded.add(projectId);
+      setExpandedProjects(newExpanded);
+
+      if (!loadingProjects.has(projectId)) {
+        setLoadingProjects(new Set(loadingProjects).add(projectId));
+        try {
+          await fetchSessionsForProject(projectId);
+        } catch (error) {
+          console.error('Failed to fetch sessions:', error);
+        } finally {
+          setLoadingProjects(prev => {
+            const next = new Set(prev);
+            next.delete(projectId);
+            return next;
+          });
+        }
+      }
     }
-    setExpandedProjects(newExpanded);
   };
 
-  const handleProjectSelect = (projectId: string) => {
+  const handleProjectSelect = async (projectId: string) => {
     selectProject(projectId);
     setCurrentView('chat');
-    if (!expandedProjects.has(projectId)) {
-      toggleProject(projectId);
+
+    if (!expandedProjects.has(projectId) && !loadingProjects.has(projectId)) {
+      setLoadingProjects(new Set(loadingProjects).add(projectId));
+      try {
+        await fetchSessionsForProject(projectId);
+      } catch (error) {
+        console.error('Failed to fetch sessions:', error);
+      } finally {
+        setLoadingProjects(prev => {
+          const next = new Set(prev);
+          next.delete(projectId);
+          return next;
+        });
+      }
     }
   };
 
@@ -75,53 +115,110 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
     setCurrentView('chat');
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     if (selectedProjectId) {
-      addSession(selectedProjectId);
+      try {
+        await addSession(selectedProjectId);
+      } catch (error) {
+        console.error('Failed to create new chat:', error);
+      }
     }
   };
 
-  const handleRenameProject = (projectId: string, currentName: string) => {
-    setRenameProjectId(projectId);
-    setRenameProjectName(currentName);
+  const handleUpdateProject = (projectId: string, currentName: string, currentDescription: string) => {
+    setUpdateProjectId(projectId);
+    setUpdateProjectName(currentName);
+    setUpdateProjectDescription(currentDescription || '');
   };
 
-  const handleRenameSubmit = () => {
-    if (renameProjectId && renameProjectName.trim()) {
-      renameProject(renameProjectId, renameProjectName.trim());
-      setRenameProjectId(null);
-      setRenameProjectName('');
+  const handleUpdateProjectSubmit = async () => {
+    if (updateProjectId && updateProjectName.trim()) {
+      try {
+        await updateProject(updateProjectId, updateProjectName.trim(), updateProjectDescription.trim());
+        setUpdateProjectId(null);
+        setUpdateProjectName('');
+        setUpdateProjectDescription('');
+      } catch (error) {
+        console.error('Failed to update project:', error);
+      }
     }
   };
 
-  const handleRenameCancel = () => {
-    setRenameProjectId(null);
-    setRenameProjectName('');
+  const handleUpdateProjectCancel = () => {
+    setUpdateProjectId(null);
+    setUpdateProjectName('');
+    setUpdateProjectDescription('');
   };
 
   const handleDeleteProject = (projectId: string) => {
     setDeleteProjectId(projectId);
   };
 
-  const handleDeleteSubmit = () => {
+  const handleDeleteProjectSubmit = async () => {
     if (deleteProjectId) {
-      deleteProject(deleteProjectId);
-      setDeleteProjectId(null);
+      try {
+        await deleteProject(deleteProjectId);
+        setDeleteProjectId(null);
+      } catch (error) {
+        console.error('Failed to delete project:', error);
+      }
     }
   };
 
-  const handleDeleteCancel = () => {
+  const handleDeleteProjectCancel = () => {
     setDeleteProjectId(null);
   };
 
+  const handleRenameSession = (sessionId: string, currentTitle: string) => {
+    setRenameSessionId(sessionId);
+    setRenameSessionTitle(currentTitle);
+  };
+
+  const handleRenameSessionSubmit = async () => {
+    if (renameSessionId && renameSessionTitle.trim()) {
+      try {
+        await renameSession(renameSessionId, renameSessionTitle.trim());
+        setRenameSessionId(null);
+        setRenameSessionTitle('');
+      } catch (error) {
+        console.error('Failed to rename session:', error);
+      }
+    }
+  };
+
+  const handleRenameSessionCancel = () => {
+    setRenameSessionId(null);
+    setRenameSessionTitle('');
+  };
+
+  const handleDeleteSession = (sessionId: string) => {
+    setDeleteSessionId(sessionId);
+  };
+
+  const handleDeleteSessionSubmit = async () => {
+    if (deleteSessionId) {
+      try {
+        await deleteSession(deleteSessionId);
+        setDeleteSessionId(null);
+      } catch (error) {
+        console.error('Failed to delete session:', error);
+      }
+    }
+  };
+
+  const handleDeleteSessionCancel = () => {
+    setDeleteSessionId(null);
+  };
+
   if (sidebarCollapsed) {
-    return (
+        return (
       <div className="w-16 bg-sidebar border-r border-sidebar-border flex flex-col items-center py-4">
         <Button
           variant="ghost"
           size="sm"
           onClick={toggleSidebar}
           className="mb-4"
+          aria-label="Expand sidebar"
         >
           <AtaraxLogo className="w-5 h-5" />
         </Button>
@@ -130,6 +227,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
             variant={currentView === 'chat' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setCurrentView('chat')}
+            aria-label="Chat view"
           >
             <MessageSquare size={16} />
           </Button>
@@ -137,6 +235,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
             variant={currentView === 'rag-settings' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setCurrentView('rag-settings')}
+            aria-label="RAG settings"
           >
             <Database size={16} />
           </Button>
@@ -144,6 +243,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
             variant={currentView === 'model-manager' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setCurrentView('model-manager')}
+            aria-label="Model manager"
           >
             <Download size={16} />
           </Button>
@@ -151,6 +251,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
             variant={currentView === 'benchmark' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => setCurrentView('benchmark')}
+            aria-label="Benchmark"
           >
             <BarChart3 size={16} />
           </Button>
@@ -171,6 +272,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
             variant="ghost"
             size="sm"
             onClick={toggleSidebar}
+            aria-label="Collapse sidebar"
           >
             <ChevronLeft size={16} />
           </Button>
@@ -216,8 +318,6 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
             Benchmark
           </Button>
         </div>
-        
-        
       </div>
 
       {currentView === 'chat' && (
@@ -234,12 +334,13 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
             <ProjectDialog />
           </div>
 
-          <ScrollArea className="flex-1"> {/* This takes up remaining space */}
+          <ScrollArea className="flex-1">
             <div className="p-4 space-y-2">
               {projects.map((project) => {
                 const projectSessions = getSessionsByProject(project.id);
                 const isExpanded = expandedProjects.has(project.id);
                 const isSelected = selectedProjectId === project.id;
+                const isLoading = loadingProjects.has(project.id);
 
                 return (
                   <Collapsible
@@ -254,10 +355,15 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
                           className={`w-full justify-start p-2 h-auto ${
                             isSelected ? 'bg-sidebar-accent' : ''
                           }`}
-                          onClick={() => handleProjectSelect(project.id)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleProjectSelect(project.id);
+                          }}
                         >
                           <div className="flex items-center gap-2 flex-1">
-                            {isExpanded ? (
+                            {isLoading ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : isExpanded ? (
                               <ChevronDown size={16} />
                             ) : (
                               <ChevronRight size={16} />
@@ -274,18 +380,19 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
                             variant="ghost"
                             size="sm"
                             className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <MoreHorizontal size={14} />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem 
-                            onClick={() => handleRenameProject(project.id, project.name)}
+                          <DropdownMenuItem
+                            onClick={() => handleUpdateProject(project.id, project.name, project.description)}
                           >
                             <Edit size={14} className="mr-2" />
-                            Rename
+                            Update
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             className="text-destructive"
                             onClick={() => handleDeleteProject(project.id)}
                           >
@@ -297,6 +404,11 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
                     </div>
 
                     <CollapsibleContent className="ml-4">
+                      {projectSessions.length === 0 && !isLoading && (
+                        <div className="text-xs text-muted-foreground p-2 italic">
+                          No sessions yet
+                        </div>
+                      )}
                       {projectSessions.map((session) => (
                         <div key={session.id} className="group relative">
                           <Button
@@ -320,16 +432,22 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
                                 variant="ghost"
                                 size="sm"
                                 className="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreHorizontal size={12} />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                              <DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleRenameSession(session.id, session.title)}
+                              >
                                 <Edit size={12} className="mr-2" />
                                 Rename
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive">
+                              <DropdownMenuItem
+                                className="text-destructive"
+                                onClick={() => handleDeleteSession(session.id)}
+                              >
                                 <Trash2 size={12} className="mr-2" />
                                 Delete Session
                               </DropdownMenuItem>
@@ -347,13 +465,12 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
       )}
 
       {currentView !== 'chat' && (
-        <div className="flex-1">
-        </div>
+        <div className="flex-1" />
       )}
 
       {onLockVault && (
         <div className="p-4 border-t border-sidebar-border">
-          <Button
+           <Button
             variant="outline"
             size="sm"
             onClick={onLockVault}
@@ -365,36 +482,124 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
         </div>
       )}
 
-      <Dialog open={!!renameProjectId} onOpenChange={(open: boolean) => !open && handleRenameCancel()}>
+      <Dialog open={!!updateProjectId} onOpenChange={(open) => !open && handleUpdateProjectCancel()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit size={20} className="text-primary" />
-              Rename Project
+              Update Project
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); handleRenameSubmit(); }} className="space-y-4">
+          <form onSubmit={(e) => { e.preventDefault(); handleUpdateProjectSubmit(); }} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="rename-project-name">Project Name</Label>
+              <Label htmlFor="update-project-name">Project Name</Label>
               <Input
-                id="rename-project-name"
+                id="update-project-name"
                 placeholder="Enter new project name..."
-                value={renameProjectName}
-                onChange={(e) => setRenameProjectName(e.target.value)}
+                value={updateProjectName}
+                onChange={(e) => setUpdateProjectName(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="update-project-description">Description</Label>
+              <Textarea
+                id="update-project-description"
+                placeholder="Enter project description..."
+                value={updateProjectDescription}
+                onChange={(e) => setUpdateProjectDescription(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleUpdateProjectCancel}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={!updateProjectName.trim()}
+                className="bg-primary hover:bg-primary/90"
+              >
+                Update
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteProjectId} onOpenChange={(open) => !open && handleDeleteProjectCancel()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 size={20} className="text-destructive" />
+              Delete Project
+            </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. All sessions in this project will be deleted.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Project Name</Label>
+              <Input
+                value={projects.find((p) => p.id === deleteProjectId)?.name || ''}
+                readOnly
+                disabled
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDeleteProjectCancel}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteProjectSubmit}
+                variant="destructive"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!renameSessionId} onOpenChange={(open) => !open && handleRenameSessionCancel()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit size={20} className="text-primary" />
+              Rename Session
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={(e) => { e.preventDefault(); handleRenameSessionSubmit(); }} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rename-session-title">Session Title</Label>
+              <Input
+                id="rename-session-title"
+                placeholder="Enter new session title..."
+                value={renameSessionTitle}
+                onChange={(e) => setRenameSessionTitle(e.target.value)}
                 autoFocus
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handleRenameCancel}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleRenameSessionCancel}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                disabled={!renameProjectName.trim()}
+              <Button
+                type="submit"
+                disabled={!renameSessionTitle.trim()}
                 className="bg-primary hover:bg-primary/90"
               >
                 Rename
@@ -404,40 +609,42 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deleteProjectId} onOpenChange={(open: boolean) => !open && handleDeleteCancel()}>
+      <Dialog open={!!deleteSessionId} onOpenChange={(open) => !open && handleDeleteSessionCancel()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Trash2 size={20} className="text-primary" />
-              Delete Project
+              <Trash2 size={20} className="text-destructive" />
+              Delete Session
             </DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This session and all its messages will be deleted.
+            </DialogDescription>
           </DialogHeader>
-          <form onSubmit={(e) => { e.preventDefault(); handleDeleteSubmit(); }} className="space-y-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="delete-project-name">Project Name</Label>
+              <Label>Session Title</Label>
               <Input
-                id="delete-project-name"
-                placeholder="Enter project name..."
-                value={projects.find((project) => project.id === deleteProjectId)?.name || ''}
+                value={sessions.find((s) => s.id === deleteSessionId)?.title || ''}
                 readOnly
+                disabled
               />
             </div>
             <div className="flex justify-end gap-2">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={handleDeleteCancel}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDeleteSessionCancel}
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
-                className="bg-primary hover:bg-primary/90"
+              <Button
+                onClick={handleDeleteSessionSubmit}
+                variant="destructive"
               >
                 Delete
               </Button>
             </div>
-          </form>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

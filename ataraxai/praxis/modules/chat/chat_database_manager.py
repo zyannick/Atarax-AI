@@ -33,7 +33,7 @@ class BaseModel(Model):
 
 class Project(BaseModel):
     id = UUIDField(primary_key=True)
-    name = CharField(unique=True)  # Made name unique
+    name = CharField(null=False)
     description = TextField(null=True)
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)

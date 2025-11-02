@@ -60,6 +60,45 @@ async def create_new_project(
         updated_at=project.updated_at,
     )
 
+@router_chat.put("/projects/{project_id}", response_model=ProjectResponseAPI) # Use PUT and include project_id
+# @katalepsis_monitor.instrument_api("PUT") # Corrected instrument
+# @handle_api_errors("Update Project")
+async def update_project(
+    project_id: uuid.UUID, # Get project_id from path
+    project_data: CreateProjectRequestAPI, # Request body contains name and description
+    orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    req_manager: Annotated[RequestManager, Depends(get_request_manager)],
+    task_manager: Annotated[GatewayTaskManager, Depends(get_gatewaye_task_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
+):
+    logger.info(
+        f"Updating project with ID: {project_id} to name: {project_data.name} and description: {project_data.description}"
+    )
+    chat_manager = await orch.get_chat_manager()
+    existing_project = await chat_manager.get_project(project_id)
+    if not existing_project:
+         raise HTTPException(status_code=404, detail="Project not found")
+
+    future = await req_manager.submit_request(
+        request_name="Update Project",
+        func=chat_manager.update_project,
+        project_id=project_id,
+        name=project_data.name,
+        description=project_data.description,
+        priority=RequestPriority.HIGH,
+    )
+    updated_project = await future 
+    
+    return ProjectResponseAPI(
+        status=Status.SUCCESS,
+        project_id=updated_project.id,
+        name=updated_project.name,
+        description=updated_project.description,
+        created_at=updated_project.created_at,
+        updated_at=updated_project.updated_at,
+    )
+
+
 
 @router_chat.delete("/projects/{project_id}", response_model=StatusResponse)
 @katalepsis_monitor.instrument_api("DELETE")

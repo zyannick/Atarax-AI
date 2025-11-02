@@ -60,3 +60,4 @@ Thumbs.db
 
 ataraxai-ui/src-tauri/py_src
 ataraxai-ui/src-tauri/Cargo.lock
+.venv_build

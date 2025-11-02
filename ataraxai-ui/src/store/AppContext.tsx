@@ -1,13 +1,23 @@
-import React, { 
-  createContext, 
-  useContext, 
-  useReducer, 
-  ReactNode, 
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  ReactNode,
   useCallback,
   useMemo
 } from 'react';
 import { Project, ChatSession, Message, AppView, AppStatus, RagSource, ModelInfo, BenchmarkTest, BenchmarkResult, BenchmarkSession } from './types';
-import { API_STATUS, createProject, listProjects } from '../lib/api'; 
+import {
+  API_STATUS,
+  createProject,
+  listProjects,
+  createChatSession,
+  listSessions,
+  updateProjectApi,
+  deleteProjectApi,
+  renameSessionApi,
+  deleteSessionApi
+} from '../lib/api';
 
 interface AppState {
   projects: Project[];
@@ -27,7 +37,8 @@ interface AppState {
   activeBenchmarkId: string | null;
 }
 
-type AppAction = 
+
+type AppAction =
   | { type: 'SET_CURRENT_VIEW'; payload: AppView }
   | { type: 'SET_APP_STATUS'; payload: AppStatus }
   | { type: 'TOGGLE_SIDEBAR' }
@@ -35,9 +46,12 @@ type AppAction =
   | { type: 'SELECT_PROJECT'; payload: string }
   | { type: 'SELECT_SESSION'; payload: string }
   | { type: 'ADD_PROJECT'; payload: Project }
-  | { type: 'RENAME_PROJECT'; payload: { id: string; name: string } }
+  | { type: 'UPDATE_PROJECT'; payload: { id: string; name: string; description: string } }
   | { type: 'DELETE_PROJECT'; payload: { id: string } }
-  | { type: 'ADD_SESSION'; payload: { projectId: string; title?: string } }
+  | { type: 'ADD_SESSION'; payload: ChatSession }
+  | { type: 'ADD_SESSIONS'; payload: ChatSession[] }
+  | { type: 'RENAME_SESSION'; payload: { id: string; title: string } }
+  | { type: 'DELETE_SESSION'; payload: { id: string } }
   | { type: 'ADD_MESSAGE'; payload: { sessionId: string; content: string; role: 'user' | 'assistant'; type?: 'text' | 'image' | 'voice' | 'video'; metadata?: any } }
   | { type: 'SET_TYPING'; payload: boolean }
   | { type: 'ADD_RAG_SOURCE'; payload: { path: string } }
@@ -49,7 +63,7 @@ type AppAction =
   | { type: 'ADD_BENCHMARK_TEST'; payload: { name: string; description: string; category: 'performance' | 'accuracy' | 'reasoning' | 'memory'; estimatedDuration: number } }
   | { type: 'ADD_BENCHMARK_SESSION'; payload: { name: string; modelIds: string[]; testIds: string[] } }
   | { type: 'SET_ACTIVE_BENCHMARK'; payload: { id: string } }
-  | { type: 'SET_PROJECTS_AND_SESSIONS'; payload: { projects: Project[]; sessions: ChatSession[] } };
+  | { type: 'SET_PROJECTS'; payload: { projects: Project[] } };
 
 const initialState: AppState = {
   projects: [],
@@ -59,7 +73,7 @@ const initialState: AppState = {
   messages: [],
   isTyping: false,
   currentView: 'chat',
-  appStatus: 'unlocked', 
+  appStatus: 'unlocked',
   sidebarCollapsed: false,
   ragSources: [],
   models: [],
@@ -73,19 +87,19 @@ function appReducer(state: AppState, action: AppAction): AppState {
   switch (action.type) {
     case 'SET_CURRENT_VIEW':
       return { ...state, currentView: action.payload };
-      
+
     case 'SET_APP_STATUS':
       return { ...state, appStatus: action.payload };
-      
+
     case 'TOGGLE_SIDEBAR':
       return { ...state, sidebarCollapsed: !state.sidebarCollapsed };
-      
+
     case 'SET_SIDEBAR_COLLAPSED':
       return { ...state, sidebarCollapsed: action.payload };
-      
+
     case 'SELECT_PROJECT':
       return { ...state, selectedProjectId: action.payload };
-      
+
     case 'SELECT_SESSION':
       return { ...state, selectedSessionId: action.payload };
 
@@ -94,14 +108,14 @@ function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         projects: [...state.projects, newProject],
-        selectedProjectId: newProject.id, 
+        selectedProjectId: newProject.id,
       };
     }
-    
-    case 'RENAME_PROJECT': {
+
+    case 'UPDATE_PROJECT': {
       const updatedProjects = state.projects.map(project =>
         project.id === action.payload.id
-          ? { ...project, name: action.payload.name }
+          ? { ...project, name: action.payload.name, description: action.payload.description }
           : project
       );
       return {
@@ -109,18 +123,18 @@ function appReducer(state: AppState, action: AppAction): AppState {
         projects: updatedProjects,
       };
     }
-    
+
     case 'DELETE_PROJECT': {
       const filteredProjects = state.projects.filter(project => project.id !== action.payload.id);
-      const newSelectedProjectId = state.selectedProjectId === action.payload.id 
+      const newSelectedProjectId = state.selectedProjectId === action.payload.id
         ? (filteredProjects.length > 0 ? filteredProjects[0].id : null)
         : state.selectedProjectId;
-      
+
       const filteredSessions = state.sessions.filter(session => session.projectId !== action.payload.id);
       const newSelectedSessionId = state.sessions.some(session => session.id === state.selectedSessionId && session.projectId === action.payload.id)
         ? (filteredSessions.length > 0 ? filteredSessions[0].id : null)
         : state.selectedSessionId;
-      
+
       return {
         ...state,
         projects: filteredProjects,
@@ -129,22 +143,49 @@ function appReducer(state: AppState, action: AppAction): AppState {
         selectedSessionId: newSelectedSessionId,
       };
     }
-    
+
     case 'ADD_SESSION': {
-      const newSession: ChatSession = {
-        id: Date.now().toString(),
-        projectId: action.payload.projectId,
-        title: action.payload.title || 'New Chat',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const newSession = action.payload;
       return {
         ...state,
         sessions: [...state.sessions, newSession],
         selectedSessionId: newSession.id,
       };
     }
-    
+
+    case 'ADD_SESSIONS': {
+      const existingSessionIds = new Set(state.sessions.map(s => s.id));
+      const newSessions = action.payload.filter(s => !existingSessionIds.has(s.id));
+      return {
+        ...state,
+        sessions: [...state.sessions, ...newSessions],
+      };
+    }
+
+    case 'RENAME_SESSION': {
+      const updatedSessions = state.sessions.map(session =>
+        session.id === action.payload.id
+          ? { ...session, title: action.payload.title }
+          : session
+      );
+      return {
+        ...state,
+        sessions: updatedSessions,
+      };
+    }
+
+    case 'DELETE_SESSION': {
+      const filteredSessions = state.sessions.filter(session => session.id !== action.payload.id);
+      const newSelectedSessionId = state.selectedSessionId === action.payload.id
+        ? (filteredSessions.find(s => s.projectId === state.selectedProjectId) || filteredSessions[0])?.id || null
+        : state.selectedSessionId;
+      return {
+        ...state,
+        sessions: filteredSessions,
+        selectedSessionId: newSelectedSessionId,
+      };
+    }
+
     case 'ADD_MESSAGE': {
       const newMessage: Message = {
         id: Date.now().toString(),
@@ -160,39 +201,24 @@ function appReducer(state: AppState, action: AppAction): AppState {
         messages: [...state.messages, newMessage],
       };
     }
-    
+
     case 'SET_TYPING':
       return { ...state, isTyping: action.payload };
 
-    case 'SET_PROJECTS_AND_SESSIONS': {
-      const { projects, sessions } = action.payload;
-      
+    case 'SET_PROJECTS': {
+      const { projects } = action.payload;
       const newSelectedProjectId = projects.length > 0 ? projects[0].id : null;
-      const newSelectedSessionId = newSelectedProjectId
-        ? (sessions.find(s => s.projectId === newSelectedProjectId) || sessions[0])?.id || null
-        : (sessions[0]?.id || null);
 
       return {
         ...state,
         projects: projects,
-        sessions: sessions,
         selectedProjectId: newSelectedProjectId,
-        selectedSessionId: newSelectedSessionId,
-        messages: newSelectedSessionId
-          ? [
-              {
-                id: Date.now().toString(),
-                sessionId: newSelectedSessionId,
-                content: 'Welcome back! How can I help you today?',
-                role: 'assistant',
-                timestamp: new Date(),
-                type: 'text',
-              },
-            ]
-          : [],
+        sessions: [],
+        selectedSessionId: null,
+        messages: [],
       };
     }
-      
+
     case 'ADD_RAG_SOURCE': {
       const newSource: RagSource = {
         id: Date.now().toString(),
@@ -205,16 +231,16 @@ function appReducer(state: AppState, action: AppAction): AppState {
         ragSources: [...state.ragSources, newSource],
       };
     }
-    
+
     case 'REMOVE_RAG_SOURCE':
       return {
         ...state,
         ragSources: state.ragSources.filter(source => source.id !== action.payload.id),
       };
-      
+
     case 'SET_SEARCH_QUERY':
       return { ...state, searchQuery: action.payload };
-      
+
     case 'ADD_MODEL': {
       const newModel: ModelInfo = {
         id: Date.now().toString(),
@@ -229,7 +255,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         models: [...state.models, newModel],
       };
     }
-    
+
     case 'UPDATE_MODEL_PROGRESS':
       return {
         ...state,
@@ -239,7 +265,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             : model
         ),
       };
-      
+
     case 'MARK_MODEL_DOWNLOADED':
       return {
         ...state,
@@ -249,7 +275,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
             : model
         ),
       };
-      
+
     case 'ADD_BENCHMARK_TEST': {
       const newTest: BenchmarkTest = {
         id: Date.now().toString(),
@@ -263,7 +289,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
         benchmarkTests: [...state.benchmarkTests, newTest],
       };
     }
-    
+
     case 'ADD_BENCHMARK_SESSION': {
       const newSession: BenchmarkSession = {
         id: Date.now().toString(),
@@ -280,10 +306,10 @@ function appReducer(state: AppState, action: AppAction): AppState {
         activeBenchmarkId: newSession.id,
       };
     }
-    
+
     case 'SET_ACTIVE_BENCHMARK':
       return { ...state, activeBenchmarkId: action.payload.id };
-      
+
     default:
       return state;
   }
@@ -291,6 +317,7 @@ function appReducer(state: AppState, action: AppAction): AppState {
 
 interface AppContextValue extends AppState {
   fetchInitialData: () => Promise<void>;
+  fetchSessionsForProject: (projectId: string) => Promise<void>;
   setCurrentView: (view: AppView) => void;
   setAppStatus: (status: AppStatus) => void;
   toggleSidebar: () => void;
@@ -298,9 +325,11 @@ interface AppContextValue extends AppState {
   selectProject: (id: string) => void;
   selectSession: (id: string) => void;
   addProject: (name: string, description: string) => Promise<void>;
-  renameProject: (id: string, name: string) => void;
-  deleteProject: (id: string) => void;
-  addSession: (projectId: string, title?: string) => void;
+  updateProject: (id: string, name: string, description: string) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
+  addSession: (projectId: string, title?: string) => Promise<void>;
+  renameSession: (id: string, title: string) => Promise<void>;
+  deleteSession: (id: string) => Promise<void>;
   addMessage: (sessionId: string, content: string, role: 'user' | 'assistant', type?: 'text' | 'image' | 'voice' | 'video', metadata?: any) => void;
   setTyping: (typing: boolean) => void;
   addRagSource: (path: string) => void;
@@ -322,55 +351,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
   const fetchInitialData = useCallback(async () => {
-    console.log("Store: Fetching initial data...");
+    console.log("Store: Fetching initial project data...");
     try {
       dispatch({ type: 'SET_APP_STATUS', payload: 'loading' });
-      
-      const response : any = await listProjects();
-
-      console.log("Store: Fetched initial project data:", response);
-      console.log("Store: Processing project data...", response.status, API_STATUS.SUCCESS, Array.isArray(response.projects));
-      console.log("Store: Response data:", response.projects);
-
+      const response: any = await listProjects();
       if (response.status === API_STATUS.SUCCESS && Array.isArray(response.projects)) {
-        const apiProjects: any[] = response.projects; 
-        const allProjects: Project[] = [];
-        const allSessions: ChatSession[] = [];
-
-        console.log(`Store: Retrieved ${apiProjects.length} projects from API.`);
-        
-        apiProjects.forEach(apiProject => {
-          const project: Project = {
-            id: apiProject.id,
-            name: apiProject.name,
-            description: apiProject.description,
-            createdAt: new Date(apiProject.created_at),
-            updatedAt: new Date(apiProject.updated_at),
-          };
-          allProjects.push(project);
-          
-          if (Array.isArray(apiProject.sessions)) {
-            apiProject.sessions.forEach((apiSession: any) => {
-              allSessions.push({
-                id: apiSession.id,
-                projectId: apiProject.id,
-                title: apiSession.title,
-                createdAt: new Date(apiSession.created_at),
-                updatedAt: new Date(apiSession.updated_at),
-              });
-            });
-          }
+        const apiProjects: any[] = response.projects;
+        const allProjects: Project[] = apiProjects.map(apiProject => ({
+          id: apiProject.project_id,
+          name: apiProject.name,
+          description: apiProject.description,
+          createdAt: new Date(apiProject.created_at),
+          updatedAt: new Date(apiProject.updated_at),
+        }));
+        console.log(`Store: Fetched ${allProjects.length} projects.`);
+        dispatch({
+          type: 'SET_PROJECTS',
+          payload: { projects: allProjects }
         });
-        
-        console.log(`Store: Fetched ${allProjects.length} projects and ${allSessions.length} sessions.`);
-        
-        dispatch({ 
-          type: 'SET_PROJECTS_AND_SESSIONS', 
-          payload: { projects: allProjects, sessions: allSessions } 
-        });
-        
         dispatch({ type: 'SET_APP_STATUS', payload: 'unlocked' });
-        
       } else {
         throw new Error(response.message || "Failed to fetch projects");
       }
@@ -380,19 +379,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [dispatch]);
 
+  const fetchSessionsForProject = useCallback(async (projectId: string) => {
+    if (state.sessions.some(s => s.projectId === projectId)) {
+      console.log(`Store: Sessions for project ${projectId} already loaded.`);
+      return;
+    }
+    console.log(`Store: Fetching sessions for project ${projectId}...`);
+    try {
+      const response = await listSessions(projectId);
+      if (response.status === API_STATUS.SUCCESS && Array.isArray(response.data)) {
+        const apiSessions: any[] = response.data;
+        const newSessions: ChatSession[] = apiSessions.map(apiSession => ({
+          id: apiSession.session_id,
+          projectId: apiSession.project_id,
+          title: apiSession.title,
+          createdAt: new Date(apiSession.created_at),
+          updatedAt: new Date(apiSession.updated_at),
+        }));
+        console.log(`Store: Fetched ${newSessions.length} sessions for ${projectId}.`);
+        dispatch({ type: 'ADD_SESSIONS', payload: newSessions });
+      } else {
+        throw new Error(response.message || "Failed to fetch sessions");
+      }
+    } catch (error) {
+      console.error(`Failed to fetch sessions for project ${projectId}:`, error);
+    }
+  }, [state.sessions, dispatch]);
+
   const addProject = useCallback(async (name: string, description: string) => {
     try {
       const response = await createProject(name, description);
       if (response.status === API_STATUS.SUCCESS && response.data) {
         const apiProject = response.data;
         const newProject: Project = {
-          id: apiProject.id,
+          id: apiProject.project_id,
           name: apiProject.name,
           description: apiProject.description,
           createdAt: new Date(apiProject.created_at),
           updatedAt: new Date(apiProject.updated_at),
         };
-
         dispatch({ type: 'ADD_PROJECT', payload: newProject });
       } else {
         throw new Error(response.message || "Failed to create project");
@@ -402,99 +427,167 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [dispatch]);
 
-  const setCurrentView = useCallback((view: AppView) => 
-    dispatch({ type: 'SET_CURRENT_VIEW', payload: view }), 
+  const updateProject = useCallback(async (id: string, name: string, description: string) => {
+    try {
+      const response = await updateProjectApi(id, name, description);
+      if (response.status === API_STATUS.SUCCESS) {
+        dispatch({ type: 'UPDATE_PROJECT', payload: { id, name, description } });
+      } else {
+        throw new Error(response.message || "Failed to update project");
+      }
+    } catch (error) {
+      console.error("Failed to update project:", error);
+      throw error;
+    }
+  }, [dispatch]);
+
+  const deleteProject = useCallback(async (id: string) => {
+    try {
+      const response = await deleteProjectApi(id);
+      if (response.status === API_STATUS.SUCCESS || response.data?.task_id) {
+         console.log(`Project deletion initiated or completed for ${id}`);
+         dispatch({ type: 'DELETE_PROJECT', payload: { id } });
+      } else {
+          throw new Error(response.message || "Failed to delete project");
+      }
+    } catch (error) {
+      console.error("Failed to delete project:", error);
+      throw error;
+    }
+  }, [dispatch]);
+
+  const addSession = useCallback(async (projectId: string, title?: string) => {
+    try {
+      const response = await createChatSession(projectId, title);
+      if (response.status === API_STATUS.SUCCESS && response.data) {
+        const apiSession = response.data;
+        const newSession: ChatSession = {
+          id: apiSession.session_id,
+          projectId: apiSession.project_id,
+          title: apiSession.title,
+          createdAt: new Date(apiSession.created_at),
+          updatedAt: new Date(apiSession.updated_at),
+        };
+        dispatch({ type: 'ADD_SESSION', payload: newSession });
+      } else {
+        throw new Error(response.message || "Failed to create session");
+      }
+    } catch (error) {
+      console.error("Failed to add session:", error);
+      throw error;
+    }
+  }, [dispatch]);
+
+  const renameSession = useCallback(async (id: string, title: string) => {
+    try {
+      const response = await renameSessionApi(id, title);
+       if (response.status === API_STATUS.SUCCESS) {
+         dispatch({ type: 'RENAME_SESSION', payload: { id, title } });
+       } else {
+         throw new Error(response.message || "Failed to rename session");
+       }
+    } catch (error) {
+      console.error("Failed to rename session:", error);
+      throw error;
+    }
+  }, [dispatch]);
+
+  const deleteSession = useCallback(async (id: string) => {
+    try {
+      const response = await deleteSessionApi(id);
+      if (response.status === API_STATUS.SUCCESS || response.data?.task_id) {
+         console.log(`Session deletion initiated or completed for ${id}`);
+         dispatch({ type: 'DELETE_SESSION', payload: { id } });
+      } else {
+         throw new Error(response.message || "Failed to delete session");
+      }
+    } catch (error) {
+      console.error("Failed to delete session:", error);
+      throw error;
+    }
+  }, [dispatch]);
+
+  const addMessage = useCallback((sessionId: string, content: string, role: 'user' | 'assistant', type?: 'text' | 'image' | 'voice' | 'video', metadata?: any) =>
+    dispatch({ type: 'ADD_MESSAGE', payload: { sessionId, content, role, type, metadata } }),
   [dispatch]);
 
-  const setAppStatus = useCallback((status: AppStatus) => 
-    dispatch({ type: 'SET_APP_STATUS', payload: status }), 
+  const setTyping = useCallback((typing: boolean) =>
+    dispatch({ type: 'SET_TYPING', payload: typing }),
   [dispatch]);
 
-  const toggleSidebar = useCallback(() => 
-    dispatch({ type: 'TOGGLE_SIDEBAR' }), 
-  [dispatch]);
-  
-  const setSidebarCollapsed = useCallback((collapsed: boolean) => 
-    dispatch({ type: 'SET_SIDEBAR_COLLAPSED', payload: collapsed }), 
+  const addRagSource = useCallback((path: string) =>
+    dispatch({ type: 'ADD_RAG_SOURCE', payload: { path } }),
   [dispatch]);
 
-  const selectProject = useCallback((id: string) => 
-    dispatch({ type: 'SELECT_PROJECT', payload: id }), 
+  const removeRagSource = useCallback((id: string) =>
+    dispatch({ type: 'REMOVE_RAG_SOURCE', payload: { id } }),
   [dispatch]);
 
-  const selectSession = useCallback((id: string) => 
-    dispatch({ type: 'SELECT_SESSION', payload: id }), 
+  const setSearchQuery = useCallback((query: string) =>
+    dispatch({ type: 'SET_SEARCH_QUERY', payload: query }),
   [dispatch]);
 
-  const renameProject = useCallback((id: string, name: string) => 
-    dispatch({ type: 'RENAME_PROJECT', payload: { id, name } }), 
+  const addModel = useCallback((name: string, size: string) =>
+    dispatch({ type: 'ADD_MODEL', payload: { name, size } }),
   [dispatch]);
 
-  const deleteProject = useCallback((id: string) => 
-    dispatch({ type: 'DELETE_PROJECT', payload: { id } }), 
+  const updateModelProgress = useCallback((id: string, progress: number) =>
+    dispatch({ type: 'UPDATE_MODEL_PROGRESS', payload: { id, progress } }),
   [dispatch]);
 
-  const addSession = useCallback((projectId: string, title?: string) => 
-    dispatch({ type: 'ADD_SESSION', payload: { projectId, title } }), 
+  const markModelDownloaded = useCallback((id: string) =>
+    dispatch({ type: 'MARK_MODEL_DOWNLOADED', payload: { id } }),
   [dispatch]);
 
-  const addMessage = useCallback((sessionId: string, content: string, role: 'user' | 'assistant', type?: 'text' | 'image' | 'voice' | 'video', metadata?: any) => 
-    dispatch({ type: 'ADD_MESSAGE', payload: { sessionId, content, role, type, metadata } }), 
+  const addBenchmarkTest = useCallback((name: string, description: string, category: 'performance' | 'accuracy' | 'reasoning' | 'memory', estimatedDuration: number) =>
+    dispatch({ type: 'ADD_BENCHMARK_TEST', payload: { name, description, category, estimatedDuration } }),
   [dispatch]);
 
-  const setTyping = useCallback((typing: boolean) => 
-    dispatch({ type: 'SET_TYPING', payload: typing }), 
+  const addBenchmarkSession = useCallback((name: string, modelIds: string[], testIds: string[]) =>
+    dispatch({ type: 'ADD_BENCHMARK_SESSION', payload: { name, modelIds, testIds } }),
   [dispatch]);
 
-  const addRagSource = useCallback((path: string) => 
-    dispatch({ type: 'ADD_RAG_SOURCE', payload: { path } }), 
+  const setActiveBenchmark = useCallback((id: string) =>
+    dispatch({ type: 'SET_ACTIVE_BENCHMARK', payload: { id } }),
   [dispatch]);
 
-  const removeRagSource = useCallback((id: string) => 
-    dispatch({ type: 'REMOVE_RAG_SOURCE', payload: { id } }), 
+  const setCurrentView = useCallback((view: AppView) =>
+    dispatch({ type: 'SET_CURRENT_VIEW', payload: view }),
   [dispatch]);
 
-  const setSearchQuery = useCallback((query: string) => 
-    dispatch({ type: 'SET_SEARCH_QUERY', payload: query }), 
+  const setAppStatus = useCallback((status: AppStatus) =>
+    dispatch({ type: 'SET_APP_STATUS', payload: status }),
   [dispatch]);
 
-  const addModel = useCallback((name: string, size: string) => 
-    dispatch({ type: 'ADD_MODEL', payload: { name, size } }), 
+  const toggleSidebar = useCallback(() =>
+    dispatch({ type: 'TOGGLE_SIDEBAR' }),
   [dispatch]);
 
-  const updateModelProgress = useCallback((id: string, progress: number) => 
-    dispatch({ type: 'UPDATE_MODEL_PROGRESS', payload: { id, progress } }), 
+  const setSidebarCollapsed = useCallback((collapsed: boolean) =>
+    dispatch({ type: 'SET_SIDEBAR_COLLAPSED', payload: collapsed }),
   [dispatch]);
 
-  const markModelDownloaded = useCallback((id: string) => 
-    dispatch({ type: 'MARK_MODEL_DOWNLOADED', payload: { id } }), 
+  const selectProject = useCallback((id: string) =>
+    dispatch({ type: 'SELECT_PROJECT', payload: id }),
   [dispatch]);
 
-  const addBenchmarkTest = useCallback((name: string, description: string, category: 'performance' | 'accuracy' | 'reasoning' | 'memory', estimatedDuration: number) => 
-    dispatch({ type: 'ADD_BENCHMARK_TEST', payload: { name, description, category, estimatedDuration } }), 
+  const selectSession = useCallback((id: string) =>
+    dispatch({ type: 'SELECT_SESSION', payload: id }),
   [dispatch]);
 
-  const addBenchmarkSession = useCallback((name: string, modelIds: string[], testIds: string[]) => 
-    dispatch({ type: 'ADD_BENCHMARK_SESSION', payload: { name, modelIds, testIds } }), 
-  [dispatch]);
-
-  const setActiveBenchmark = useCallback((id: string) => 
-    dispatch({ type: 'SET_ACTIVE_BENCHMARK', payload: { id } }), 
-  [dispatch]);
-
-  const getSessionsByProject = useCallback((projectId: string) => 
+  const getSessionsByProject = useCallback((projectId: string) =>
     state.sessions.filter((session: ChatSession) => session.projectId === projectId),
   [state.sessions]);
 
-  const getMessagesBySession = useCallback((sessionId: string) => 
+  const getMessagesBySession = useCallback((sessionId: string) =>
     state.messages.filter((message: Message) => message.sessionId === sessionId),
   [state.messages]);
 
-  
-  
+
   const contextValue = useMemo(() => ({
     ...state,
     fetchInitialData,
+    fetchSessionsForProject,
     setCurrentView,
     setAppStatus,
     toggleSidebar,
@@ -502,9 +595,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     selectProject,
     selectSession,
     addProject,
-    renameProject,
+    updateProject,
     deleteProject,
     addSession,
+    renameSession,
+    deleteSession,
     addMessage,
     setTyping,
     addRagSource,
@@ -520,31 +615,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     getMessagesBySession,
   }), [
     state,
-
-    fetchInitialData,
-    setCurrentView,
-    setAppStatus,
-    toggleSidebar,
-    setSidebarCollapsed,
-    selectProject,
-    selectSession,
-    addProject,
-    renameProject,
-    deleteProject,
-    addSession,
-    addMessage,
-    setTyping,
-    addRagSource,
-    removeRagSource,
-    setSearchQuery,
-    addModel,
-    updateModelProgress,
-    markModelDownloaded,
-    addBenchmarkTest,
-    addBenchmarkSession,
-    setActiveBenchmark,
-    getSessionsByProject,
-    getMessagesBySession,
+    fetchInitialData, fetchSessionsForProject, setCurrentView, setAppStatus,
+    toggleSidebar, setSidebarCollapsed, selectProject, selectSession,
+    addProject, updateProject, deleteProject, addSession, renameSession, deleteSession,
+    addMessage, setTyping, addRagSource, removeRagSource, setSearchQuery,
+    addModel, updateModelProgress, markModelDownloaded, addBenchmarkTest,
+    addBenchmarkSession, setActiveBenchmark,
+    getSessionsByProject, getMessagesBySession
   ]);
 
   return (
@@ -561,3 +638,4 @@ export function useAppStore(): AppContextValue {
   }
   return context;
 }
+
