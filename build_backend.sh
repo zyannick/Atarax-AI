@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -e
 
 UI_DIR="ataraxai-ui"
@@ -12,7 +13,6 @@ CUDA_ARCH=""
 SETUP_ARGS=""
 CMAKE_ARGS_STR=""
 
-echo "--- Starting Atarax-AI Backend Build for Tauri ---"
 
 for arg in "$@"; do
     case $arg in
@@ -31,12 +31,11 @@ for arg in "$@"; do
     esac
 done
 
-
+pkill -f "py_src/api" || echo "No running backend process found to kill."
 rm -rf "$BUILD_DIR"
 rm -rf "$DIST_DIR"
 rm -rf "$TAURI_RESOURCE_DIR"
 rm -rf ataraxai.egg-info _skbuild "$VENV_DIR"
-find . -name "*.so" -delete
 
 if ! command -v uv &>/dev/null; then
     echo "Error: uv is not installed or not in PATH."
@@ -46,11 +45,13 @@ uv venv "$VENV_DIR" --clear
 source "$VENV_DIR/bin/activate"
 uv pip install --no-cache-dir cmake scikit-build ninja pyinstaller
 
+
 if [ -f "setup_third_party.sh" ]; then
     ./setup_third_party.sh ${SETUP_ARGS}
 else
     echo "Warning: setup_third_party.sh not found."
 fi
+
 
 if [[ $USE_CUDA -eq 1 ]]; then
     CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=ON"
@@ -60,76 +61,77 @@ if [[ $USE_CUDA -eq 1 ]]; then
 else
     CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=OFF"
 fi
-
 PYTHON_EXECUTABLE=$(which python)
 PYTHON_INCLUDE_DIR=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
-
-cmake -S . -B "$BUILD_DIR" \
+ABS_BUILD_DIR=$(pwd)/$BUILD_DIR
+cmake -S . -B "$ABS_BUILD_DIR" \
     -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} \
     -DPython_INCLUDE_DIR=${PYTHON_INCLUDE_DIR} \
     ${CMAKE_ARGS_STR}
 
-cmake --build "$BUILD_DIR" --config Release -- -j$(nproc)
 
+cmake --build "$ABS_BUILD_DIR" --config Release -- -j $(nproc)
+
+
+export CMAKE_ARGS="${CMAKE_ARGS_STR}"
 uv pip install --no-cache-dir -e .
 
-CPP_EXTENSION_PATH=$(find "$BUILD_DIR" -name "hegemonikon_py*.so" -print -quit)
 
+CPP_EXTENSION_PATH=$(find "$ABS_BUILD_DIR" -name "hegemonikon_py*.so" -print -quit)
 if [ -z "$CPP_EXTENSION_PATH" ]; then
-    echo "ERROR: Could not find compiled C++ extension (hegemonikon_py.so) in the build directory. Build failed."
+    echo "ERROR: Could not find compiled C++ extension (hegemonikon_py.so) in $ABS_BUILD_DIR. Build failed."
+    ls -R "$ABS_BUILD_DIR"
     deactivate
     exit 1
 fi
 echo "Found C++ extension at: $CPP_EXTENSION_PATH"
 
+PYTHON_LIB_PATH=$(python -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))")
+PYTHON_SO_NAME=$(python -c "import sysconfig; print(sysconfig.get_config_var('LDLIBRARY'))")
+PYTHON_SHARED_LIB="$PYTHON_LIB_PATH/$PYTHON_SO_NAME"
+
+if [ ! -f "$PYTHON_SHARED_LIB" ]; then
+    PYTHON_SHARED_LIB=$(find "$VIRTUAL_ENV/lib" -name "libpython*.so.*" -print -quit)
+fi
+
+if [ -z "$PYTHON_SHARED_LIB" ] || [ ! -f "$PYTHON_SHARED_LIB" ]; then
+    echo "ERROR: Could not locate Python shared library (libpythonX.Y.so). Build failed."
+    deactivate
+    exit 1
+fi
+
+PYTHON_LIB_DIR=$(dirname "$PYTHON_SHARED_LIB")
+
 pyinstaller --noconfirm \
-            --onefile \
+            --onedir \
             --name "api" \
             --distpath "$DIST_DIR" \
             --add-binary "$CPP_EXTENSION_PATH:ataraxai" \
+            --add-binary "$PYTHON_SHARED_LIB:_internal" \
             --hidden-import "ataraxai.hegemonikon_py" \
+            --hidden-import "chromadb.telemetry.product.posthog" \
+            --hidden-import "chromadb.api.rust" \
+            --collect-submodules fastapi \
+            --collect-submodules uvicorn \
+            --collect-submodules ataraxai \
             --exclude-module pytest \
             --exclude-module mypy \
             --exclude-module ruff \
+            --exclude-module IPython \
+            --upx-dir=/usr/bin \
             api.py
 
-# ARTIFACT_PATH="$DIST_DIR/api"
-# strip "$ARTIFACT_PATH"
-# mkdir -p "$TAURI_RESOURCE_DIR"
-# cp "$ARTIFACT_PATH" "$TAURI_RESOURCE_DIR"/
-
-# pyinstaller --noconfirm \
-#   --onefile \
-#   --name "api" \
-#   --distpath "$DIST_DIR" \
-#   --add-binary "$CPP_EXTENSION_PATH:ataraxai" \
-#   --hidden-import "ataraxai.hegemonikon_py" \
-#   --collect-submodules ataraxai \
-#   --collect-submodules uvicorn \
-#   --collect-submodules fastapi \
-#   --exclude-module pytest \
-#   --exclude-module mypy \
-#   --exclude-module ruff \
-#   --exclude-module tensorboard \
-#   --exclude-module scipy \
-#   --exclude-module pandas \
-#   --exclude-module sklearn \
-#   --exclude-module transformers \
-#   --exclude-module matplotlib \
-#   --exclude-module IPython \
-#   --upx-dir=/usr/bin \
-#   api.py
-
-# Remove unnecessary files from the dist folder
-# cd "$DIST_DIR/api"
-# rm -rf tcl tk share/doc share/man
-# find . -name "*.pyc" -delete
-# find . -name "__pycache__" -type d -exec rm -rf {} + 2>/dev/null || true
-
-ARTIFACT_PATH="$DIST_DIR/api"
-strip "$ARTIFACT_PATH"
+ARTIFACT_DIR="$DIST_DIR/api"
 mkdir -p "$TAURI_RESOURCE_DIR"
-cp "$ARTIFACT_PATH" "$TAURI_RESOURCE_DIR"/
+cp -r "$ARTIFACT_DIR"/* "$TAURI_RESOURCE_DIR"/
+
+DEV_TARGET_DIR="$UI_DIR/src-tauri/target/debug/py_src"
+mkdir -p "$DEV_TARGET_DIR"
+cp -r "$ARTIFACT_DIR"/* "$DEV_TARGET_DIR"/
+
+echo "Build artifacts copied to:"
+echo "  - $TAURI_RESOURCE_DIR (for production builds)"
+echo "  - $DEV_TARGET_DIR (for dev mode)"
 
 deactivate
 

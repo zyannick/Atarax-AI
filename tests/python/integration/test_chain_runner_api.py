@@ -194,7 +194,9 @@ def _get_project_and_session_id(
     ), f"Expected 200 OK, got {response.text}"
 
     data = response.json()
-    project_info = data[0]
+    projects = data["projects"]
+    assert isinstance(projects, list), "Expected a list of projects."
+    project_info = projects[0]
     assert "project_id" in project_info, "Expected project_id in the response."
     assert isinstance(
         project_info["project_id"], str
@@ -208,7 +210,8 @@ def _get_project_and_session_id(
     ), f"Expected 200 OK, got {response.text}"
 
     session_data = response.json()
-    session_info = session_data[0]
+    sessions = session_data["sessions"]
+    session_info = sessions[0]
     assert "session_id" in session_info, "Expected session_id in the response."
     assert isinstance(
         session_info["session_id"], str
@@ -292,7 +295,7 @@ async def test_run_chain_chat(
     response = unlocked_client_with_project_and_session.get(
         f"/api/v1/chat/sessions/{session_id}/messages"
     )
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_200_OK, f"Expected 200 OK, got {response.text}"
 
     messages = response.json()
     assert len(messages) >= 2, "Expected at least two messages in the history."

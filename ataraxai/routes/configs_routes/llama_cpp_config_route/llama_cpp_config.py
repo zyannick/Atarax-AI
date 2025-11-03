@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 from fastapi import APIRouter
 from fastapi import Depends
@@ -17,11 +18,9 @@ from ataraxai.praxis.utils.configs.config_schemas.llama_config_schema import (
 )
 from ataraxai.routes.status import Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator
+from ataraxai.routes.dependency_api import get_logger, get_unlocked_orchestrator
 
-logger = AtaraxAILogger("ataraxai.praxis.llama_cpp").get_logger()
 
 router_llama_cpp = APIRouter(
     prefix="/api/v1/llama_cpp_config", tags=["Llama CPP Config"]
@@ -35,9 +34,10 @@ async def get_llama_config_manager(
 
 
 @router_llama_cpp.get("/get_llama_cpp_config", response_model=LlamaCPPConfigResponse)
-@handle_api_errors("Get Llama CPP Config", logger=logger)
+@handle_api_errors("Get Llama CPP Config")
 async def get_llama_cpp_config(
-    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)]
+    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> LlamaCPPConfigResponse:
     """
     Endpoint to retrieve the current Llama CPP configuration.
@@ -72,10 +72,11 @@ async def get_llama_cpp_config(
 
 
 @router_llama_cpp.put("/update_llama_cpp_config", response_model=LlamaCPPConfigResponse)
-@handle_api_errors("Update Llama CPP Config", logger=logger)
+@handle_api_errors("Update Llama CPP Config")
 async def update_llama_cpp_config(
     config: LlamaCPPConfigAPI,
-    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)],  # type: ignore
+    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)], 
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> LlamaCPPConfigResponse:
     """
     Endpoint to update the Llama CPP configuration.
@@ -110,9 +111,10 @@ async def update_llama_cpp_config(
 @router_llama_cpp.get(
     "/get_llama_cpp_generation_params", response_model=LlamaCPPGenerationParamsResponse
 )
-@handle_api_errors("Get Llama CPP Generation Params", logger=logger)
+@handle_api_errors("Get Llama CPP Generation Params")
 async def get_llama_cpp_generation_params(
-    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)],  # type: ignore
+    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)], 
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> LlamaCPPGenerationParamsResponse:
     """
     Endpoint to retrieve the current Llama CPP generation parameters.
@@ -141,10 +143,11 @@ async def get_llama_cpp_generation_params(
     "/update_llama_cpp_generation_params",
     response_model=LlamaCPPGenerationParamsResponse,
 )
-@handle_api_errors("Update Llama CPP Generation Params", logger=logger)
+@handle_api_errors("Update Llama CPP Generation Params")
 async def update_llama_cpp_generation_params(
     generation_params: LlamaCPPGenerationParamsAPI,
-    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)],  # type: ignore
+    llama_config_manager: Annotated[LlamaConfigManager, Depends(get_llama_config_manager)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> LlamaCPPGenerationParamsResponse:
     """
     Endpoint to update the Llama CPP generation parameters.

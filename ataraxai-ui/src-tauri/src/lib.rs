@@ -11,7 +11,7 @@ use tauri::{async_runtime, AppHandle, Emitter, Manager, State, WindowEvent};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
-// This struct must match the JSON output from your Python script
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ApiInfo {
     port: u16,
@@ -19,11 +19,10 @@ struct ApiInfo {
     status: String,
 }
 
-// State for holding the connection details
+
 #[derive(Debug, Default)]
 struct ApiState(Mutex<Option<ApiInfo>>);
 
-// State for holding the handle to the running sidecar process
 pub struct ApiProcess(Mutex<Option<CommandChild>>);
 
 impl ApiState {
@@ -39,14 +38,12 @@ impl ApiState {
     }
 }
 
-// --- TAURI COMMANDS (Callable from Frontend) ---
 
 #[tauri::command]
 async fn get_api_info(state: State<'_, ApiState>) -> Result<ApiInfo, String> {
-    // Reduced timeout to 120 seconds - if Python hasn't started by then, something is wrong
     let timeout_duration = Duration::from_secs(120);
     let start = std::time::Instant::now();
-    let poll_interval = Duration::from_millis(1000); // Poll every 1000ms
+    let poll_interval = Duration::from_millis(1000); 
 
     while start.elapsed() < timeout_duration {
         if let Some(info) = state.get_info() {
@@ -55,7 +52,6 @@ async fn get_api_info(state: State<'_, ApiState>) -> Result<ApiInfo, String> {
             return Ok(info);
         }
         
-        // Log progress every 5 seconds
         let elapsed_secs = start.elapsed().as_secs();
         if elapsed_secs > 0 && elapsed_secs % 5 == 0 {
             println!("Still waiting for Python backend... ({}s elapsed)", elapsed_secs);
@@ -85,14 +81,12 @@ fn stop_python_sidecar(state: State<'_, ApiProcess>) -> Result<(), String> {
     }
 }
 
-// --- SIDECAR MANAGEMENT LOGIC ---
 
 async fn start_python_sidecar(
     app_handle: AppHandle,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Resolving path for Python sidecar executable...");
     
-    // Fetch the managed state instances correctly from the app handle
     let api_state: State<ApiState> = app_handle.state();
     let api_process_state: State<ApiProcess> = app_handle.state();
 
@@ -102,25 +96,28 @@ async fn start_python_sidecar(
     
     println!("Starting Python sidecar from: {:?}", executable_path);
 
-    // This direct execution is a clean simplification from your new version.
     let (mut rx, child) = app_handle.shell().command(&executable_path).spawn()?;
     
-    // Store the process handle for cleanup
     *api_process_state.0.lock().unwrap() = Some(child);
 
     println!("Waiting for Python backend to emit connection details...");
+    
+    let mut handshake_complete = false;
 
     while let Some(event) = rx.recv().await {
         match event {
             CommandEvent::Stdout(line) => {
                 if let Ok(line_str) = String::from_utf8(line) {
-                    println!("Received from Python: {}", line_str.trim());
-                    if let Ok(api_info) = serde_json::from_str::<ApiInfo>(&line_str) {
-                        if api_info.status == "ready" {
-                            println!("Backend is ready. Port: {}, Token acquired.", api_info.port);
-                            api_state.set_info(api_info);
-                            return Ok(());
+                    if !handshake_complete {
+                        if let Ok(api_info) = serde_json::from_str::<ApiInfo>(&line_str) {
+                            if api_info.status == "ready" {
+                                println!("Backend is ready. Port: {}, Token acquired.", api_info.port);
+                                api_state.set_info(api_info);
+                                handshake_complete = true;
+                            }
                         }
+                    } else {
+                        println!("Python sidecar (stdout): {}", line_str.trim());
                     }
                 }
             }
@@ -132,14 +129,20 @@ async fn start_python_sidecar(
             CommandEvent::Error(line) => {
                 eprintln!("Python sidecar error: {:?}", line);
             }
+            CommandEvent::Terminated(payload) => {
+                eprintln!("Python sidecar terminated with status: {:?}", payload);
+                if !handshake_complete {
+                    return Err("Sidecar process terminated before it became ready.".into());
+                }
+                break; 
+            }
             _ => {}
         }
     }
-
-    Err("Sidecar process closed before it became ready.".into())
+    
+    Ok(())
 }
 
-// --- MAIN APPLICATION SETUP ---
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
