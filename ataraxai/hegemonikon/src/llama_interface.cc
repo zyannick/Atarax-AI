@@ -475,7 +475,8 @@ std::string LlamaInterface::generate_completion(const std::string &prompt_text, 
         while (true)
         {
             int n_ctx = llama_n_ctx(ctx);
-            int n_ctx_used = llama_kv_self_seq_pos_max(ctx, 0);
+            int n_ctx_used = llama_memory_seq_pos_max(llama_get_memory(ctx), 0);
+            const bool is_first = (n_ctx_used == -1);
             if (n_ctx_used + batch.n_tokens > n_ctx)
             {
                 printf("\033[0m\n");

@@ -3,8 +3,8 @@
 set -e
 
 CUDA_ARCH="native"
-LLAMA_TAG="tags/b5581"
-WHISPER_TAG="tags/v1.7.5"
+LLAMA_TAG="tags/b6935"
+WHISPER_TAG="tags/v1.8.2"
 USE_CONDA=0
 GGML_CUDA="OFF"
 WHISPER_CUDA="OFF"
