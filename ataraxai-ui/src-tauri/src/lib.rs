@@ -96,6 +96,7 @@ async fn start_python_sidecar(
     
     println!("Starting Python sidecar from: {:?}", executable_path);
 
+    // This direct execution is a clean simplification from your new version.
     let (mut rx, child) = app_handle.shell().command(&executable_path).spawn()?;
     
     *api_process_state.0.lock().unwrap() = Some(child);
