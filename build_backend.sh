@@ -61,6 +61,8 @@ if [[ $USE_CUDA -eq 1 ]]; then
 else
     CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=OFF"
 fi
+CMAKE_ARGS_STR+=" -DGGML_ARM_I8MM=OFF"
+
 PYTHON_EXECUTABLE=$(which python)
 PYTHON_INCLUDE_DIR=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
 ABS_BUILD_DIR=$(pwd)/$BUILD_DIR
