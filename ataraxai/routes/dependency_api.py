@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import (
@@ -142,3 +143,15 @@ def get_katalepsis_monitor(request: Request) -> Katalepsis:
         Katalepsis: The Katalepsis instance from the application state.
     """
     return request.app.state.katalepsis
+
+
+def get_logger(request: Request) -> logging.Logger:
+    """
+    Dependency to get the logger instance from the FastAPI application state.
+
+    Args:
+        request (Request): The FastAPI request object.
+    Returns:
+        logging.Logger: The logger instance from the application state.
+    """
+    return request.app.state.logger

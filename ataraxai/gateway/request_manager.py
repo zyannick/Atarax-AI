@@ -250,7 +250,6 @@ class RequestManager:
             self._metrics["requests_processed"] += 1
 
         except asyncio.CancelledError:
-            # 🚨 Ensure cancellation propagates
             if not request.future.done():
                 request.future.cancel()
             raise
@@ -276,7 +275,6 @@ class RequestManager:
             self._metrics["requests_failed"] += 1
 
     async def _cleanup_expired_requests(self):
-        """Background task to clean up expired requests from the queue"""
         self.logger.info("Started expired request cleanup task")
 
         while not self._shutdown_event.is_set():

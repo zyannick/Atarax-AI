@@ -8,7 +8,6 @@ from ataraxai.praxis.ataraxai_orchestrator import (
 from ataraxai.praxis.modules.benchmark.benchmark_queue_manager import (
     BenchmarkQueueManager,
 )
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.configs.config_schemas.benchmarker_config_schema import (
     BenchmarkParams,
     QuantizedModelInfo,
@@ -22,7 +21,6 @@ from ataraxai.routes.dependency_api import get_unlocked_orchestrator
 from ataraxai.routes.status import StatusResponse
 from ataraxai.routes.status import TaskStatus as Status
 
-logger = AtaraxAILogger("ataraxai.praxis.benchmark").get_logger()
 
 router_benchmark = APIRouter(prefix="/api/v1/benchmark", tags=["Benchmark"])
 
@@ -40,7 +38,7 @@ async def get_benchmark_queue_manager(
 
 
 @router_benchmark.post("/start", response_model=StatusResponse)
-@handle_api_errors("Start Benchmark Worker", logger=logger)
+@handle_api_errors("Start Benchmark Worker")
 async def start_benchmarker_worker(
     bqm: Annotated[BenchmarkQueueManager, Depends(get_benchmark_queue_manager)],
 ) -> StatusResponse:
@@ -49,7 +47,7 @@ async def start_benchmarker_worker(
 
 
 @router_benchmark.post("/stop", response_model=StatusResponse)
-@handle_api_errors("Stop Benchmark Worker", logger=logger)
+@handle_api_errors("Stop Benchmark Worker")
 async def stop_benchmark_worker(
     bqm: Annotated[BenchmarkQueueManager, Depends(get_benchmark_queue_manager)],
 ) -> StatusResponse:
@@ -58,7 +56,7 @@ async def stop_benchmark_worker(
 
 
 @router_benchmark.get("/status", response_model=StatusResponse)
-@handle_api_errors("Get Benchmark Status", logger=logger)
+@handle_api_errors("Get Benchmark Status")
 async def get_benchmark_status(
     bqm: Annotated[BenchmarkQueueManager, Depends(get_benchmark_queue_manager)],
 ) -> StatusResponse:
@@ -71,7 +69,7 @@ async def get_benchmark_status(
 
 
 @router_benchmark.get("/job/{job_id}", response_model=StatusResponse)
-@handle_api_errors("Get Benchmark Job Info", logger=logger)
+@handle_api_errors("Get Benchmark Job Info")
 async def get_benchmarker_job_info(
     job_id: str,
     bqm: Annotated[BenchmarkQueueManager, Depends(get_benchmark_queue_manager)],
@@ -87,7 +85,7 @@ async def get_benchmarker_job_info(
 
 
 @router_benchmark.post("/job/{job_id}/cancel", response_model=StatusResponse)
-@handle_api_errors("Cancel Benchmarker Job", logger=logger)
+@handle_api_errors("Cancel Benchmarker Job")
 async def cancel_benchmarker_job(
     job_id: str,
     bqm: Annotated[BenchmarkQueueManager, Depends(get_benchmark_queue_manager)],
@@ -105,7 +103,7 @@ async def cancel_benchmarker_job(
 
 
 @router_benchmark.post("/jobs/clear_completed", response_model=StatusResponse)
-@handle_api_errors("Clear Completed Benchmarker Jobs", logger=logger)
+@handle_api_errors("Clear Completed Benchmarker Jobs")
 async def clear_completed_benchmarker_jobs(
     bqm: Annotated[BenchmarkQueueManager, Depends(get_benchmark_queue_manager)],
 ) -> StatusResponse:
@@ -117,7 +115,7 @@ async def clear_completed_benchmarker_jobs(
 
 
 @router_benchmark.post("/jobs/enqueue", response_model=StatusResponse)
-@handle_api_errors("Enqueue Benchmarker Job", logger=logger)
+@handle_api_errors("Enqueue Benchmarker Job")
 async def enqueue_benchmarker_job(
     benchmark_job: BenchmarkJobAPI,
     bqm: Annotated[BenchmarkQueueManager, Depends(get_benchmark_queue_manager)],

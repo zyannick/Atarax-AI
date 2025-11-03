@@ -1,24 +1,24 @@
+import asyncio
+import logging
 import uuid
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
-from contextlib import contextmanager
-import logging
+from typing import Any, Dict, List, Optional, Union
+
 from peewee import (
-    SqliteDatabase,
-    Model,
-    UUIDField,
+    BlobField,
     CharField,
-    TextField,
     DateTimeField,
+    DoesNotExist,
     ForeignKeyField,
     IntegrityError,
-    DoesNotExist,
+    Model,
     Select,
-    BlobField,
+    SqliteDatabase,
+    TextField,
+    UUIDField,
 )
-import asyncio
-
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ class BaseModel(Model):
 
 class Project(BaseModel):
     id = UUIDField(primary_key=True)
-    name = CharField(unique=True)  # Made name unique
+    name = CharField(null=False)
     description = TextField(null=True)
     created_at = DateTimeField(default=datetime.now)
     updated_at = DateTimeField(default=datetime.now)
@@ -115,7 +115,6 @@ class Message(BaseModel):
     role = CharField()
     content = BlobField()
     date_time = DateTimeField(default=datetime.now)
-
 
     def get_date_time(self) -> datetime:
         return datetime(
@@ -233,6 +232,8 @@ class ProjectService(BaseService):
                     project, "description", description.strip() if description else None
                 )
 
+            setattr(project, "updated_at", datetime.now())
+
             project.save()  # type: ignore
             return project
         except NotFoundError:
@@ -328,6 +329,7 @@ class ChatSessionService(BaseService):
 
             session = self.get_session(session_id)
             setattr(session, "title", title.strip())
+            setattr(session, "updated_at", datetime.now())
             session.save()  # type: ignore
             return session
         except NotFoundError:
@@ -473,12 +475,11 @@ class ChatDatabaseManager:
         try:
             db.init(str(self.db_path))
             db.connect()
-            db.create_tables([Project, ChatSession, Message]) 
+            db.create_tables([Project, ChatSession, Message])
             logger.info(f"Database initialized at {self.db_path}")
         except Exception as e:
             logger.error(f"Failed to initialize database: {e}")
             raise DatabaseError(f"Failed to initialize database: {e}")
-        
 
     @contextmanager
     def _db_connection(self):

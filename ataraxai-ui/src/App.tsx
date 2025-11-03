@@ -9,16 +9,24 @@ import { BenchmarkView } from "./components/BenchmarkView";
 import { VaultSetup } from "./components/VaultSetup";
 import { VaultUnlock } from "./components/VaultUnlock";
 import { VaultReinit } from "./components/VaultReinit";
-import { getAppStatus, initializeVault, unlockVault, API_STATUS } from './lib/api';
+import { getAppStatus, initializeVault, unlockVault, API_STATUS, lockVault } from './lib/api';
 import { AtaraxLogo } from "./components/AtaraxLogo";
 
-type BackendState = "FIRST_LAUNCH" | "LOCKED" | "UNLOCKED" | "READY";
+type BackendState = "FIRST_LAUNCH" | "LOCKED" | "UNLOCKED" | "READY" | "ERROR";
 
 type AppStatus = "loading" | "ready" | "error";
 type VaultState = "uninitialized" | "locked" | "unlocked" | "reinit";
 
 function AppContent() {
-  const { currentView } = useAppStore();
+
+  const { currentView, fetchInitialData } = useAppStore(
+    (state) => ({
+      currentView: state.currentView,
+      fetchInitialData: state.fetchInitialData, 
+    })
+  );
+
+
   const [appStatus, setAppStatus] = useState<AppStatus>("loading");
   const [vaultState, setVaultState] = useState<VaultState>("locked");
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -65,6 +73,7 @@ function AppContent() {
 
             switch (backendStateString) {
               case "FIRST_LAUNCH":
+              case "ERROR":
                 setVaultState("uninitialized");
                 break;
               case "LOCKED":
@@ -121,6 +130,17 @@ function AppContent() {
   }, []);
 
 
+  useEffect(() => {
+    if (vaultState === "unlocked" && appStatus === "ready") {
+      console.log("Vault is unlocked, fetching initial data...");
+
+      fetchInitialData().catch((err) => {
+        console.error("Failed to fetch initial data:", err);
+      });
+    }
+  }, [vaultState, appStatus, fetchInitialData]);
+
+
   const handleInitializeVault = async (password: string): Promise<boolean> => {
     try {
       const response = await initializeVault(password);
@@ -137,7 +157,7 @@ function AppContent() {
   const handleUnlockVault = async (password: string): Promise<boolean> => {
     try {
       const response = await unlockVault(password);
-      if (response.status === "SUCCESS") {
+      if (response.status === API_STATUS.SUCCESS) {
         setVaultState("unlocked");
         return true;
       }
@@ -148,6 +168,11 @@ function AppContent() {
   };
 
   const handleLockVault = () => {
+    try {
+      lockVault();
+    } catch (error) {
+      console.error("Error locking vault:", error);
+    }
     setVaultState("locked");
   };
 
@@ -248,7 +273,6 @@ function AppContent() {
     );
   }
 
-  // Main app UI (unlocked state)
   const renderMainContent = () => {
     switch (currentView) {
       case "chat":

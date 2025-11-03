@@ -38,12 +38,6 @@ async def test_create_project_empty_name_raises(db_manager: cdm.ChatDatabaseMana
         await db_manager.create_project("", "desc")
 
 
-@pytest.mark.asyncio
-async def test_create_duplicate_project_raises(db_manager: cdm.ChatDatabaseManager):
-    await db_manager.create_project("Unique", "desc")
-    with pytest.raises(cdm.DatabaseError):
-        await db_manager.create_project("Unique", "desc2")
-
 
 @pytest.mark.asyncio
 async def test_update_project(db_manager: cdm.ChatDatabaseManager):

@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum, auto
+from enum import Enum
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional
 from ataraxai.routes.status import Status

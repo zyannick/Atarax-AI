@@ -58,6 +58,36 @@ class ChatManager:
             self.logger.error(f"Failed to create project {name}: {e}")
             raise
 
+
+    async def update_project(self, project_id: uuid.UUID, name: str, description: str) -> ProjectResponse:
+        """
+        Updates an existing project with the specified name and description.
+
+        Validates the project ID and name, attempts to update the project in the database,
+        logs the operation, and returns a ProjectResponse object. If an error occurs
+        during project update, logs the error and re-raises the exception.
+
+        Args:
+            project_id (uuid.UUID): The unique identifier of the project to update.
+            name (str): The new name of the project.
+            description (str): The new description of the project.
+
+        Returns:
+            ProjectResponse: The response object containing the updated project's details.
+
+        Raises:
+            Exception: If project update fails for any reason.
+        """
+        self.validator.validate_uuid(project_id, "Project ID")
+        self.validator.validate_string(name, "Project name")
+        try:
+            project = await self.db_manager.update_project(project_id=project_id, name=name, description=description)
+            self.logger.info(f"Updated project: {project_id}")
+            return ProjectResponse.model_validate(project)
+        except Exception as e:
+            self.logger.error(f"Failed to update project {project_id}: {e}")
+            raise
+
     async def get_project(self, project_id: uuid.UUID) -> ProjectResponse:
         """
         Retrieve a project by its unique identifier.
@@ -145,6 +175,30 @@ class ChatManager:
             return ChatSessionResponse.model_validate(session)
         except Exception as e:
             self.logger.error(f"Failed to create session {title}: {e}")
+            raise
+
+    async def update_session(self, session_id: uuid.UUID, title: str) -> ChatSessionResponse:
+        """
+        Updates an existing chat session with a new title.
+
+        Args:
+            session_id (uuid.UUID): The unique identifier of the chat session to update.
+            title (str): The new title for the chat session.
+
+        Returns:
+            ChatSessionResponse: The response object containing details of the updated chat session.
+
+        Raises:
+            Exception: If session update fails due to a database or validation error.
+        """
+        self.validator.validate_uuid(session_id, "Session ID")
+        self.validator.validate_string(title, "Session title")
+        try:
+            session = await self.db_manager.update_session(session_id=session_id, title=title)
+            self.logger.info(f"Updated session: {session_id} with new title {title}")
+            return ChatSessionResponse.model_validate(session)
+        except Exception as e:
+            self.logger.error(f"Failed to update session {session_id}: {e}")
             raise
 
     async def get_session(self, session_id: uuid.UUID) -> ChatSessionResponse:

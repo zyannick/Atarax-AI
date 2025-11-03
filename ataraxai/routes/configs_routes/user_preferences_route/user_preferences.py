@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 from fastapi import APIRouter
 from fastapi import Depends
@@ -5,9 +6,8 @@ from fastapi import Depends
 
 from ataraxai.routes.status import Status
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
-from ataraxai.routes.dependency_api import get_unlocked_orchestrator
+from ataraxai.routes.dependency_api import get_logger, get_unlocked_orchestrator
 from ataraxai.praxis.utils.configs.config_schemas.user_preferences_schema import (
     UserPreferences,
 )
@@ -16,7 +16,6 @@ from ataraxai.routes.configs_routes.user_preferences_route.user_preferences_api_
     UserPreferencesAPI,
 )
 
-logger = AtaraxAILogger("ataraxai.praxis.user_preferences").get_logger()
 
 
 router_user_preferences = APIRouter(
@@ -25,8 +24,10 @@ router_user_preferences = APIRouter(
 
 
 @router_user_preferences.get("/get_preferences", response_model=UserPreferencesResponse)
-@handle_api_errors("Get User Preferences", logger=logger)
-async def get_user_preferences(orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)]) -> UserPreferencesResponse:
+@handle_api_errors("Get User Preferences")
+async def get_user_preferences(orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+                               logger : Annotated[logging.Logger, Depends(get_logger)]
+                               ) -> UserPreferencesResponse:
     """
     Endpoint to retrieve user preferences.
 
@@ -53,9 +54,10 @@ async def get_user_preferences(orch: Annotated[AtaraxAIOrchestrator, Depends(get
 @router_user_preferences.put(
     "/update_preferences", response_model=UserPreferencesResponse
 )
-@handle_api_errors("Update User Preferences", logger=logger)
+@handle_api_errors("Update User Preferences")
 async def update_user_preferences(
-    preferences: UserPreferencesAPI, orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)]
+    preferences: UserPreferencesAPI, orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    logger : Annotated[logging.Logger, Depends(get_logger)]
 ) -> UserPreferencesResponse:
     """
     Endpoint to update user preferences.

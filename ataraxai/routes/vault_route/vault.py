@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, status
@@ -7,14 +8,13 @@ from ataraxai.hegemonikon_py import SecureString  # type: ignore
 from ataraxai.praxis.ataraxai_orchestrator import AtaraxAIOrchestrator
 from ataraxai.praxis.katalepsis import katalepsis_monitor
 from ataraxai.praxis.utils.app_state import AppState
-from ataraxai.praxis.utils.ataraxai_logger import AtaraxAILogger
 from ataraxai.praxis.utils.decorators import handle_api_errors
 from ataraxai.praxis.utils.vault_manager import (
     UnlockResult,
     VaultInitializationStatus,
     VaultUnlockStatus,
 )
-from ataraxai.routes.dependency_api import get_orchestrator, get_unlocked_orchestrator
+from ataraxai.routes.dependency_api import get_orchestrator, get_unlocked_orchestrator, get_logger
 from ataraxai.routes.status import Status
 from ataraxai.routes.vault_route.vault_api_models import (
     ConfirmationPhaseRequest,
@@ -24,7 +24,6 @@ from ataraxai.routes.vault_route.vault_api_models import (
     VaultPasswordResponse,
 )
 
-logger = AtaraxAILogger("ataraxai.praxis.vault").get_logger()
 
 
 router_vault = APIRouter(prefix="/api/v1/vault", tags=["Vault"])
@@ -32,10 +31,11 @@ router_vault = APIRouter(prefix="/api/v1/vault", tags=["Vault"])
 
 @router_vault.post("/initialize", response_model=VaultPasswordResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Initialize Vault", logger=logger)
+@handle_api_errors("Initialize Vault")
 async def initialize_vault(
     request: VaultPasswordRequest,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_orchestrator)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> VaultPasswordResponse:
     """
     Initializes a new vault with the provided password.
@@ -56,6 +56,7 @@ async def initialize_vault(
     """
     logger.info("Initializing vault with provided password.")
     state = await orch.get_state()
+    
     if state != AppState.FIRST_LAUNCH:
         logger.error("Vault is already initialized.")
         return VaultPasswordResponse(
@@ -75,10 +76,11 @@ async def initialize_vault(
 
 @router_vault.post("/reinitialize", response_model=ConfirmationPhaseResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Reinitialize Vault", logger=logger)
+@handle_api_errors("Reinitialize Vault")
 async def reinitialize_vault(
     request: ConfirmationPhaseRequest,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> ConfirmationPhaseResponse:
     """
     Reinitializes the vault using the provided confirmation phrase.
@@ -112,10 +114,11 @@ async def reinitialize_vault(
 
 @router_vault.post("/unlock", response_model=VaultPasswordResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Unlock Vault", logger=logger)
+@handle_api_errors("Unlock Vault")
 async def unlock(
     request: VaultPasswordRequest,
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_orchestrator)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> VaultPasswordResponse:
     """
     Unlocks the vault using the provided password.
@@ -170,9 +173,10 @@ async def unlock(
 
 @router_vault.post("/lock", response_model=LockVaultResponse)
 @katalepsis_monitor.instrument_api("POST")  # type: ignore
-@handle_api_errors("Lock Vault", logger=logger)
+@handle_api_errors("Lock Vault")
 async def lock(
     orch: Annotated[AtaraxAIOrchestrator, Depends(get_unlocked_orchestrator)],
+    logger: Annotated[logging.Logger, Depends(get_logger)],
 ) -> LockVaultResponse:
     """
     Locks the vault by invoking the orchestrator's lock method.

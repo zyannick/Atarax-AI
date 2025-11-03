@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
 import { Plus, Folder } from 'lucide-react';
 
 interface ProjectDialogProps {
@@ -15,6 +16,7 @@ interface ProjectDialogProps {
 export function ProjectDialog({ trigger, open, onOpenChange }: ProjectDialogProps) {
   const { addProject } = useAppStore();
   const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const dialogOpen = open !== undefined ? open : isDialogOpen;
@@ -22,15 +24,17 @@ export function ProjectDialog({ trigger, open, onOpenChange }: ProjectDialogProp
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (projectName.trim()) {
-      addProject(projectName.trim());
+    if (projectName.trim() && projectDescription.trim()) {
+      addProject(projectName.trim(), projectDescription.trim());
       setProjectName('');
+      setProjectDescription('');
       setDialogOpen(false);
     }
   };
 
   const handleCancel = () => {
     setProjectName('');
+    setProjectDescription('');
     setDialogOpen(false);
   };
 
@@ -71,6 +75,18 @@ export function ProjectDialog({ trigger, open, onOpenChange }: ProjectDialogProp
               autoFocus
             />
           </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="project-description">Description</Label>
+            <Textarea
+              id="project-description"
+              placeholder="What is this project about... (e.g., 'RAG for financial reports')"
+              value={projectDescription}
+              onChange={(e) => setProjectDescription(e.target.value)}
+              className="min-h-[80px]"
+            />
+          </div>
+          
           <div className="flex justify-end gap-2">
             <Button 
               type="button" 
@@ -81,7 +97,7 @@ export function ProjectDialog({ trigger, open, onOpenChange }: ProjectDialogProp
             </Button>
             <Button 
               type="submit" 
-              disabled={!projectName.trim()}
+              disabled={!projectName.trim() || !projectDescription.trim()}
               className="bg-primary hover:bg-primary/90"
             >
               Create Project
