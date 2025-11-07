@@ -4,7 +4,6 @@ $ErrorActionPreference = "Stop"
 # ============================================================================
 # Configuration
 # ============================================================================
-$SCRIPT_VERSION = "2.0.0"
 $UI_DIR = "ataraxai-ui"
 $TAURI_RESOURCE_DIR = Join-Path $UI_DIR "src-tauri/py_src"
 $BUILD_DIR = "build"
@@ -12,7 +11,6 @@ $DIST_DIR = "dist"
 $VENV_DIR = ".venv_build"
 $LOG_FILE = "build.log"
 
-# Build options
 $USE_CUDA = 0
 $CUDA_ARCH = ""
 $CMAKE_ARGS_STR = ""
@@ -20,7 +18,6 @@ $SKIP_CLEANUP = $false
 $VERBOSE = $false
 $PARALLEL_JOBS = $env:NUMBER_OF_PROCESSORS
 
-# Required tool versions
 $REQUIRED_PYTHON_VERSION = "3.12"
 $REQUIRED_CMAKE_VERSION = "3.20"
 
@@ -166,7 +163,6 @@ try {
     $requiredTools = @{
         "uv" = "Python package manager (https://github.com/astral-sh/uv)"
         "cmake" = "CMake build system (https://cmake.org/)"
-        "python" = "Python interpreter"
     }
     
     foreach ($tool in $requiredTools.Keys) {
@@ -177,11 +173,6 @@ try {
         Write-Log "Found: $tool" "SUCCESS"
     }
     
-    # Check Python version
-    $pythonVersion = python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
-    Write-Log "Python version: $pythonVersion" "INFO"
-    
-    # Check CMake version
     Test-Version "cmake" $REQUIRED_CMAKE_VERSION | Out-Null
 
     # ========================================================================
@@ -229,7 +220,6 @@ try {
     Write-Log "Creating build virtual environment..." "INFO"
     Invoke-CommandWithCheck "uv venv $VENV_DIR -p $REQUIRED_PYTHON_VERSION --seed" "Virtual environment creation"
     
-    # Activate virtual environment
     $activateScript = Join-Path $VENV_DIR "Scripts\Activate.ps1"
     if (-not (Test-Path $activateScript)) {
         throw "Virtual environment activation script not found at: $activateScript"
@@ -238,7 +228,6 @@ try {
     Write-Log "Activating virtual environment..." "INFO"
     & $activateScript
     
-    # Verify activation
     $venvPython = & python -c "import sys; print(sys.prefix)"
     if ($venvPython -notlike "*$VENV_DIR*") {
         throw "Virtual environment activation failed"
@@ -394,12 +383,10 @@ pyinstaller --noconfirm ``
         throw "Artifact directory not found: $ARTIFACT_DIR"
     }
     
-    # Production build directory
     New-Item -ItemType Directory -Path $TAURI_RESOURCE_DIR -Force | Out-Null
     Copy-Item -Path (Join-Path $ARTIFACT_DIR "*") -Destination $TAURI_RESOURCE_DIR -Recurse -Force
     Write-Log "Artifacts copied to: $TAURI_RESOURCE_DIR" "SUCCESS"
     
-    # Development build directory
     $DEV_TARGET_DIR = Join-Path $UI_DIR "src-tauri/target/debug/py_src"
     New-Item -ItemType Directory -Path $DEV_TARGET_DIR -Force | Out-Null
     Copy-Item -Path (Join-Path $ARTIFACT_DIR "*") -Destination $DEV_TARGET_DIR -Recurse -Force
@@ -424,15 +411,12 @@ pyinstaller --noconfirm ``
     exit 0
 
 } catch {
-    Write-Log "═══════════════════════════════════════════════════════════" "ERROR"
     Write-Log "Build failed: $($_.Exception.Message)" "ERROR"
-    Write-Log "═══════════════════════════════════════════════════════════" "ERROR"
     Write-Log "Stack trace:" "ERROR"
     Write-Log $_.ScriptStackTrace "ERROR"
     Write-Log "" "ERROR"
     Write-Log "Check $LOG_FILE for detailed information" "ERROR"
     
-    # Attempt to deactivate venv if active
     try { deactivate } catch {}
     
     exit 1

@@ -10,7 +10,6 @@ set -o pipefail
 # ============================================================================
 # Configuration
 # ============================================================================
-SCRIPT_VERSION="2.0.0"
 UI_DIR="ataraxai-ui"
 TAURI_RESOURCE_DIR="$UI_DIR/src-tauri/py_src"
 BUILD_DIR="build"
@@ -172,10 +171,8 @@ trap cleanup_on_error ERR
 # Main Build Process
 # ============================================================================
 
-# Initialize log file
 : > "$LOG_FILE"
 
-write_log "Starting AtaraxAI build process (v$SCRIPT_VERSION)" "INFO"
 write_log "Build configuration:" "INFO"
 write_log "  - CUDA: $(if [[ $USE_CUDA -eq 1 ]]; then echo 'Enabled'; else echo 'Disabled'; fi)" "INFO"
 if [[ -n "$CUDA_ARCH" ]]; then
@@ -194,7 +191,6 @@ write_log "Checking prerequisites..." "INFO"
 declare -A required_tools=(
     ["uv"]="Python package manager (https://github.com/astral-sh/uv)"
     ["cmake"]="CMake build system (https://cmake.org/)"
-    ["python"]="Python interpreter"
 )
 
 for tool in "${!required_tools[@]}"; do
@@ -204,9 +200,6 @@ for tool in "${!required_tools[@]}"; do
     fi
     write_log "Found: $tool" "SUCCESS"
 done
-
-PYTHON_VERSION=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-write_log "Python version: $PYTHON_VERSION" "INFO"
 
 test_version "cmake" || true
 
@@ -264,7 +257,6 @@ write_log "Creating build virtual environment..." "INFO"
 invoke_command_with_check "Virtual environment creation" \
     "uv venv '$VENV_DIR' -p $REQUIRED_PYTHON_VERSION --seed"
 
-# Activate virtual environment
 ACTIVATE_SCRIPT="$VENV_DIR/bin/activate"
 if [[ ! -f "$ACTIVATE_SCRIPT" ]]; then
     write_log "Virtual environment activation script not found at: $ACTIVATE_SCRIPT" "ERROR"
@@ -274,7 +266,6 @@ fi
 write_log "Activating virtual environment..." "INFO"
 source "$ACTIVATE_SCRIPT"
 
-# Verify activation
 VENV_PYTHON=$(python -c "import sys; print(sys.prefix)")
 if [[ "$VENV_PYTHON" != *"$VENV_DIR"* ]]; then
     write_log "Virtual environment activation failed" "ERROR"
