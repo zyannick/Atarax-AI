@@ -8,8 +8,13 @@
 #endif
 
 #ifdef _WIN32
+#ifdef WIN32_LEAN_AND_MEAN
+#undef WIN32_LEAN_AND_MEAN
+#endif
+
 #include <windows.h>
 #include <malloc.h>
+#include <Psapi.h>
 #endif
 
 #ifdef __APPLE__
@@ -49,6 +54,13 @@ public:
     static size_t get_page_size();
     static void* allocate_aligned(size_t size, size_t alignment);
     static void deallocate_aligned(void* ptr);
+    
+    // New methods for protected memory allocation
+    static void* allocate_protected(size_t size);
+    static void deallocate_protected(void* ptr, size_t size);
+    static bool protect_readonly(void* ptr, size_t size);
+    static bool protect_readwrite(void* ptr, size_t size);
+    
     static std::string get_last_error();
     static bool is_memory_locked(void* ptr, size_t size);
     static size_t get_memory_usage();
@@ -61,7 +73,33 @@ private:
 
 thread_local std::string PlatformMemory::last_error;
 
+// Implement the new methods for all platforms
+
 #ifdef __linux__
+
+void* PlatformMemory::allocate_protected(size_t size) {
+    void* ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == MAP_FAILED) {
+        last_error = "mmap failed: " + std::to_string(errno);
+        return nullptr;
+    }
+    return ptr;
+}
+
+void PlatformMemory::deallocate_protected(void* ptr, size_t size) {
+    if (ptr && munmap(ptr, size) != 0) {
+        last_error = "munmap failed: " + std::to_string(errno);
+    }
+}
+
+bool PlatformMemory::protect_readonly(void* ptr, size_t size) {
+    return protect_memory(ptr, size, Protection::READ);
+}
+
+bool PlatformMemory::protect_readwrite(void* ptr, size_t size) {
+    return protect_memory(ptr, size, Protection::READ_WRITE);
+}
 
 bool PlatformMemory::lock_memory(void* ptr, size_t size) {
     if (!ptr || size == 0) {
@@ -199,6 +237,29 @@ int PlatformMemory::protection_to_native(Protection protection) {
 #endif // __linux__
 
 #ifdef _WIN32
+
+void* PlatformMemory::allocate_protected(size_t size) {
+    void* ptr = VirtualAlloc(nullptr, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+    if (!ptr) {
+        last_error = "VirtualAlloc failed: " + std::to_string(GetLastError());
+    }
+    return ptr;
+}
+
+void PlatformMemory::deallocate_protected(void* ptr, size_t size) {
+    (void)size; // Size not needed for VirtualFree
+    if (ptr && !VirtualFree(ptr, 0, MEM_RELEASE)) {
+        last_error = "VirtualFree failed: " + std::to_string(GetLastError());
+    }
+}
+
+bool PlatformMemory::protect_readonly(void* ptr, size_t size) {
+    return protect_memory(ptr, size, Protection::READ);
+}
+
+bool PlatformMemory::protect_readwrite(void* ptr, size_t size) {
+    return protect_memory(ptr, size, Protection::READ_WRITE);
+}
 
 bool PlatformMemory::lock_memory(void* ptr, size_t size) {
     if (!ptr || size == 0) {
@@ -352,6 +413,30 @@ int PlatformMemory::protection_to_native(Protection protection) {
 
 #ifdef __APPLE__
 
+void* PlatformMemory::allocate_protected(size_t size) {
+    void* ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == MAP_FAILED) {
+        last_error = "mmap failed: " + std::to_string(errno);
+        return nullptr;
+    }
+    return ptr;
+}
+
+void PlatformMemory::deallocate_protected(void* ptr, size_t size) {
+    if (ptr && munmap(ptr, size) != 0) {
+        last_error = "munmap failed: " + std::to_string(errno);
+    }
+}
+
+bool PlatformMemory::protect_readonly(void* ptr, size_t size) {
+    return protect_memory(ptr, size, Protection::READ);
+}
+
+bool PlatformMemory::protect_readwrite(void* ptr, size_t size) {
+    return protect_memory(ptr, size, Protection::READ_WRITE);
+}
+
 bool PlatformMemory::lock_memory(void* ptr, size_t size) {
     if (!ptr || size == 0) {
         last_error = "Invalid parameters";
@@ -497,6 +582,30 @@ int PlatformMemory::protection_to_native(Protection protection) {
 #endif 
 
 #ifdef __FreeBSD__
+
+void* PlatformMemory::allocate_protected(size_t size) {
+    void* ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE,
+                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (ptr == MAP_FAILED) {
+        last_error = "mmap failed: " + std::to_string(errno);
+        return nullptr;
+    }
+    return ptr;
+}
+
+void PlatformMemory::deallocate_protected(void* ptr, size_t size) {
+    if (ptr && munmap(ptr, size) != 0) {
+        last_error = "munmap failed: " + std::to_string(errno);
+    }
+}
+
+bool PlatformMemory::protect_readonly(void* ptr, size_t size) {
+    return protect_memory(ptr, size, Protection::READ);
+}
+
+bool PlatformMemory::protect_readwrite(void* ptr, size_t size) {
+    return protect_memory(ptr, size, Protection::READ_WRITE);
+}
 
 bool PlatformMemory::lock_memory(void* ptr, size_t size) {
     if (!ptr || size == 0) {

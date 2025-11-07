@@ -1,5 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <thread>
+#include <algorithm>
 
 #include "core_ai_service.hh"
 #include "model_benchmarker.hh"
@@ -113,7 +115,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
               py::arg("use_gpu") = true,
               py::arg("flash_attn") = false,
               py::arg("audio_ctx") = 0,
-              py::arg("n_threads") = std::min(4, (int32_t)std::thread::hardware_concurrency()))
+              py::arg("n_threads") = (std::min)(4, (int32_t)std::thread::hardware_concurrency()))
          .def_static("from_dict", [](const py::dict &d)
                      {
                               HegemonikonWhisperModelParams params;
@@ -122,7 +124,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
                               params.use_gpu = d.attr("get")("use_gpu", true).cast<bool>();
                               params.flash_attn = d.attr("get")("flash_attn", false).cast<bool>();
                               params.audio_ctx = d.attr("get")("audio_ctx", 0).cast<int32_t>();
-                              params.n_threads = d.attr("get")("n_threads", std::min(4, (int32_t)std::thread::hardware_concurrency())).cast<int32_t>();
+                              params.n_threads = d.attr("get")("n_threads", (std::min)(4, (int32_t)std::thread::hardware_concurrency())).cast<int32_t>();
                               return params; })
          .def_readwrite("model", &HegemonikonWhisperModelParams::model, "Path to the Whisper GGUF model file.")
          .def_readwrite("language", &HegemonikonWhisperModelParams::language, "Language for the Whisper model (e.g., 'en', 'auto').")
@@ -225,7 +227,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
               py::arg("text"))
          .def("detokenization", &CoreAIService::detokenization, "Detokenize a list of tokens into text",
               py::arg("tokens"));
-              
+
      py::class_<HegemonikonQuantizedModelInfo>(m, "HegemonikonQuantizedModelInfo", "Information about a quantized model.")
          .def(py::init<>())
          .def_readwrite("model_id", &HegemonikonQuantizedModelInfo::model_id, "Unique identifier for the model.")
@@ -238,7 +240,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
              HegemonikonQuantizedModelInfo info;
              info.model_id = d.attr("get")("model_id", "").cast<std::string>();
              info.local_path = d.attr("get")("local_path", "").cast<std::string>();
-             info.last_modified = d.attr("get")("last_modified", 0).cast<std::string>();
+             info.last_modified = d.attr("get")("last_modified", "").cast<std::string>();
              info.quantization = d.attr("get")("quantization", "").cast<std::string>();
              info.fileSize = d.attr("get")("fileSize", 0).cast<int64_t>();
              return info; })
@@ -296,10 +298,9 @@ PYBIND11_MODULE(hegemonikon_py, m)
      py::class_<HegemonikonBenchmarkResult>(m, "HegemonikonBenchmarkResult", "Result of a model benchmark.")
          .def(py::init<const std::string &>(), "Constructor with model ID")
          .def_readwrite("metrics", &HegemonikonBenchmarkResult::metrics, "Parameters used for the benchmark.")
-     //     .def_readwrite("benchmark_params", &HegemonikonBenchmarkResult::benchmark_params, "Benchmark parameters used during the benchmark.")
-     //     .def_readwrite("llama_model_params", &HegemonikonBenchmarkResult::llama_model_params, "Quantized model information used during the benchmark.")
+         //     .def_readwrite("benchmark_params", &HegemonikonBenchmarkResult::benchmark_params, "Benchmark parameters used during the benchmark.")
+         //     .def_readwrite("llama_model_params", &HegemonikonBenchmarkResult::llama_model_params, "Quantized model information used during the benchmark.")
          .def_readwrite("model_id", &HegemonikonBenchmarkResult::model_id, "ID of the model being benchmarked.")
-         .def_readwrite("metrics", &HegemonikonBenchmarkResult::metrics, "Metrics collected during the benchmark.")
          .def_readwrite("generated_text", &HegemonikonBenchmarkResult::generated_text, "Text generated during the benchmark.")
          .def_readwrite("promptUsed", &HegemonikonBenchmarkResult::promptUsed, "Prompt used for the benchmark.")
          .def("calculate_statistics", &HegemonikonBenchmarkResult::calculateStatistics, "Calculate statistical summaries from the benchmark metrics.");
@@ -341,10 +342,10 @@ PYBIND11_MODULE(hegemonikon_py, m)
      py::class_<HegemonikonLlamaBenchmarker>(m, "HegemonikonLlamaBenchmarker", "Benchmarks LLM models for performance and metrics.")
          .def(py::init<>(), "Default constructor")
          .def("benchmark_single_model", &HegemonikonLlamaBenchmarker::benchmarkSingleModel, "Benchmark a single LLM model",
-              py::arg("quantized_model_info"), py::arg("benchmark_params"), py::arg("llama_model_params"), 
+              py::arg("quantized_model_info"), py::arg("benchmark_params"), py::arg("llama_model_params"),
               "Runs a benchmark for a single model.",
               py::call_guard<py::gil_scoped_release>())
-          .def("request_cancellation", &HegemonikonLlamaBenchmarker::requestCancellation, "Request cancellation of an ongoing benchmark.");
+         .def("request_cancellation", &HegemonikonLlamaBenchmarker::requestCancellation, "Request cancellation of an ongoing benchmark.");
 
      py::class_<SecureKey>(m, "SecureKey", "A C++ class to hold sensitive data (like encryption keys) in locked memory.")
          .def("data", [](const SecureKey &self)
@@ -360,7 +361,7 @@ PYBIND11_MODULE(hegemonikon_py, m)
            {
 
                 char *salt_buffer;
-                ssize_t salt_length;
+                py::ssize_t salt_length;
                 if (PYBIND11_BYTES_AS_STRING_AND_SIZE(salt_bytes.ptr(), &salt_buffer, &salt_length))
                 {
                      throw std::runtime_error("Unable to process salt bytes");

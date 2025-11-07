@@ -1,7 +1,6 @@
 #pragma once
 #include <cstring>
 #include <memory>
-#include <sys/mman.h>
 #include <stdexcept>
 #include <vector>
 #include <iostream>
@@ -71,7 +70,7 @@ private:
     }
 
 public:
-    explicit SecureString(const char *str) : data(nullptr), length(0), capacity(0)
+    explicit SecureString(const char *str) : data(nullptr), length(0), capacity(0), is_locked(false)
     {
         if (str)
         {
@@ -81,7 +80,7 @@ public:
         }
     }
 
-    explicit SecureString(const std::string &str) : data(nullptr), length(0), capacity(0)
+    explicit SecureString(const std::string &str) : data(nullptr), length(0), capacity(0), is_locked(false)
     {
         if (!str.empty())
         {
@@ -91,7 +90,7 @@ public:
         }
     }
 
-    SecureString() : data(nullptr), length(0), capacity(0) {}
+    SecureString() : data(nullptr), length(0), capacity(0), is_locked(false) {}
 
     ~SecureString()
     {
@@ -102,11 +101,12 @@ public:
     SecureString &operator=(const SecureString &) = delete;
 
     SecureString(SecureString &&other) noexcept
-        : data(other.data), length(other.length), capacity(other.capacity)
+        : data(other.data), length(other.length), capacity(other.capacity), is_locked(other.is_locked)
     {
         other.data = nullptr;
         other.length = 0;
         other.capacity = 0;
+        other.is_locked = false;
     }
 
     SecureString &operator=(SecureString &&other) noexcept
@@ -118,10 +118,12 @@ public:
             data = other.data;
             length = other.length;
             capacity = other.capacity;
+            is_locked = other.is_locked;
 
             other.data = nullptr;
             other.length = 0;
             other.capacity = 0;
+            other.is_locked = false;
         }
         return *this;
     }
@@ -141,24 +143,25 @@ public:
     /**
      * @brief Constructs a LockedMemory object that allocates and locks a memory region.
      *
-     * Allocates a memory block of the specified size with 4096-byte alignment using aligned_alloc.
-     * The allocated memory is then locked into RAM using mlock to prevent it from being swapped out.
+     * Allocates a memory block of the specified size with page alignment using PlatformMemory.
+     * The allocated memory is then locked into RAM to prevent it from being swapped out.
      * If allocation or locking fails, the constructor throws an exception.
      *
      * @param sz The size (in bytes) of the memory region to allocate and lock.
      * @throws std::bad_alloc if memory allocation fails.
-     * @throws std::runtime_error if locking the memory with mlock fails.
+     * @throws std::runtime_error if locking the memory fails.
      */
-    LockedMemory(size_t sz) : size(sz)
+    LockedMemory(size_t sz) : ptr(nullptr), size(sz)
     {
-        ptr = aligned_alloc(4096, size);
+        size_t page_size = PlatformMemory::get_page_size();
+        ptr = PlatformMemory::allocate_aligned(size, page_size);
         if (!ptr)
             throw std::bad_alloc();
 
-        if (mlock(ptr, size) != 0)
+        if (!PlatformMemory::lock_memory(ptr, size))
         {
-            free(ptr);
-            throw std::runtime_error("Failed to lock memory");
+            PlatformMemory::deallocate_aligned(ptr);
+            throw std::runtime_error("Failed to lock memory: " + PlatformMemory::get_last_error());
         }
     }
 
@@ -177,7 +180,6 @@ public:
         other.size = 0;
     }
 
-
     /**
      * @brief Move assignment operator for LockedMemory.
      *
@@ -193,8 +195,8 @@ public:
         if (this != &other) {
             if (ptr) {
                 secure_memset(ptr, 0, size);
-                munlock(ptr, size);
-                free(ptr);
+                PlatformMemory::unlock_memory(ptr, size);
+                PlatformMemory::deallocate_aligned(ptr);
             }
 
             ptr = other.ptr;
@@ -210,7 +212,7 @@ public:
      * @brief Destructor for the LockedMemory class.
      *
      * This destructor securely erases the memory region pointed to by `ptr` using `secure_memset`,
-     * unlocks the memory with `munlock`, and then frees the allocated memory.
+     * unlocks the memory, and then frees the allocated memory.
      * These steps ensure that sensitive data is not left in memory after the object is destroyed.
      *
      * If `ptr` is null, no action is taken.
@@ -220,8 +222,8 @@ public:
         if (ptr)
         {
             secure_memset(ptr, 0, size);
-            munlock(ptr, size);
-            free(ptr);
+            PlatformMemory::unlock_memory(ptr, size);
+            PlatformMemory::deallocate_aligned(ptr);
         }
     }
 
@@ -238,27 +240,26 @@ public:
     /**
      * @brief Constructs a ProtectedMemory object that allocates and locks a memory region.
      *
-     * This constructor allocates a memory region of the specified size using mmap with
-     * read and write permissions. The allocated memory is then locked into RAM using mlock
-     * to prevent it from being swapped to disk. If either mmap or mlock fails, a
+     * This constructor allocates a memory region of the specified size using platform-specific
+     * memory mapping with read and write permissions. The allocated memory is then locked into 
+     * RAM to prevent it from being swapped to disk. If either allocation or locking fails, a
      * std::runtime_error is thrown.
      *
      * @param sz The size (in bytes) of the memory region to allocate and lock.
-     * @throws std::runtime_error if memory allocation (mmap) or locking (mlock) fails.
+     * @throws std::runtime_error if memory allocation or locking fails.
      */
-    ProtectedMemory(size_t sz) : size(sz)
+    ProtectedMemory(size_t sz) : ptr(nullptr), size(sz)
     {
-        ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE,
-                   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-        if (ptr == MAP_FAILED)
+        ptr = PlatformMemory::allocate_protected(size);
+        if (!ptr)
         {
-            throw std::runtime_error("mmap failed");
+            throw std::runtime_error("Protected memory allocation failed");
         }
 
-        if (mlock(ptr, size) != 0)
+        if (!PlatformMemory::lock_memory(ptr, size))
         {
-            munmap(ptr, size);
-            throw std::runtime_error("mlock failed");
+            PlatformMemory::deallocate_protected(ptr, size);
+            throw std::runtime_error("Failed to lock protected memory: " + PlatformMemory::get_last_error());
         }
     }
 
@@ -266,18 +267,18 @@ public:
      * @brief Destructor for the ProtectedMemory class.
      *
      * This destructor securely erases the memory region pointed to by `ptr` by overwriting it with zeros
-     * using `secure_memset`, then unlocks the memory with `munlock`, and finally unmaps it with `munmap`.
-     * These operations are only performed if `ptr` is not equal to `MAP_FAILED`.
+     * using `secure_memset`, then unlocks the memory and unmaps it.
+     * These operations are only performed if `ptr` is not null.
      *
      * Ensures that sensitive data is not left in memory after the object is destroyed.
      */
     ~ProtectedMemory()
     {
-        if (ptr != MAP_FAILED)
+        if (ptr)
         {
             secure_memset(ptr, 0, size);
-            munlock(ptr, size);
-            munmap(ptr, size);
+            PlatformMemory::unlock_memory(ptr, size);
+            PlatformMemory::deallocate_protected(ptr, size);
         }
     }
 
@@ -285,14 +286,14 @@ public:
      * @brief Sets the memory region pointed to by `ptr` to read-only.
      *
      * This function changes the protection of the memory region of size `size`
-     * starting at address `ptr` to allow only read access using `mprotect`.
-     * Any attempt to write to this region after this call will result in a segmentation fault.
+     * starting at address `ptr` to allow only read access.
+     * Any attempt to write to this region after this call will result in an access violation.
      *
      * @note The `ptr` and `size` members must be properly initialized before calling this function.
      */
     void make_readonly()
     {
-        mprotect(ptr, size, PROT_READ);
+        PlatformMemory::protect_readonly(ptr, size);
     }
 
     void *get() { return ptr; }
@@ -300,16 +301,14 @@ public:
     /**
      * @brief Changes the memory protection of the region pointed to by `ptr` to allow both reading and writing.
      *
-     * This function uses `mprotect` to set the memory region of size `size` starting at `ptr`
-     * to have read and write permissions (`PROT_READ | PROT_WRITE`).
+     * This function sets the memory region of size `size` starting at `ptr`
+     * to have read and write permissions.
      * It is typically used to temporarily make a memory region writable, for example,
      * when modifying code or data that is otherwise protected.
-     *
-     * @note The function does not check the return value of `mprotect`. Consider handling errors as needed.
      */
     void make_readwrite()
     {
-        mprotect(ptr, size, PROT_READ | PROT_WRITE);
+        PlatformMemory::protect_readwrite(ptr, size);
     }
 };
 
@@ -322,8 +321,8 @@ public:
     /**
      * @brief Allocates aligned memory for n objects of type T and locks it into RAM.
      *
-     * This function allocates memory aligned to a 4096-byte boundary for an array of n elements of type T.
-     * The allocated memory is then locked into physical RAM using mlock to prevent it from being swapped out.
+     * This function allocates memory aligned to page boundaries for an array of n elements of type T.
+     * The allocated memory is then locked into physical RAM to prevent it from being swapped out.
      * If allocation or locking fails, appropriate exceptions are thrown.
      *
      * @param n The number of objects of type T to allocate.
@@ -334,14 +333,15 @@ public:
     T *allocate(size_t n)
     {
         size_t size = n * sizeof(T);
-        void *ptr = aligned_alloc(4096, size);
+        size_t page_size = PlatformMemory::get_page_size();
+        void *ptr = PlatformMemory::allocate_aligned(size, page_size);
         if (!ptr)
             throw std::bad_alloc();
 
-        if (mlock(ptr, size) != 0)
+        if (!PlatformMemory::lock_memory(ptr, size))
         {
-            free(ptr);
-            throw std::runtime_error("Failed to lock memory");
+            PlatformMemory::deallocate_aligned(ptr);
+            throw std::runtime_error("Failed to lock memory: " + PlatformMemory::get_last_error());
         }
 
         return static_cast<T *>(ptr);
@@ -351,8 +351,8 @@ public:
      * @brief Deallocates memory securely by zeroing out its contents, unlocking it from RAM, and freeing it.
      *
      * This function first overwrites the memory pointed to by `ptr` with zeros using `secure_memset`
-     * to prevent sensitive data from lingering in memory. It then unlocks the memory region using
-     * `munlock`, and finally frees the memory using `free`.
+     * to prevent sensitive data from lingering in memory. It then unlocks the memory region and
+     * finally frees the memory.
      *
      * @tparam T Type of the elements pointed to by `ptr`.
      * @param ptr Pointer to the memory block to deallocate.
@@ -364,8 +364,8 @@ public:
         {
             size_t size = n * sizeof(T);
             secure_memset(ptr, 0, size);
-            munlock(ptr, size);
-            free(ptr);
+            PlatformMemory::unlock_memory(ptr, size);
+            PlatformMemory::deallocate_aligned(ptr);
         }
     }
 };
@@ -380,7 +380,6 @@ public:
     SecureKey(const uint8_t *key, size_t size)
         : key_data(nullptr, &PlatformMemory::deallocate_aligned), key_size(size)
     {
-
         size_t page_size = PlatformMemory::get_page_size();
 
         void *ptr = PlatformMemory::allocate_aligned(key_size, page_size);
