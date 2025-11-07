@@ -26,7 +26,6 @@ struct ApiState(Mutex<Option<ApiInfo>>);
 pub struct ApiProcess(Mutex<Option<CommandChild>>);
 
 impl ApiState {
-    // Helper methods for safe, concurrent access to the state
     fn set_info(&self, info: ApiInfo) {
         let mut guard = self.0.lock().unwrap();
         *guard = Some(info);
@@ -85,18 +84,25 @@ fn stop_python_sidecar(state: State<'_, ApiProcess>) -> Result<(), String> {
 async fn start_python_sidecar(
     app_handle: AppHandle,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("Resolving path for Python sidecar executable...");
+    println!("Resolving path for Python sidecar executable 'api'...");
     
     let api_state: State<ApiState> = app_handle.state();
     let api_process_state: State<ApiProcess> = app_handle.state();
 
+    let executable_name = if cfg!(target_os = "windows") {
+        "api.exe"
+    } else {
+        "api"
+    };
+
+    let resource_path = format!("py_src/{}", executable_name);
+    
     let executable_path = app_handle
         .path()
-        .resolve("py_src/api", tauri::path::BaseDirectory::Resource)?;
+        .resolve(&resource_path, tauri::path::BaseDirectory::Resource)?;
     
     println!("Starting Python sidecar from: {:?}", executable_path);
 
-    // This direct execution is a clean simplification from your new version.
     let (mut rx, child) = app_handle.shell().command(&executable_path).spawn()?;
     
     *api_process_state.0.lock().unwrap() = Some(child);
@@ -183,4 +189,3 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
-

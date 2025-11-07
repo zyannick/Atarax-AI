@@ -20,18 +20,7 @@
     "security": {
       "csp": null,
       "capabilities": [
-        {
-          "identifier": "run-python-sidecar-capability",
-          "windows": ["main"],
-          "permissions": [
-            {
-              "identifier": "shell:allow-execute",
-              "level": "ask",
-              "cmd": "python3",
-              "args": ["-u", { "value": "$RESOURCE/py_src/api" }]
-            }
-          ]
-        }
+        
       ]
     }
   },
@@ -45,8 +34,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "externalBin": [],
+
     "resources": [
-      "py_src/api"
+      "py_src"
     ]
   },
   "plugins": {
