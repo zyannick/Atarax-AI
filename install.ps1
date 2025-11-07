@@ -33,7 +33,7 @@ if ($useuv) {
         exit 1
     }
     Write-Host "Creating 'uv' virtual environment..."
-    uv venv .venv --clear
+    uv venv .venv -p 3.12 --clear
     
     .\.venv\Scripts\Activate.ps1
     

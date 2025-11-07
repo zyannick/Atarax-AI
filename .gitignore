@@ -17,6 +17,8 @@ ataraxai.log
 
 logs/
 
+api.spec
+
 ataraxai.praxis.chat
 ataraxai.praxis.rag
 ataraxai.praxis.vault

@@ -38,7 +38,7 @@ if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host "Creating build virtual environment..."
-uv venv $VENV_DIR --clear
+uv venv $VENV_DIR -p 3.12 --clear
 
 & "$VENV_DIR\Scripts\Activate.ps1"
 

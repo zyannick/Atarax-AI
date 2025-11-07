@@ -17,11 +17,9 @@ for arg in "$@"; do
     case $arg in
     --use-cuda)
         USE_CUDA=1
-        # SETUP_ARGS logic removed
         ;;
     --cuda-arch=*)
         CUDA_ARCH="${arg#*=}"
-        # SETUP_ARGS logic removed
         ;;
     *)
         echo "Unknown option: $arg. Supported options: --use-cuda, --cuda-arch=<arch>"
@@ -40,11 +38,10 @@ if ! command -v uv &>/dev/null; then
     echo "Error: uv is not installed or not in PATH."
     exit 1
 fi
-uv venv "$VENV_DIR" --clear
+uv venv "$VENV_DIR" -p 3.12 --clear
 source "$VENV_DIR/bin/activate"
 uv pip install --no-cache-dir cmake scikit-build ninja pyinstaller
 
-echo "[i] Third-party dependencies are now handled by CMake (FetchContent)."
 
 if [[ $USE_CUDA -eq 1 ]]; then
     CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=ON"
@@ -55,6 +52,7 @@ else
     CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=OFF"
 fi
 CMAKE_ARGS_STR+=" -DGGML_ARM_I8MM=OFF"
+CMAKE_ARGS_STR+=" -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
 
 PYTHON_EXECUTABLE=$(which python)
 PYTHON_INCLUDE_DIR=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
@@ -122,7 +120,7 @@ mkdir -p "$DEV_TARGET_DIR"
 cp -r "$ARTIFACT_DIR"/* "$DEV_TARGET_DIR"/
 
 echo "Build artifacts copied to:"
-echo "  - $TAURI_RESOURCE_DIR (for production builds)"
-echo "  - $DEV_TARGET_DIR (for dev mode)"
+echo "   - $TAURI_RESOURCE_DIR (for production builds)"
+echo "   - $DEV_TARGET_DIR (for dev mode)"
 
 deactivate
