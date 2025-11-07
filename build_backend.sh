@@ -10,7 +10,7 @@ VENV_DIR=".venv_build"
 
 USE_CUDA=0
 CUDA_ARCH=""
-SETUP_ARGS=""
+# SETUP_ARGS removed
 CMAKE_ARGS_STR=""
 
 
@@ -18,11 +18,11 @@ for arg in "$@"; do
     case $arg in
     --use-cuda)
         USE_CUDA=1
-        SETUP_ARGS+=" --use-cuda"
+        # SETUP_ARGS logic removed
         ;;
     --cuda-arch=*)
         CUDA_ARCH="${arg#*=}"
-        SETUP_ARGS+=" --cuda-arch=${CUDA_ARCH}"
+        # SETUP_ARGS logic removed
         ;;
     *)
         echo "Unknown option: $arg. Supported options: --use-cuda, --cuda-arch=<arch>"
@@ -45,13 +45,7 @@ uv venv "$VENV_DIR" --clear
 source "$VENV_DIR/bin/activate"
 uv pip install --no-cache-dir cmake scikit-build ninja pyinstaller
 
-
-if [ -f "setup_third_party.sh" ]; then
-    ./setup_third_party.sh ${SETUP_ARGS}
-else
-    echo "Warning: setup_third_party.sh not found."
-fi
-
+echo "[i] Third-party dependencies are now handled by CMake (FetchContent)."
 
 if [[ $USE_CUDA -eq 1 ]]; then
     CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=ON"
@@ -71,13 +65,10 @@ cmake -S . -B "$ABS_BUILD_DIR" \
     -DPython_INCLUDE_DIR=${PYTHON_INCLUDE_DIR} \
     ${CMAKE_ARGS_STR}
 
-
 cmake --build "$ABS_BUILD_DIR" --config Release -- -j $(nproc)
-
 
 export CMAKE_ARGS="${CMAKE_ARGS_STR}"
 uv pip install --no-cache-dir -e .
-
 
 CPP_EXTENSION_PATH=$(find "$ABS_BUILD_DIR" -name "hegemonikon_py*.so" -print -quit)
 if [ -z "$CPP_EXTENSION_PATH" ]; then
@@ -136,4 +127,3 @@ echo "  - $TAURI_RESOURCE_DIR (for production builds)"
 echo "  - $DEV_TARGET_DIR (for dev mode)"
 
 deactivate
-

@@ -6,7 +6,6 @@ CLEAN_CCACHE=0
 USE_CONDA=0
 USE_CUDA=0
 CUDA_ARCH=""
-SETUP_ARGS=""
 CMAKE_ARGS_STR=""
 ONLY_CPP=0
 USE_UV=0
@@ -16,7 +15,6 @@ for arg in "$@"; do
 	--clean) CLEAN=1 ;;
 	--use-cuda)
 		USE_CUDA=1
-		SETUP_ARGS+=" --use-cuda"
 		;;
 	--clean-ccache)
 		CLEAN_CCACHE=1
@@ -25,16 +23,13 @@ for arg in "$@"; do
 		;;
 	--cuda-arch=*)
 		CUDA_ARCH="${arg#*=}"
-		SETUP_ARGS+=" --cuda-arch=${CUDA_ARCH}"
 		;;
 	--only-cpp)
 		ONLY_CPP=1
-		SETUP_ARGS+=" --only-cpp"
 		echo "[+] Only building C++ components."
 		;;
 	--use-conda)
 		USE_CONDA=1
-		SETUP_ARGS+=" --use-conda"
 		;;
 	--use-uv)
 		USE_UV=1
@@ -80,48 +75,43 @@ else
 	pip uninstall ataraxai -y || true
 fi
 
-if [ -f "setup_third_party.sh" ]; then
-	echo "[+] Setting up third-party libraries..."
-	./setup_third_party.sh ${SETUP_ARGS}
-fi
+echo "[i] Third-party dependencies will be handled by CMake (FetchContent)."
+
 
 if [[ $USE_CUDA -eq 1 ]]; then
 	echo "[+] Configuring build for CUDA=ON"
 	CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=ON"
-
 	if [ -n "$CUDA_ARCH" ]; then
-		echo "[+] Using CUDA architectures from --cuda-arch argument: $CUDA_ARCH"
 		CMAKE_ARGS_STR+=" -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCH}"
-	elif [ -n "$CMAKE_CUDA_ARCHITECTURES" ]; then
-		echo "[+] Using CUDA architectures from CMAKE_CUDA_ARCHITECTURES environment variable: $CMAKE_CUDA_ARCHITECTURES"
-		CMAKE_ARGS_STR+=" -DCMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES}"
-	else
-		echo "[!] No CUDA architecture specified, letting CMake auto-detect (may default to native)."
 	fi
 else
 	echo "[+] Configuring build for CUDA=OFF"
 	CMAKE_ARGS_STR="-DATARAXAI_USE_CUDA=OFF"
 fi
 
-CMAKE_ARGS_STR+=" -DBUILD_TESTING=ON -DPYTHON_EXECUTABLE=$(which python3)"
+CMAKE_ARGS_STR+=" -DBUILD_TESTING=ON"
 
+# Set CMAKE_ARGS for pip/scikit-build to pick up
 export CMAKE_ARGS="${CMAKE_ARGS_STR}"
 echo "[i] CMake arguments for pip: ${CMAKE_ARGS}"
 
+# We still run cmake manually to build the test targets
 PYTHON_EXECUTABLE=$(which python3)
 if [ -z "$PYTHON_EXECUTABLE" ]; then
-	echo "Error: python3 not found in PATH. Please ensure Python 3 is installed and available."
+	echo "Error: python3 not found in PATH."
 	exit 1
 fi
 PYTHON_INCLUDE_DIR=$(python3 -c "import sysconfig; print(sysconfig.get_path('include'))")
 
+echo "[+] Configuring CMake..."
 cmake -S . -B build \
 	-DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE} \
-	-DPython_INCLUDE_DIR=${PYTHON_INCLUDE_DIR}
+	-DPython_INCLUDE_DIR=${PYTHON_INCLUDE_DIR} \
+	${CMAKE_ARGS_STR}
 
-cmake --build build --config Release
-
-cmake --build build --target hegemonikon_tests
+echo "[+] Building C++ targets (including tests)..."
+cmake --build build --config Release -- -j $(nproc)
+cmake --build build --target hegemonikon_tests --config Release
 
 if [[ $ONLY_CPP -eq 1 ]]; then
 	echo "[+] C++ build complete. Exiting due to --only-cpp flag."
@@ -129,12 +119,14 @@ if [[ $ONLY_CPP -eq 1 ]]; then
 	exit 0
 fi
 
+echo "[+] Installing Python package..."
 if [[ $USE_UV -eq 1 ]]; then
 	uv pip install -e .
 else
 	python3 -m pip install -e .
 fi
 
+echo "[+] Verifying installation..."
 python3 -c "from ataraxai import hegemonikon_py; print('[SUCCESS] Atarax-AI installed and core module is importable!')"
 if [[ $USE_UV -eq 1 ]]; then
 	deactivate
