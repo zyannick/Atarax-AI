@@ -10,7 +10,6 @@ VENV_DIR=".venv_build"
 
 USE_CUDA=0
 CUDA_ARCH=""
-# SETUP_ARGS removed
 CMAKE_ARGS_STR=""
 
 
