@@ -75,16 +75,18 @@ Write-Host "Installing Python package..."
 uv pip install --no-cache-dir -e .
 
 Write-Host "Locating compiled artifacts..."
-$CPP_EXTENSION_PATH = (Get-ChildItem -Path $ABS_BUILD_DIR -Filter "hegemonikon_py*.pyd" -Recurse | Select-Object -First 1).FullName
+
+$SEARCH_PATH = Join-Path $VENV_DIR "Lib\site-packages\ataraxai"
+
+$CPP_EXTENSION_PATH = (Get-ChildItem -Path $SEARCH_PATH -Filter "hegemonikon_py*.pyd" -Recurse | Select-Object -First 1).FullName
 
 if (-not $CPP_EXTENSION_PATH) {
-    Write-Error "ERROR: Could not find compiled C++ extension (hegemonikon_py*.pyd) anywhere inside '$ABS_BUILD_DIR'. Build failed."
-    Write-Host "Dumping directory contents:"
-    Get-ChildItem -Path $ABS_BUILD_DIR -Recurse | Select-Object FullName
+    Write-Error "ERROR: Could not find compiled C++ extension (hegemonikon_py*.pyd) inside '$SEARCH_PATH'. Build failed."
+    Write-Host "Dumping directory contents of $SEARCH_PATH"
+    Get-ChildItem -Path $SEARCH_PATH -Recurse | Select-Object FullName
     deactivate
     exit 1
 }
-
 
 Write-Host "Found C++ extension at: $CPP_EXTENSION_PATH"
 
@@ -121,7 +123,6 @@ pyinstaller --noconfirm `
             --exclude-module IPython `
             api.py
 
-# --- 13. Copy Artifacts ---
 Write-Host "Copying artifacts to Tauri directory..."
 $ARTIFACT_DIR = Join-Path $DIST_DIR "api"
 New-Item -ItemType Directory -Path $TAURI_RESOURCE_DIR -Force
