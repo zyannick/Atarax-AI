@@ -7,40 +7,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(ATARAXAI_USE_CUDA "Enable CUDA support for AtaraxAI" OFF)
 
 include(FetchContent)
+
 FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11.git
     GIT_TAG v2.12.0 
 )
 FetchContent_MakeAvailable(pybind11)
-
-if(NOT TARGET llama)
-    set(LLAMA_BUILD_TESTS OFF CACHE BOOL "")
-    set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "")
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
-    set(GGML_CUDA ${ATARAXAI_USE_CUDA} CACHE BOOL "")
-    
-    FetchContent_Declare(
-        llama_cpp
-        GIT_REPOSITORY https://github.com/ggml-org/llama.cpp.git
-        GIT_TAG b6935
-    )
-    FetchContent_MakeAvailable(llama_cpp)
-endif()
-
-if(NOT TARGET whisper)
-    set(WHISPER_BUILD_TESTS OFF CACHE BOOL "")
-    set(WHISPER_BUILD_EXAMPLES OFF CACHE BOOL "")
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
-    set(GGML_CUDA ${ATARAXAI_USE_CUDA} CACHE BOOL "")
-    
-    FetchContent_Declare(
-        whisper_cpp
-        GIT_REPOSITORY https://github.com/ggml-org/whisper.cpp.git
-        GIT_TAG v1.8.2
-    )
-    FetchContent_MakeAvailable(whisper_cpp)
-endif()
 
 find_package(Python REQUIRED COMPONENTS Interpreter Development)
 if(NOT Python_FOUND)

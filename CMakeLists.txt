@@ -5,12 +5,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(ATARAXAI_USE_CUDA "Enable CUDA support for AtaraxAI" OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+option(ATARAXAI_USE_CUDA "Enable CUDA support for AtaraxAI" OFF)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include(FetchContent)
-
 
 set(LLAMA_BUILD_TESTS OFF CACHE BOOL "")
 set(LLAMA_BUILD_EXAMPLES OFF CACHE BOOL "")
@@ -22,7 +22,6 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/ggml-org/llama.cpp.git
   GIT_TAG b6935
 )
-
 FetchContent_MakeAvailable(llama_cpp)
 
 set(WHISPER_BUILD_TESTS OFF CACHE BOOL "")
@@ -39,6 +38,5 @@ FetchContent_Declare(
   GIT_TAG v1.8.2
 )
 FetchContent_MakeAvailable(whisper_cpp)
-
 
 add_subdirectory(ataraxai/hegemonikon)
