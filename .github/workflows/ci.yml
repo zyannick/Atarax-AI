@@ -14,6 +14,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Free up disk space
+        run: |
+          echo "Initial disk space:"
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          echo "Disk space after cleanup:"
+          df -h
 
       - name: Install system dependencies
         run: |
@@ -119,7 +130,7 @@ jobs:
             artifact_pattern: |
               ataraxai-ui/src-tauri/target/release/bundle/**/*.dmg
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
+            target: x86_664-pc-windows-msvc
             build_script: .\build_backend.ps1
             artifact_pattern: |
               ataraxai-ui/src-tauri/target/release/bundle/**/*.msi
@@ -129,6 +140,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Free up disk space (Linux only)
+        if: matrix.platform.os == 'ubuntu-latest'
+        run: |
+          echo "Initial disk space:"
+          df -h
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /usr/share/swift
+          sudo rm -rf /opt/hostedtoolcache/CodeQL
+          echo "Disk space after cleanup:"
+          df -h
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
