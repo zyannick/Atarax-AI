@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(ATARAXAI_USE_CUDA "Enable CUDA support for AtaraxAI" OFF)
 
 include(FetchContent)
+
 FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11.git

@@ -1,17 +1,13 @@
-# Use the official NVIDIA CUDA developer image as the base
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
 
-# Set non-interactive environment for package installations
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Etc/UTC
 
-# Set NVIDIA container runtime environment variables
 ENV NVIDIA_VISIBLE_DEVICES all
 ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
 
 WORKDIR /app
 
-# Install base dependencies required for the build
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -25,7 +21,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libcurl4-openssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Add deadsnakes PPA to install Python 3.12
 RUN add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update && apt-get install -y --no-install-recommends \
     python3.12 \
@@ -33,30 +28,20 @@ RUN add-apt-repository -y ppa:deadsnakes/ppa && \
     python3.12-venv \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a virtual environment for the application
 RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Upgrade pip within the virtual environment
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
-# Copy the project files into the image
 COPY . .
-RUN chmod +x ./install.sh ./setup_third_party.sh ./clean.sh
+RUN chmod +x ./install.sh ./clean.sh
 
-# Point the build system to the Python in the virtual environment
 ENV Python_EXECUTABLE=/opt/venv/bin/python
 ENV Python_INCLUDE_DIR=/opt/venv/include
-# Note: The library path may not be needed if the venv is activated, but it's good for explicitness.
 
-# --- THIS IS THE FIX ---
-# Explicitly define the CUDA architectures to build for.
-# This prevents auto-detection failures in environments without a GPU.
-# 80, 86, 90 cover modern Ampere, Ada Lovelace, and Hopper architectures.
+
 ENV CMAKE_CUDA_ARCHITECTURES="80;86;90"
 
-# Build the application with CUDA support
 RUN ./install.sh --use-cuda
 
-# Set the command to run the application
 CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8000"]
