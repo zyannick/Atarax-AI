@@ -1,9 +1,6 @@
 #Requires -Version 5.1
 $ErrorActionPreference = "Stop"
 
-# ============================================================================
-# Configuration
-# ============================================================================
 $UI_DIR = "ataraxai-ui"
 $TAURI_RESOURCE_DIR = Join-Path $UI_DIR "src-tauri/py_src"
 $BUILD_DIR = "build"
@@ -21,9 +18,6 @@ $PARALLEL_JOBS = $env:NUMBER_OF_PROCESSORS
 $REQUIRED_PYTHON_VERSION = "3.12"
 $REQUIRED_CMAKE_VERSION = "3.20"
 
-# ============================================================================
-# Helper Functions
-# ============================================================================
 
 function Write-Log {
     param(
@@ -107,9 +101,6 @@ Examples:
     exit 0
 }
 
-# ============================================================================
-# Parse Arguments
-# ============================================================================
 
 foreach ($arg in $args) {
     switch -Regex ($arg) {
@@ -140,9 +131,6 @@ foreach ($arg in $args) {
     }
 }
 
-# ============================================================================
-# Main Build Process
-# ============================================================================
 
 try {
     Write-Log "Starting AtaraxAI build process (v$SCRIPT_VERSION)" "INFO"
@@ -154,9 +142,6 @@ try {
     Write-Log "  - Parallel Jobs: $PARALLEL_JOBS" "INFO"
     Write-Log "  - Skip Cleanup: $SKIP_CLEANUP" "INFO"
 
-    # ========================================================================
-    # Check Prerequisites
-    # ========================================================================
     
     Write-Log "Checking prerequisites..." "INFO"
     
@@ -175,9 +160,6 @@ try {
     
     Test-Version "cmake" $REQUIRED_CMAKE_VERSION | Out-Null
 
-    # ========================================================================
-    # Stop Existing Processes
-    # ========================================================================
     
     Write-Log "Checking for existing backend process..." "INFO"
     $existingProcess = Get-Process -Name "api" -ErrorAction SilentlyContinue
@@ -187,9 +169,6 @@ try {
         Start-Sleep -Seconds 1
     }
 
-    # ========================================================================
-    # Cleanup
-    # ========================================================================
     
     if (-not $SKIP_CLEANUP) {
         Write-Log "Cleaning old build directories..." "INFO"
@@ -213,9 +192,6 @@ try {
         Write-Log "Skipping cleanup (--skip-cleanup flag set)" "WARN"
     }
 
-    # ========================================================================
-    # Create Virtual Environment
-    # ========================================================================
     
     Write-Log "Creating build virtual environment..." "INFO"
     Invoke-CommandWithCheck "uv venv $VENV_DIR -p $REQUIRED_PYTHON_VERSION --seed" "Virtual environment creation"
@@ -234,16 +210,10 @@ try {
     }
     Write-Log "Virtual environment activated: $venvPython" "SUCCESS"
 
-    # ========================================================================
-    # Install Build Tools
-    # ========================================================================
     
     Write-Log "Installing build tools..." "INFO"
     Invoke-CommandWithCheck "uv pip install --no-cache-dir cmake scikit-build ninja pyinstaller" "Build tools installation"
 
-    # ========================================================================
-    # Configure CMake
-    # ========================================================================
     
     Write-Log "Configuring CMake arguments..." "INFO"
     
@@ -260,9 +230,6 @@ try {
     
     Write-Log "CMake arguments: $CMAKE_ARGS_STR" "INFO"
 
-    # ========================================================================
-    # Build C++ Extension
-    # ========================================================================
     
     $PYTHON_EXECUTABLE = (Get-Command python).Source
     $PYTHON_INCLUDE_DIR = python -c "import sysconfig; print(sysconfig.get_path('include'))"
@@ -280,17 +247,11 @@ try {
     $cmakeBuildCmd = "cmake --build `"$ABS_BUILD_DIR`" --config Release -j $PARALLEL_JOBS"
     Invoke-CommandWithCheck $cmakeBuildCmd "C++ extension build"
 
-    # ========================================================================
-    # Install Python Package
-    # ========================================================================
     
     $env:CMAKE_ARGS = $CMAKE_ARGS_STR
     Write-Log "Installing Python package..." "INFO"
     Invoke-CommandWithCheck "uv pip install --no-cache-dir -e ." "Python package installation"
 
-    # ========================================================================
-    # Locate Compiled Artifacts
-    # ========================================================================
     
     Write-Log "Locating compiled artifacts..." "INFO"
     
@@ -312,10 +273,6 @@ try {
     
     $CPP_EXTENSION_PATH = $CPP_EXTENSION_PATH.FullName
     Write-Log "Found C++ extension: $CPP_EXTENSION_PATH" "SUCCESS"
-
-    # ========================================================================
-    # Locate Python DLL
-    # ========================================================================
     
     Write-Log "Locating Python shared library..." "INFO"
     
@@ -343,9 +300,6 @@ try {
     $PYTHON_DLL_PATH = $PYTHON_DLL_PATH.FullName
     Write-Log "Found Python DLL: $PYTHON_DLL_PATH" "SUCCESS"
 
-    # ========================================================================
-    # Run PyInstaller
-    # ========================================================================
     
     Write-Log "Running PyInstaller..." "INFO"
     
@@ -371,9 +325,6 @@ pyinstaller --noconfirm ``
     
     Invoke-CommandWithCheck $pyinstallerCmd "PyInstaller bundling"
 
-    # ========================================================================
-    # Copy Artifacts to Tauri
-    # ========================================================================
     
     Write-Log "Copying artifacts to Tauri directories..." "INFO"
     
@@ -392,9 +343,6 @@ pyinstaller --noconfirm ``
     Copy-Item -Path (Join-Path $ARTIFACT_DIR "*") -Destination $DEV_TARGET_DIR -Recurse -Force
     Write-Log "Artifacts copied to: $DEV_TARGET_DIR" "SUCCESS"
 
-    # ========================================================================
-    # Build Summary
-    # ========================================================================
     
     Write-Log "Build completed successfully!" "SUCCESS"
     Write-Log "" "INFO"

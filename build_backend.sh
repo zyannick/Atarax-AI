@@ -1,15 +1,10 @@
 #!/bin/bash
 
-# ============================================================================
-# AtaraxAI Build Script for Linux/macOS
-# ============================================================================
+
 
 set -e
 set -o pipefail
 
-# ============================================================================
-# Configuration
-# ============================================================================
 UI_DIR="ataraxai-ui"
 TAURI_RESOURCE_DIR="$UI_DIR/src-tauri/py_src"
 BUILD_DIR="build"
@@ -32,10 +27,6 @@ YELLOW='\033[1;33m'
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m'
-
-# ============================================================================
-# Helper Functions
-# ============================================================================
 
 write_log() {
     local message="$1"
@@ -132,9 +123,6 @@ cleanup_on_error() {
     exit 1
 }
 
-# ============================================================================
-# Parse Arguments
-# ============================================================================
 
 for arg in "$@"; do
     case $arg in
@@ -167,9 +155,6 @@ done
 
 trap cleanup_on_error ERR
 
-# ============================================================================
-# Main Build Process
-# ============================================================================
 
 : > "$LOG_FILE"
 
@@ -182,9 +167,6 @@ write_log "  - Parallel Jobs: $PARALLEL_JOBS" "INFO"
 write_log "  - Skip Cleanup: $SKIP_CLEANUP" "INFO"
 write_log "  - Platform: $(uname -s)" "INFO"
 
-# ============================================================================
-# Check Prerequisites
-# ============================================================================
 
 write_log "Checking prerequisites..." "INFO"
 
@@ -211,9 +193,6 @@ else
     write_log "Could not detect CPU count, using default: $PARALLEL_JOBS" "WARN"
 fi
 
-# ============================================================================
-# Stop Existing Processes
-# ============================================================================
 
 write_log "Checking for existing backend process..." "INFO"
 if pkill -f "py_src/api" 2>/dev/null; then
@@ -223,9 +202,6 @@ else
     write_log "No running backend process found" "INFO"
 fi
 
-# ============================================================================
-# Cleanup
-# ============================================================================
 
 if [[ "$SKIP_CLEANUP" != true ]]; then
     write_log "Cleaning old build directories..." "INFO"
@@ -249,9 +225,6 @@ else
     write_log "Skipping cleanup (--skip-cleanup flag set)" "WARN"
 fi
 
-# ============================================================================
-# Create Virtual Environment
-# ============================================================================
 
 write_log "Creating build virtual environment..." "INFO"
 invoke_command_with_check "Virtual environment creation" \
@@ -273,17 +246,11 @@ if [[ "$VENV_PYTHON" != *"$VENV_DIR"* ]]; then
 fi
 write_log "Virtual environment activated: $VENV_PYTHON" "SUCCESS"
 
-# ============================================================================
-# Install Build Tools
-# ============================================================================
 
 write_log "Installing build tools..." "INFO"
 invoke_command_with_check "Build tools installation" \
     "uv pip install --no-cache-dir cmake scikit-build ninja pyinstaller"
 
-# ============================================================================
-# Configure CMake
-# ============================================================================
 
 write_log "Configuring CMake arguments..." "INFO"
 
@@ -302,9 +269,6 @@ CMAKE_ARGS_STR+=" -DCMAKE_POSITION_INDEPENDENT_CODE=ON"
 
 write_log "CMake arguments: $CMAKE_ARGS_STR" "INFO"
 
-# ============================================================================
-# Build C++ Extension
-# ============================================================================
 
 PYTHON_EXECUTABLE=$(which python)
 PYTHON_INCLUDE_DIR=$(python -c "import sysconfig; print(sysconfig.get_path('include'))")
@@ -322,18 +286,13 @@ write_log "Building C++ extension with $PARALLEL_JOBS parallel jobs..." "INFO"
 invoke_command_with_check "C++ extension build" \
     "cmake --build '$ABS_BUILD_DIR' --config Release -- -j $PARALLEL_JOBS"
 
-# ============================================================================
-# Install Python Package
-# ============================================================================
+
 
 export CMAKE_ARGS="${CMAKE_ARGS_STR}"
 write_log "Installing Python package..." "INFO"
 invoke_command_with_check "Python package installation" \
     "uv pip install --no-cache-dir -e ."
 
-# ============================================================================
-# Locate Compiled Artifacts
-# ============================================================================
 
 write_log "Locating compiled artifacts..." "INFO"
 
@@ -354,9 +313,6 @@ fi
 
 write_log "Found C++ extension: $CPP_EXTENSION_PATH" "SUCCESS"
 
-# ============================================================================
-# Locate Python Shared Library
-# ============================================================================
 
 write_log "Locating Python shared library..." "INFO"
 
@@ -409,9 +365,6 @@ fi
 
 write_log "Found Python shared library: $PYTHON_SHARED_LIB" "SUCCESS"
 
-# ============================================================================
-# Run PyInstaller
-# ============================================================================
 
 write_log "Running PyInstaller..." "INFO"
 
@@ -440,10 +393,6 @@ PYINSTALLER_CMD+=" api.py"
 
 invoke_command_with_check "PyInstaller bundling" "$PYINSTALLER_CMD"
 
-# ============================================================================
-# Copy Artifacts to Tauri
-# ============================================================================
-
 write_log "Copying artifacts to Tauri directories..." "INFO"
 
 ARTIFACT_DIR="$DIST_DIR/api"
@@ -462,9 +411,6 @@ mkdir -p "$DEV_TARGET_DIR"
 cp -r "$ARTIFACT_DIR"/* "$DEV_TARGET_DIR"/
 write_log "Artifacts copied to: $DEV_TARGET_DIR" "SUCCESS"
 
-# ============================================================================
-# Build Summary
-# ============================================================================
 
 write_log "════════════════════════════════════════════════════════════" "SUCCESS"
 write_log "Build completed successfully!" "SUCCESS"
