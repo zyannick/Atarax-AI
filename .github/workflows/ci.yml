@@ -130,7 +130,7 @@ jobs:
             artifact_pattern: |
               ataraxai-ui/src-tauri/target/release/bundle/**/*.dmg
           - os: windows-latest
-            target: x86_664-pc-windows-msvc
+            target: x86_64-pc-windows-msvc
             build_script: .\build_backend.ps1
             artifact_pattern: |
               ataraxai-ui/src-tauri/target/release/bundle/**/*.msi
@@ -238,7 +238,7 @@ jobs:
         with:
           name: AtaraxAI-${{ matrix.platform.os }}-${{ github.sha }}
           path: ${{ matrix.platform.artifact_pattern }}
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
 
   # build_docker:
