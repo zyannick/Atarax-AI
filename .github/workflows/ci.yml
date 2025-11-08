@@ -113,7 +113,7 @@ jobs:
   build_desktop_release:
     name: Build Desktop App on ${{ matrix.platform.os }}
     needs: test_and_lint_backend
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'pull_request' && github.base_ref == 'main') || github.ref == 'refs/heads/main'
     strategy:
       fail-fast: false
       matrix:
@@ -171,8 +171,6 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform.target }}
 
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli
@@ -200,7 +198,7 @@ jobs:
       - name: Install macOS system dependencies
         if: matrix.platform.os == 'macos-latest'
         run: |
-          brew install cmake ninja
+          brew install cmake ninja bash
 
       - name: Make build script executable (Unix)
         if: matrix.platform.os != 'windows-latest'
@@ -213,6 +211,7 @@ jobs:
       - name: Build backend artifact (Unix)
         if: matrix.platform.os != 'windows-latest'
         run: ${{ matrix.platform.build_script }}
+        shell: /usr/local/bin/bash
 
       - name: Build backend artifact (Windows)
         if: matrix.platform.os == 'windows-latest'
