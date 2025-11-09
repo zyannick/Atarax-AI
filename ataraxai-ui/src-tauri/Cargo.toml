@@ -10,7 +10,7 @@ name = "ataraxai_ui_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.4.0", features = [] }
+tauri-build = { version = "2.5.1", features = [] }
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppStore } from '../store/AppContext';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ScrollArea } from './ui/scroll-area';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Progress } from './ui/progress';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -60,9 +60,9 @@ export function ModelManagerView() {
     }, 500);
   };
 
-  const formatFileSize = (size: string) => {
-    return size;
-  };
+  // const formatFileSize = (size: string) => {
+  //   return size;
+  // };
 
   const getModelStatus = (model: typeof models[0]) => {
     if (model.isDownloaded) {

@@ -21,7 +21,7 @@ export function ChatView() {
   const {
     selectedSessionId,
     sessions,
-    messages,
+    // messages,
     isTyping,
     getMessagesBySession,
     addMessage,
@@ -91,11 +91,11 @@ export function ChatView() {
     });
   };
 
-  if (!currentSession) {
+    if (!currentSession) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
         <div className="text-center">
-          <AtaraxLogo size={48} className="mx-auto mb-4 text-muted-foreground" />
+          <AtaraxLogo className="mx-auto mb-4 text-muted-foreground w-12 h-12" />
           <h2>Welcome to Atarax-AI</h2>
           <p className="text-muted-foreground">Select a chat session to get started</p>
         </div>
@@ -133,7 +133,7 @@ export function ChatView() {
                   </AvatarFallback>
                 ) : (
                   <AvatarFallback className="bg-primary/10">
-                    <AtaraxLogo size={16} className="text-primary" />
+                    <AtaraxLogo className="text-primary w-4 h-4" />
                   </AvatarFallback>
                 )}
               </Avatar>
@@ -181,7 +181,7 @@ export function ChatView() {
             <div className="flex gap-3">
               <Avatar className="w-8 h-8">
                 <AvatarFallback className="bg-primary/10">
-                  <AtaraxLogo size={16} className="text-primary" />
+                  <AtaraxLogo className="text-primary w-4 h-4" />
                 </AvatarFallback>
               </Avatar>
               <div className="bg-muted rounded-lg px-4 py-3">

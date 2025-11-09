@@ -22,7 +22,8 @@ export interface UISlice {
   markModelDownloaded: (id: string) => void;
 }
 
-export const createUISlice: StateCreator<UISlice> = (set, get) => ({
+export const createUISlice: StateCreator<UISlice> = (set, _get) => ({
+
   currentView: 'chat',
   appStatus: 'unlocked',
   sidebarCollapsed: false,
