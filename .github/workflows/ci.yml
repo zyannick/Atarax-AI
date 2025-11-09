@@ -211,7 +211,8 @@ jobs:
       - name: Build backend artifact (Unix)
         if: matrix.platform.os != 'windows-latest'
         run: ${{ matrix.platform.build_script }}
-        shell: /usr/local/bin/bash
+        shell: bash
+
 
       - name: Build backend artifact (Windows)
         if: matrix.platform.os == 'windows-latest'
