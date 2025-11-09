@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../store/AppContext';
 import { AtaraxLogo } from './AtaraxLogo';
 import { ProjectDialog } from './ProjectDialog';
@@ -520,7 +520,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
         </div>
       )}
 
-      <Dialog open={!!updateProjectId} onOpenChange={(open) => !open && handleUpdateProjectCancel()}>
+      <Dialog open={!!updateProjectId} onOpenChange={(open : boolean) => !open && handleUpdateProjectCancel()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -569,7 +569,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deleteProjectId} onOpenChange={(open) => !open && handleDeleteProjectCancel()}>
+      <Dialog open={!!deleteProjectId} onOpenChange={(open : boolean) => !open && handleDeleteProjectCancel()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -608,7 +608,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!renameSessionId} onOpenChange={(open) => !open && handleRenameSessionCancel()}>
+      <Dialog open={!!renameSessionId} onOpenChange={(open : boolean) => !open && handleRenameSessionCancel()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -647,7 +647,7 @@ export function LeftSidebar({ onLockVault }: LeftSidebarProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deleteSessionId} onOpenChange={(open) => !open && handleDeleteSessionCancel()}>
+      <Dialog open={!!deleteSessionId} onOpenChange={(open : boolean) => !open && handleDeleteSessionCancel()}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">

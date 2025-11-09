@@ -12,11 +12,12 @@ export interface ProjectSlice {
   selectProject: (id: string) => void;
 }
 
-export const createProjectSlice: StateCreator<ProjectSlice> = (set, get) => ({
+export const createProjectSlice: StateCreator<ProjectSlice> = (set, _get) => ({
   projects: [
     {
       id: '1',
       name: 'General',
+      description: 'General project',
       createdAt: new Date(),
       updatedAt: new Date(),
     },
@@ -27,6 +28,7 @@ export const createProjectSlice: StateCreator<ProjectSlice> = (set, get) => ({
     const newProject: Project = {
       id: Date.now().toString(),
       name,
+      description: '',
       createdAt: new Date(),
       updatedAt: new Date(),
     };

@@ -302,7 +302,7 @@ if [[ ! -d "$ABS_BUILD_DIR" ]]; then
 fi
 
 write_log "Searching for C++ extension in: $ABS_BUILD_DIR" "INFO"
-CPP_EXTENSION_PATH=$(find "$ABS_BUILD_DIR" -name "hegemonikon_py*.so" -print -quit)
+CPP_EXTENSION_PATH=$(find "$ABS_BUILD_DIR" \( -name "hegemonikon_py*.so" -o -name "hegemonikon_py*.dylib" \) -print -quit)
 
 if [[ -z "$CPP_EXTENSION_PATH" ]] || [[ ! -f "$CPP_EXTENSION_PATH" ]]; then
     write_log "Could not find compiled C++ extension (hegemonikon_py*.so)" "ERROR"
@@ -326,7 +326,7 @@ fi
 
 if [[ -z "$PYTHON_SHARED_LIB" ]] || [[ ! -f "$PYTHON_SHARED_LIB" ]]; then
     write_log "Method 1 failed, searching in virtual environment..." "INFO"
-    PYTHON_SHARED_LIB=$(find "$VIRTUAL_ENV/lib" -name "libpython*.so.*" -print -quit 2>/dev/null || echo "")
+    PYTHON_SHARED_LIB=$(find "$VIRTUAL_ENV/lib" \( -name "libpython*.so.*" -o -name "libpython*.dylib" \) -print -quit 2>/dev/null || echo "")
 fi
 
 if [[ -z "$PYTHON_SHARED_LIB" ]] || [[ ! -f "$PYTHON_SHARED_LIB" ]]; then

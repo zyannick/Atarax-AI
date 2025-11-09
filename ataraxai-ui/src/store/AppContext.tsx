@@ -1,4 +1,4 @@
-import React, {
+import {
   createContext,
   useContext,
   useReducer,
@@ -15,7 +15,7 @@ import {
   RagSource,
   ModelInfo,
   BenchmarkTest,
-  BenchmarkResult,
+  // BenchmarkResult,
   BenchmarkSession,
 } from "./types";
 import {

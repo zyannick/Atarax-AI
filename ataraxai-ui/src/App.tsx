@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { AppProvider, useAppStore } from "./store/AppContext";
 import { LeftSidebar } from "./components/LeftSidebar";
 import { RightSidebar } from "./components/RightSidebar";
@@ -19,12 +19,7 @@ type VaultState = "uninitialized" | "locked" | "unlocked" | "reinit";
 
 function AppContent() {
 
-  const { currentView, fetchInitialData } = useAppStore(
-    (state) => ({
-      currentView: state.currentView,
-      fetchInitialData: state.fetchInitialData, 
-    })
-  );
+  const { currentView, fetchInitialData } = useAppStore();
 
 
   const [appStatus, setAppStatus] = useState<AppStatus>("loading");

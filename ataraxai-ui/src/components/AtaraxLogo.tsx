@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
-// Mock AtaraxLogo component
 export const AtaraxLogo = ({ className }: { className?: string }) => (
   <div className={`flex items-center justify-center ${className}`}>
     <div className="w-full h-full bg-gradient-to-br from-amber-800 to-amber-600 rounded-lg" />

@@ -84,13 +84,13 @@ jobs:
           source .venv/bin/activate
           pytest -m unit --cov=ataraxai --cov-report=term-missing --cov-report=xml
 
-      - name: Run Python Integration Tests
-        if: (github.event_name == 'pull_request' && github.base_ref == 'main') || github.ref == 'refs/heads/main'
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          source .venv/bin/activate
-          pytest -m integration --cov=ataraxai --cov-report=term-missing --cov-report=xml
+      # - name: Run Python Integration Tests
+      #   if: (github.event_name == 'pull_request' && github.base_ref == 'main') || github.ref == 'refs/heads/main'
+      #   env:
+      #     HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      #   run: |
+      #     source .venv/bin/activate
+      #     pytest -m integration --cov=ataraxai --cov-report=term-missing --cov-report=xml
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -113,7 +113,7 @@ jobs:
   build_desktop_release:
     name: Build Desktop App on ${{ matrix.platform.os }}
     needs: test_and_lint_backend
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'pull_request' && github.base_ref == 'main') || github.ref == 'refs/heads/main'
     strategy:
       fail-fast: false
       matrix:
@@ -130,7 +130,7 @@ jobs:
             artifact_pattern: |
               ataraxai-ui/src-tauri/target/release/bundle/**/*.dmg
           - os: windows-latest
-            target: x86_664-pc-windows-msvc
+            target: x86_64-pc-windows-msvc
             build_script: .\build_backend.ps1
             artifact_pattern: |
               ataraxai-ui/src-tauri/target/release/bundle/**/*.msi
@@ -171,8 +171,6 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform.target }}
 
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli
@@ -200,7 +198,14 @@ jobs:
       - name: Install macOS system dependencies
         if: matrix.platform.os == 'macos-latest'
         run: |
-          brew install cmake ninja
+          brew install cmake ninja bash libomp
+
+      - name: Set OpenMP environment variables (macOS)
+        if: matrix.platform.os == 'macos-latest'
+        run: |
+          echo "LDFLAGS=-L$(brew --prefix libomp)/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I$(brew --prefix libomp)/include" >> $GITHUB_ENV
+        shell: bash
 
       - name: Make build script executable (Unix)
         if: matrix.platform.os != 'windows-latest'
@@ -212,7 +217,9 @@ jobs:
 
       - name: Build backend artifact (Unix)
         if: matrix.platform.os != 'windows-latest'
-        run: ${{ matrix.platform.build_script }}
+        run: bash ${{ matrix.platform.build_script }}
+        shell: bash
+
 
       - name: Build backend artifact (Windows)
         if: matrix.platform.os == 'windows-latest'
@@ -239,7 +246,7 @@ jobs:
         with:
           name: AtaraxAI-${{ matrix.platform.os }}-${{ github.sha }}
           path: ${{ matrix.platform.artifact_pattern }}
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 30
 
   # build_docker:

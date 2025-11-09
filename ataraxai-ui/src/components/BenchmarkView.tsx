@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAppStore } from '../store/AppContext';
-import { BenchmarkTest, BenchmarkSession, ModelInfo } from '../store/types';
+// import { BenchmarkTest, BenchmarkSession, ModelInfo } from '../store/types';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -38,7 +38,7 @@ export function BenchmarkView() {
     activeBenchmarkId,
     addBenchmarkSession,
     addBenchmarkTest,
-    setActiveBenchmark,
+    // setActiveBenchmark,
   } = useAppStore();
 
   const [selectedModels, setSelectedModels] = useState<string[]>([]);
@@ -232,7 +232,7 @@ export function BenchmarkView() {
                           <Checkbox
                             id={`model-${model.id}`}
                             checked={selectedModels.includes(model.id)}
-                            onCheckedChange={(checked) => {
+                            onCheckedChange={(checked : boolean) => {
                               if (checked) {
                                 setSelectedModels([...selectedModels, model.id]);
                               } else {
@@ -280,7 +280,7 @@ export function BenchmarkView() {
                           <Checkbox
                             id={`test-${test.id}`}
                             checked={selectedTests.includes(test.id)}
-                            onCheckedChange={(checked) => {
+                            onCheckedChange={(checked: boolean) => {
                               if (checked) {
                                 setSelectedTests([...selectedTests, test.id]);
                               } else {
