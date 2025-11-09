@@ -54,7 +54,7 @@ export default defineConfig(async () => ({
     },
     build: {
       target: 'esnext',
-      outDir: 'build',
+      outDir: 'dist',
     },
   clearScreen: false,
   server: {

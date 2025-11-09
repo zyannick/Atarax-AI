@@ -69,7 +69,7 @@ function Invoke-CommandWithCheck {
         Write-Log "Command: $Command" "INFO"
     }
     
-    Invoke-Expression $Command
+    Invoke-Expression $Command 2>&1 | Tee-Object -Append -FilePath $LOG_FILE
     
     if ($LASTEXITCODE -ne 0) {
         Write-Log "$Description failed with exit code $LASTEXITCODE" "ERROR"
@@ -227,6 +227,8 @@ try {
         $CMAKE_ARGS_STR = "-DATARAXAI_USE_CUDA=OFF"
     }
     $CMAKE_ARGS_STR += " -DGGML_ARM_I8MM=OFF"
+
+    $CMAKE_ARGS_STR += " -DCMAKE_MSVC_FLAGS_RELEASE=/W3"
     
     Write-Log "CMake arguments: $CMAKE_ARGS_STR" "INFO"
 
